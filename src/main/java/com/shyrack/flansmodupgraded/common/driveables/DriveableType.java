@@ -7,8 +7,8 @@ import java.util.List;
 import net.minecraft.block.material.Material;
 import net.minecraft.client.model.ModelBase;
 import net.minecraft.init.Items;
-import net.minecraft.item.EnumDyeColor;
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.item.DyeColor;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.util.EnumParticleTypes;
 import net.minecraft.world.World;
 import net.minecraftforge.event.LootTableLoadEvent;
@@ -16,15 +16,15 @@ import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
-import com.flansmod.client.model.ModelDriveable;
-import com.flansmod.common.FlansMod;
-import com.flansmod.common.driveables.collisions.CollisionShapeBox;
-import com.flansmod.common.guns.BulletType;
-import com.flansmod.common.guns.EnumFireMode;
-import com.flansmod.common.paintjob.PaintableType;
-import com.flansmod.common.parts.PartType;
-import com.flansmod.common.types.TypeFile;
-import com.flansmod.common.vector.Vector3f;
+import com.shyrack.flansmodupgraded.client.model.ModelDriveable;
+import com.shyrack.flansmodupgraded.common.FlansMod;
+import com.shyrack.flansmodupgraded.common.driveables.collisions.CollisionShapeBox;
+import com.shyrack.flansmodupgraded.common.guns.BulletType;
+import com.shyrack.flansmodupgraded.common.guns.EnumFireMode;
+import com.shyrack.flansmodupgraded.common.paintjob.PaintableType;
+import com.shyrack.flansmodupgraded.common.parts.PartType;
+import com.shyrack.flansmodupgraded.common.types.TypeFile;
+import com.shyrack.flansmodupgraded.common.vector.Vector3f;
 
 public abstract class DriveableType extends PaintableType
 {
@@ -464,9 +464,9 @@ public abstract class DriveableType extends PaintableType
 		{
 			int amount = Integer.parseInt(split[1]);
 			int damage = -1;
-			for(int i = 0; i < EnumDyeColor.values().length; i++)
+			for(int i = 0; i < DyeColor.values().length; i++)
 			{
-				if(EnumDyeColor.byDyeDamage(i).getTranslationKey().equals(split[2]))
+				if(DyeColor.byDyeDamage(i).getTranslationKey().equals(split[2]))
 					damage = i;
 			}
 			if(damage == -1)
