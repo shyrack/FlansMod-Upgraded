@@ -1,8 +1,9 @@
 package com.shyrack.flansmodupgraded.common.paintjob;
 
-import com.flansmod.common.types.IFlanItem;
+import com.shyrack.flansmodupgraded.common.types.IFlanItem;
 
-public interface IPaintableItem extends IFlanItem
-{
-	PaintableType GetPaintableType();
+public interface IPaintableItem extends IFlanItem {
+
+    PaintableType GetPaintableType();
+
 }

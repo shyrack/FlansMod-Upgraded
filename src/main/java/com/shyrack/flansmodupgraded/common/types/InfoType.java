@@ -1,42 +1,37 @@
 package com.shyrack.flansmodupgraded.common.types;
 
+import com.mojang.logging.LogUtils;
+import com.shyrack.flansmodupgraded.common.FlansMod;
+import net.minecraft.client.model.Model;
+import net.minecraft.core.NonNullList;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.DyeColor;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.alchemy.Potion;
+import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.crafting.ShapedRecipe;
+import net.minecraft.world.item.crafting.ShapelessRecipe;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.material.Material;
+import net.minecraft.world.level.storage.loot.LootPool;
+import net.minecraft.world.level.storage.loot.entries.LootPoolEntry;
+import net.minecraft.world.level.storage.loot.predicates.LootItemCondition;
+import net.minecraftforge.event.LootTableLoadEvent;
+import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraftforge.registries.IForgeRegistry;
+import net.minecraftforge.registries.RegisterEvent;
+
 import java.util.HashMap;
 import java.util.Random;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.material.Material;
-import net.minecraft.client.model.ModelBase;
-import net.minecraft.init.Blocks;
-import net.minecraft.init.Items;
-import net.minecraft.item.EnumDyeColor;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.crafting.IRecipe;
-import net.minecraft.item.crafting.ShapedRecipes;
-import net.minecraft.item.crafting.ShapelessRecipes;
-import net.minecraft.potion.Potion;
-import net.minecraft.potion.PotionEffect;
-import net.minecraft.util.NonNullList;
-import net.minecraft.world.World;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.crafting.Recipe;
-import net.minecraft.world.storage.loot.LootEntry;
-import net.minecraft.world.storage.loot.LootEntryItem;
-import net.minecraft.world.storage.loot.LootPool;
-import net.minecraft.world.storage.loot.RandomValueRange;
-import net.minecraft.world.storage.loot.conditions.LootCondition;
-import net.minecraft.world.storage.loot.functions.LootFunction;
-import net.minecraftforge.event.LootTableLoadEvent;
-import net.minecraftforge.fml.common.registry.GameRegistry;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
-import net.minecraftforge.oredict.OreDictionary;
-import net.minecraftforge.oredict.OreIngredient;
-import net.minecraftforge.registries.IForgeRegistry;
-
-import com.shyrack.flansmodupgraded.common.FlansMod;
-import com.shyrack.flansmodupgraded.common.driveables.DriveableType;
+import static com.shyrack.flansmodupgraded.FlansModUpgraded.MODID;
 
 public class InfoType {
+
     /**
      * infoTypes
      */
@@ -126,8 +121,7 @@ public class InfoType {
         }
     }
 
-    @SideOnly(Side.CLIENT)
-    public ModelBase GetModel() {
+    public Model GetModel() {
         return null;
     }
 
@@ -306,22 +300,23 @@ public class InfoType {
         return super.getClass().getSimpleName() + ": " + shortName;
     }
 
-    public void registerItem(IForgeRegistry<Item> registry) {
-        if (item != null)
-            registry.register(item);
+    public void registerItem(RegisterEvent event) {
+        if (this.item != null && this.name != null) {
+            event.register(ForgeRegistries.Keys.BLOCKS, helper -> {
+                helper.register(new ResourceLocation(MODID, this.name), Block.byItem(this.item));
+            });
+        } else {
+            LogUtils.getLogger().error("An error occurred while registering an item.");
+        }
     }
 
     public void registerBlock(IForgeRegistry<Block> registry) {
-
     }
 
     public void addRecipe(IForgeRegistry<Recipe> registry) {
-        this.addRecipe(registry, getItem());
+        this.addRecipe(registry, this.getItem());
     }
 
-    /**
-     * Reimported from old code
-     */
     public void addRecipe(IForgeRegistry<Recipe> registry, Item par1Item) {
         if (smeltableFrom != null) {
             GameRegistry.addSmelting(getRecipeElement(smeltableFrom, 1, 0), new ItemStack(item), 0.0F);
@@ -393,14 +388,14 @@ public class InfoType {
                     }
                 }
                 // And finally hand all that over to the registry
-                registry.register(new ShapedRecipes("FlansMod", width, height, ingredients, new ItemStack(item, recipeOutput)).setRegistryName(shortName + "_shaped"));
+                registry.register(new ShapedRecipe("FlansMod", width, height, ingredients, new ItemStack(item, recipeOutput)).setRegistryName(shortName + "_shaped"));
             } else {
                 NonNullList<Ingredient> ingredients = NonNullList.create();
                 for (int i = 0; i < (recipeLine.length - 1); i++) {
                     ingredients.add(getRecipeIngredient(recipeLine[i + 1]));
                 }
 
-                registry.register(new ShapelessRecipes("FlansMod", new ItemStack(item, recipeOutput), ingredients).setRegistryName(shortName + "_shapeless"));
+                registry.register(new ShapelessRecipe("FlansMod", new ItemStack(item, recipeOutput), ingredients).setRegistryName(shortName + "_shapeless"));
             }
         } catch (Exception e) {
             FlansMod.log.error("Failed to add recipe for : " + shortName);
@@ -413,8 +408,8 @@ public class InfoType {
      */
     protected int getDyeDamageValue(String dyeName) {
         int damage = -1;
-        for (int i = 0; i < EnumDyeColor.values().length; i++) {
-            if (EnumDyeColor.byDyeDamage(i).getTranslationKey().equals(dyeName))
+        for (int i = 0; i < DyeColor.values().length; i++) {
+            if (DyeColor.byDyeDamage(i).getTranslationKey().equals(dyeName))
                 damage = i;
         }
         if (damage == -1)
@@ -455,20 +450,20 @@ public class InfoType {
         // Legacy cases
         switch (id) {
             case "doorIron":
-                return Ingredient.fromItem(Items.IRON_DOOR);
+                return Ingredient.of(Items.IRON_DOOR);
             case "clayItem":
-                return Ingredient.fromItem(Items.CLAY_BALL);
+                return Ingredient.of(Items.CLAY_BALL);
             case "iron_trapdoor":
-                return Ingredient.fromItem(Item.getItemFromBlock(Blocks.IRON_TRAPDOOR));
+                return Ingredient.of(Item.byBlock(Blocks.IRON_TRAPDOOR));
             case "trapdoor":
-                return Ingredient.fromItem(Item.getItemFromBlock(Blocks.TRAPDOOR));
+                return Ingredient.of(Item.byBlock(Blocks.TRAPDOOR));
             case "gunpowder":
-                return Ingredient.fromItem(Items.GUNPOWDER);
+                return Ingredient.of(Items.GUNPOWDER);
             case "ingotIron":
             case "iron":
-                return Ingredient.fromItem(Items.IRON_INGOT);
+                return Ingredient.of(Items.IRON_INGOT);
             case "boat":
-                return Ingredient.fromItem(Items.BOAT);
+                return Ingredient.of(Items.BOAT);
         }
 
         // Special ingredients, allows for steel with iron fallback etc.
@@ -476,7 +471,7 @@ public class InfoType {
             return SPECIAL_INGREDIENTS.get(id);
         }
 
-        return Ingredient.fromStacks(getRecipeElement(id, amount, damage));
+        return Ingredient.of(getRecipeElement(id, amount, damage));
     }
 
     public static ItemStack getRecipeElement(String id, int amount, int damage) {
@@ -524,7 +519,7 @@ public class InfoType {
                 return ing.getMatchingStacks()[0];
         }
 
-        for (Item item : Item.REGISTRY) {
+        for (Item item : ForgeRegistries.ITEMS) {
             if (item != null && (item.getTranslationKey().equals("item." + id) || item.getTranslationKey().equals("tile." + id))) {
                 // Turned off console spam for this case. It's legacy, but there's so much of it now that this is pretty standard in official packs
                 return new ItemStack(item, amount, damage);
@@ -573,7 +568,7 @@ public class InfoType {
         int potionID = Integer.parseInt(split[1]);
         int duration = Integer.parseInt(split[2]);
         int amplifier = Integer.parseInt(split[3]);
-        return new PotionEffect(Potion.getPotionById(potionID), duration, amplifier, false, false);
+        return new PotionEffect(Potion.byName(potionID), duration, amplifier, false, false);
     }
 
     public static Material getMaterial(String mat) {
@@ -584,11 +579,12 @@ public class InfoType {
         if (dungeonChance > 0) {
             LootPool pool = event.getTable().getPool("FlansMod");
             if (pool == null) {
-                pool = new LootPool(new LootEntry[0], new LootCondition[0], new RandomValueRange(1, 1), new RandomValueRange(1, 1), "FlansMod");
+                pool = new LootPool(new LootPoolEntry[0], new LootItemCondition[][0],
+                new RandomValueRange(1, 1), new RandomValueRange(1, 1), "FlansMod");
                 event.getTable().addPool(pool);
             }
 
-            LootEntry entry = new LootEntryItem(item, FlansMod.dungeonLootChance * dungeonChance, 1, new LootFunction[0], new LootCondition[0], shortName);
+            LootPoolEntry entry = new LootEntryItem(item, FlansMod.dungeonLootChance * dungeonChance, 1, new LootFunction[0], new LootCondition[0], shortName);
 
             if (pool != null) {
                 pool.addEntry(entry);
@@ -600,59 +596,60 @@ public class InfoType {
 
     public static void InitializeSpecialIngredients() {
         // Steel ingot - fallback is iron
-        AddOreDictEntry("nuggetSteel", Ingredient.fromItem(Items.IRON_NUGGET));
-        AddOreDictEntry("ingotSteel", Ingredient.fromItem(Items.IRON_INGOT));
-        AddOreDictEntry("blockSteel", Ingredient.fromItems(Item.getItemFromBlock(Blocks.IRON_BLOCK)));
+        AddOreDictEntry("nuggetSteel", Ingredient.of(Items.IRON_NUGGET));
+        AddOreDictEntry("ingotSteel", Ingredient.of(Items.IRON_INGOT));
+        AddOreDictEntry("blockSteel", Ingredient.of(Item.byBlock(Blocks.IRON_BLOCK)));
         // Nickel with fallback iron
-        AddOreDictEntry("nuggetNickel", Ingredient.fromItem(Items.IRON_NUGGET));
-        AddOreDictEntry("ingotNickel", Ingredient.fromItem(Items.IRON_INGOT));
-        AddOreDictEntry("blockNickel", Ingredient.fromItems(Item.getItemFromBlock(Blocks.IRON_BLOCK)));
+        AddOreDictEntry("nuggetNickel", Ingredient.of(Items.IRON_NUGGET));
+        AddOreDictEntry("ingotNickel", Ingredient.of(Items.IRON_INGOT));
+        AddOreDictEntry("blockNickel", Ingredient.of(Item.byBlock(Blocks.IRON_BLOCK)));
         // Lead with fallback iron
-        AddOreDictEntry("nuggetLead", Ingredient.fromItem(Items.IRON_NUGGET));
-        AddOreDictEntry("ingotLead", Ingredient.fromItem(Items.IRON_INGOT));
-        AddOreDictEntry("blockLead", Ingredient.fromItems(Item.getItemFromBlock(Blocks.IRON_BLOCK)));
+        AddOreDictEntry("nuggetLead", Ingredient.of(Items.IRON_NUGGET));
+        AddOreDictEntry("ingotLead", Ingredient.of(Items.IRON_INGOT));
+        AddOreDictEntry("blockLead", Ingredient.of(Item.byBlock(Blocks.IRON_BLOCK)));
         // Copper with fallback iron
-        AddOreDictEntry("nuggetCopper", Ingredient.fromItem(Items.IRON_NUGGET));
-        AddOreDictEntry("ingotCopper", Ingredient.fromItem(Items.IRON_INGOT));
-        AddOreDictEntry("blockCopper", Ingredient.fromItems(Item.getItemFromBlock(Blocks.IRON_BLOCK)));
+        AddOreDictEntry("nuggetCopper", Ingredient.of(Items.IRON_NUGGET));
+        AddOreDictEntry("ingotCopper", Ingredient.of(Items.IRON_INGOT));
+        AddOreDictEntry("blockCopper", Ingredient.of(Item.byBlock(Blocks.IRON_BLOCK)));
         // Tin with fallback iron
-        AddOreDictEntry("nuggetTin", Ingredient.fromItem(Items.IRON_NUGGET));
-        AddOreDictEntry("ingotTin", Ingredient.fromItem(Items.IRON_INGOT));
-        AddOreDictEntry("blockTin", Ingredient.fromItems(Item.getItemFromBlock(Blocks.IRON_BLOCK)));
+        AddOreDictEntry("nuggetTin", Ingredient.of(Items.IRON_NUGGET));
+        AddOreDictEntry("ingotTin", Ingredient.of(Items.IRON_INGOT));
+        AddOreDictEntry("blockTin", Ingredient.of(Item.byBlock(Blocks.IRON_BLOCK)));
 
         // Electrum with fallback gold
-        AddOreDictEntry("nuggetElectrum", Ingredient.fromItem(Items.GOLD_NUGGET));
-        AddOreDictEntry("ingotElectrum", Ingredient.fromItem(Items.GOLD_INGOT));
-        AddOreDictEntry("blockElectrum", Ingredient.fromItems(Item.getItemFromBlock(Blocks.GOLD_BLOCK)));
+        AddOreDictEntry("nuggetElectrum", Ingredient.of(Items.GOLD_NUGGET));
+        AddOreDictEntry("ingotElectrum", Ingredient.of(Items.GOLD_INGOT));
+        AddOreDictEntry("blockElectrum", Ingredient.of(Item.byBlock(Blocks.GOLD_BLOCK)));
         // Constantan with fallback gold
-        AddOreDictEntry("nuggetConstantan", Ingredient.fromItem(Items.GOLD_NUGGET));
-        AddOreDictEntry("ingotConstantan", Ingredient.fromItem(Items.GOLD_INGOT));
-        AddOreDictEntry("blockConstantan", Ingredient.fromItems(Item.getItemFromBlock(Blocks.GOLD_BLOCK)));
+        AddOreDictEntry("nuggetConstantan", Ingredient.of(Items.GOLD_NUGGET));
+        AddOreDictEntry("ingotConstantan", Ingredient.of(Items.GOLD_INGOT));
+        AddOreDictEntry("blockConstantan", Ingredient.of(Item.byBlock(Blocks.GOLD_BLOCK)));
         // Silver with fallback gold
-        AddOreDictEntry("nuggetSilver", Ingredient.fromItem(Items.GOLD_NUGGET));
-        AddOreDictEntry("ingotSilver", Ingredient.fromItem(Items.GOLD_INGOT));
-        AddOreDictEntry("blockSilver", Ingredient.fromItems(Item.getItemFromBlock(Blocks.GOLD_BLOCK)));
+        AddOreDictEntry("nuggetSilver", Ingredient.of(Items.GOLD_NUGGET));
+        AddOreDictEntry("ingotSilver", Ingredient.of(Items.GOLD_INGOT));
+        AddOreDictEntry("blockSilver", Ingredient.of(Item.byBlock(Blocks.GOLD_BLOCK)));
         // Bronze with fallback gold
-        AddOreDictEntry("nuggetBronze", Ingredient.fromItem(Items.GOLD_NUGGET));
-        AddOreDictEntry("ingotBronze", Ingredient.fromItem(Items.GOLD_INGOT));
-        AddOreDictEntry("blockBronze", Ingredient.fromItems(Item.getItemFromBlock(Blocks.GOLD_BLOCK)));
+        AddOreDictEntry("nuggetBronze", Ingredient.of(Items.GOLD_NUGGET));
+        AddOreDictEntry("ingotBronze", Ingredient.of(Items.GOLD_INGOT));
+        AddOreDictEntry("blockBronze", Ingredient.of(Item.byBlock(Blocks.GOLD_BLOCK)));
 
         // IE lookups
-        AddModEntry("treatedPlanks", "immersiveengineering:treated_wood", Ingredient.fromItems(Item.getItemFromBlock(Blocks.PLANKS)));
+        AddModEntry("treatedPlanks", "immersiveengineering:treated_wood", Ingredient.of(Item.byBlock(Blocks.PLANKS)));
     }
 
     private static void AddModEntry(String name, String resLoc, Ingredient fallback) {
         Item item = Item.getByNameOrId(resLoc);
         if (item != null)
-            SPECIAL_INGREDIENTS.put(name, Ingredient.fromItem(item));
+            SPECIAL_INGREDIENTS.put(name, Ingredient.of(item));
         else
             SPECIAL_INGREDIENTS.put(name, fallback);
     }
 
     private static void AddOreDictEntry(String name, Ingredient fallback) {
-        if (OreDictionary.doesOreNameExist(name))
+        if (OreDiction.doesOreNameExist(name))
             SPECIAL_INGREDIENTS.put(name, new OreIngredient(name));
         else
             SPECIAL_INGREDIENTS.put(name, fallback);
     }
+
 }

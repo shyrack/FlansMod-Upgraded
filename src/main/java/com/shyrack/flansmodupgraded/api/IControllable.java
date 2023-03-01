@@ -6,6 +6,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 
 public interface IControllable {
+
     /**
      * This is fired every tick.
      *
@@ -46,4 +47,5 @@ public interface IControllable {
     LivingEntity getCamera();
 
     EntitySeat getSeat(LivingEntity living);
+
 }

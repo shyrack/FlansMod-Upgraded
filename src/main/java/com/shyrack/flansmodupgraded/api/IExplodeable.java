@@ -6,10 +6,11 @@ package com.shyrack.flansmodupgraded.api;
  *
  * @author AidanBrady
  */
-public interface IExplodeable
-{
-	/**
-	 * Explode the entity completely.
-	 */
-	void explode();
+public interface IExplodeable {
+
+    /**
+     * Explode the entity completely.
+     */
+    void explode();
+
 }

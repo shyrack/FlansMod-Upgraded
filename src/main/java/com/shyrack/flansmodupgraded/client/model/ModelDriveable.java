@@ -1,33 +1,40 @@
 package com.shyrack.flansmodupgraded.client.model;
 
 import java.util.HashMap;
+import java.util.function.Function;
 
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.model.Model;
 
-import net.minecraft.client.model.ModelBase;
-import net.minecraft.client.renderer.BufferBuilder;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
-import net.minecraft.util.math.AxisAlignedBB;
-
-import com.flansmod.client.tmt.ModelRendererTurbo;
-import com.flansmod.common.driveables.DriveableType;
-import com.flansmod.common.driveables.EntityDriveable;
+import com.shyrack.flansmodupgraded.client.tmt.ModelRendererTurbo;
+import com.shyrack.flansmodupgraded.common.driveables.DriveableType;
+import com.shyrack.flansmodupgraded.common.driveables.EntityDriveable;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.resources.ResourceLocation;
 
 public class ModelDriveable extends Model {
+
     public static final float pi = 3.14159265F;
     public static final float tau = 2 * pi;
 
     public HashMap<String, ModelRendererTurbo[][]> gunModels = new HashMap<>();
-    public ModelRendererTurbo bodyModel[] = new ModelRendererTurbo[0];
-    public ModelRendererTurbo bodyDoorOpenModel[] = new ModelRendererTurbo[0];
-    public ModelRendererTurbo bodyDoorCloseModel[] = new ModelRendererTurbo[0];
+    public ModelRendererTurbo[] bodyModel;
+    public ModelRendererTurbo[] bodyDoorOpenModel;
+    public ModelRendererTurbo[] bodyDoorCloseModel;
 
     /**
      * Set to true to use the old rotation order (ZYX) rather than (YZX)
      */
-    public boolean oldRotateOrder = false;
+    public boolean oldRotateOrder;
+
+    public ModelDriveable(Function<ResourceLocation, RenderType> p_103110_) {
+        super(p_103110_);
+        this.bodyModel = new ModelRendererTurbo[0];
+        this.bodyDoorOpenModel = new ModelRendererTurbo[0];
+        this.bodyDoorCloseModel = new ModelRendererTurbo[0];
+        this.oldRotateOrder = false;
+    }
 
     /**
      * For rendering a specific entity
@@ -137,6 +144,12 @@ public class ModelDriveable extends Model {
         tessellator.draw();
         bufferbuilder.setTranslation(0.0D, 0.0D, 0.0D);
         GlStateManager.enableTexture2D();
+    }
+
+    // TODO
+    @Override
+    public void renderToBuffer(PoseStack p_103111_, VertexConsumer p_103112_, int p_103113_, int p_103114_, float p_103115_, float p_103116_, float p_103117_, float p_103118_) {
+
     }
 
 }
