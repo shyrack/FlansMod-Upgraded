@@ -1,16 +1,16 @@
 {
   "variants": {
     "facing=north": {
-      "model": "flansmod:flanGunRack"
+      "model": "flansmod:flangunrack"
     },
     "facing=east": {
-      "model": "flansmod:flanGunRack"
+      "model": "flansmod:flangunrack"
     },
     "facing=south": {
-      "model": "flansmod:flanGunRack"
+      "model": "flansmod:flangunrack"
     },
     "facing=west": {
-      "model": "flansmod:flanGunRack"
+      "model": "flansmod:flangunrack"
     }
   }
 }

@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/LightningEngine"
+    "layer0": "flansmod:items/lightningengine"
   },
   "display": {
     "thirdperson_lefthand": {

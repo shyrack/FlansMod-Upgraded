@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/GrenadeLauncherAmmo"
+    "layer0": "flansmod:items/grenadelauncherammo"
   },
   "display": {
     "thirdperson_lefthand": {

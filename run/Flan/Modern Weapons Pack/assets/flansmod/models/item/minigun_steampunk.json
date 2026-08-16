@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/Minigun_Steampunk"
+    "layer0": "flansmod:items/minigun_steampunk"
   },
   "display": {
     "thirdperson_righthand": {

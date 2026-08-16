@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/Mk2Grenade"
+    "layer0": "flansmod:items/mk2grenade"
   },
   "display": {
     "thirdperson_lefthand": {

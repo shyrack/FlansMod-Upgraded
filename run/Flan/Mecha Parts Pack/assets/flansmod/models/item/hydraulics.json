@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/Hydraulics"
+    "layer0": "flansmod:items/hydraulics"
   },
   "display": {
     "thirdperson_lefthand": {

@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/ApacheAH64"
+    "layer0": "flansmod:items/apacheah64"
   },
   "display": {
     "thirdperson_righthand": {

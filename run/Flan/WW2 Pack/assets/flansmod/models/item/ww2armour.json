@@ -1,5 +1,5 @@
 {
-  "parent": "flansmod:block/ww2Armour",
+  "parent": "flansmod:block/ww2armour",
   "display": {
     "thirdperson": {
       "rotation": [

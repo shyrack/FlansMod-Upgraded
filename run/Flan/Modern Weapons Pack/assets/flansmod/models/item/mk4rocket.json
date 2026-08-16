@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/Mk4Rocket"
+    "layer0": "flansmod:items/mk4rocket"
   },
   "display": {
     "thirdperson_lefthand": {

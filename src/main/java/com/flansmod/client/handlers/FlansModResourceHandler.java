@@ -44,7 +44,7 @@ public class FlansModResourceHandler
 		{
 			return iconMap.get(infoType);
 		}
-		Identifier resLoc = Identifier.fromNamespaceAndPath("flansmod", "textures/items/" + infoType.iconPath + ".png");
+		Identifier resLoc = Identifier.fromNamespaceAndPath("flansmod", "textures/items/" + infoType.iconPath.toLowerCase() + ".png");
 		iconMap.put(infoType, resLoc);
 		return resLoc;
 	}
@@ -55,7 +55,7 @@ public class FlansModResourceHandler
 		{
 			return textureMap.get(infoType);
 		}
-		Identifier resLoc = Identifier.fromNamespaceAndPath("flansmod", "skins/" + infoType.texture + ".png");
+		Identifier resLoc = Identifier.fromNamespaceAndPath("flansmod", "skins/" + infoType.texture.toLowerCase() + ".png");
 		if(infoType.texture != null)
 		{
 			textureMap.put(infoType, resLoc);
@@ -70,7 +70,7 @@ public class FlansModResourceHandler
 		{
 			return textureMap.get(gunType);
 		}
-		Identifier resLoc = Identifier.fromNamespaceAndPath("flansmod", "skins/" + gunType.deployableTexture + ".png");
+		Identifier resLoc = Identifier.fromNamespaceAndPath("flansmod", "skins/" + gunType.deployableTexture.toLowerCase() + ".png");
 		textureMap.put(gunType, resLoc);
 		return resLoc;
 	}
@@ -105,7 +105,7 @@ public class FlansModResourceHandler
 		{
 			return paintjobMap.get(paintjob);
 		}
-		Identifier resLoc = Identifier.fromNamespaceAndPath("flansmod", "skins/" + paintjob.textureName + ".png");
+		Identifier resLoc = Identifier.fromNamespaceAndPath("flansmod", "skins/" + paintjob.textureName.toLowerCase() + ".png");
 		paintjobMap.put(paintjob, resLoc);
 		return resLoc;
 	}
@@ -116,7 +116,7 @@ public class FlansModResourceHandler
 		{
 			return blockMap.get(texturePath);
 		}
-		Identifier resLoc = Identifier.fromNamespaceAndPath("flansmod", "blocks/" + texturePath);
+		Identifier resLoc = Identifier.fromNamespaceAndPath("flansmod", "blocks/" + texturePath.toLowerCase());
 		blockMap.put(texturePath, resLoc);
 		return resLoc;
 	}

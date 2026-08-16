@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/Canister"
+    "layer0": "flansmod:items/canister"
   },
   "display": {
     "thirdperson_lefthand": {

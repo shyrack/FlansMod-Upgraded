@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/EnginePiston"
+    "layer0": "flansmod:items/enginepiston"
   },
   "display": {
     "thirdperson_lefthand": {

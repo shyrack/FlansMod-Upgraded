@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/M21Ammo"
+    "layer0": "flansmod:items/m21ammo"
   },
   "display": {
     "thirdperson_lefthand": {

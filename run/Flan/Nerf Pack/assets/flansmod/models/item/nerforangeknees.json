@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/NerfOrangeKnees"
+    "layer0": "flansmod:items/nerforangeknees"
   },
   "display": {
     "thirdperson_lefthand": {

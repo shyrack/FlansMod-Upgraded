@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/M21_Jungle"
+    "layer0": "flansmod:items/m21_jungle"
   },
   "display": {
     "thirdperson_righthand": {

@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/speedIncrease"
+    "layer0": "flansmod:items/speedincrease"
   },
   "display": {
     "thirdperson_lefthand": {

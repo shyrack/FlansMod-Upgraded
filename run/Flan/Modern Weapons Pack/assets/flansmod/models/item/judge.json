@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/Judge"
+    "layer0": "flansmod:items/judge"
   },
   "display": {
     "thirdperson_righthand": {

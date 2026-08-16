@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/springfieldAmmo"
+    "layer0": "flansmod:items/springfieldammo"
   },
   "display": {
     "thirdperson_lefthand": {

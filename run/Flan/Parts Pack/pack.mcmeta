@@ -1,6 +1,8 @@
 {
   "pack": {
     "pack_format": 74,
-    "description": "Parts Pack Defaults"
+    "description": "Parts Pack Defaults",
+    "min_format": 74,
+    "max_format": 74
   }
 }

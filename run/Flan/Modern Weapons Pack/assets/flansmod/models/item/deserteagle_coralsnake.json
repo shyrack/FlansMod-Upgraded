@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/DesertEagle_CoralSnake"
+    "layer0": "flansmod:items/deserteagle_coralsnake"
   },
   "display": {
     "thirdperson_righthand": {

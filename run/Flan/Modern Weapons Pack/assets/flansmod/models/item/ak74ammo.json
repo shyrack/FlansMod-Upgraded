@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/AK74Ammo"
+    "layer0": "flansmod:items/ak74ammo"
   },
   "display": {
     "thirdperson_lefthand": {

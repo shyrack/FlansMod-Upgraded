@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/G3_Quartz"
+    "layer0": "flansmod:items/g3_quartz"
   },
   "display": {
     "thirdperson_righthand": {

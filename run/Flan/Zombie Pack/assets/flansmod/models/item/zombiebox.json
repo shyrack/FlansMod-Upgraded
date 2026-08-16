@@ -1,5 +1,5 @@
 {
-  "parent": "flansmod:block/zombieBox",
+  "parent": "flansmod:block/zombiebox",
   "display": {
     "thirdperson": {
       "rotation": [

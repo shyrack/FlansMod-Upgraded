@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/FNSCARAmmo"
+    "layer0": "flansmod:items/fnscarammo"
   },
   "display": {
     "thirdperson_lefthand": {

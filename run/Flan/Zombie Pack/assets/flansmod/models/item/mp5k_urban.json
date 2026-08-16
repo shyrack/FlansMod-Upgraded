@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/MP5K_Urban"
+    "layer0": "flansmod:items/mp5k_urban"
   },
   "display": {
     "thirdperson_righthand": {

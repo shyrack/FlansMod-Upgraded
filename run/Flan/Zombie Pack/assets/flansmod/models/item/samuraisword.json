@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/SamuraiSword"
+    "layer0": "flansmod:items/samuraisword"
   },
   "display": {
     "thirdperson_righthand": {

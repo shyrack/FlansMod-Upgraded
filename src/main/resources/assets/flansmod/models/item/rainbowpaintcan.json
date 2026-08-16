@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/rainbowPaintcan"
+    "layer0": "flansmod:items/rainbowpaintcan"
   },
   "display": {
     "thirdperson": {

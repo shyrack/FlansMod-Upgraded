@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/MWMedkit"
+    "layer0": "flansmod:items/mwmedkit"
   },
   "display": {
     "thirdperson_lefthand": {

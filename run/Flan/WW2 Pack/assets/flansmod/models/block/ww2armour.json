@@ -1,12 +1,12 @@
 {
   "parent": "block/cube",
   "textures": {
-    "particle": "flansmod:blocks/ww2ArmourBoxSide",
-    "down": "flansmod:blocks/ww2ArmourBox",
-    "up": "flansmod:blocks/ww2ArmourBox",
-    "north": "flansmod:blocks/ww2ArmourBoxSide",
-    "east": "flansmod:blocks/ww2ArmourBoxSide",
-    "south": "flansmod:blocks/ww2ArmourBoxSide",
-    "west": "flansmod:blocks/ww2ArmourBoxSide"
+    "particle": "flansmod:blocks/ww2armourboxside",
+    "down": "flansmod:blocks/ww2armourbox",
+    "up": "flansmod:blocks/ww2armourbox",
+    "north": "flansmod:blocks/ww2armourboxside",
+    "east": "flansmod:blocks/ww2armourboxside",
+    "south": "flansmod:blocks/ww2armourboxside",
+    "west": "flansmod:blocks/ww2armourboxside"
   }
 }

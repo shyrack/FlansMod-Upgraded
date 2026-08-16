@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/SIGP232"
+    "layer0": "flansmod:items/sigp232"
   },
   "display": {
     "thirdperson_righthand": {

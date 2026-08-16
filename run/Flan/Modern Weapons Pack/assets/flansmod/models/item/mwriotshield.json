@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/RiotShield"
+    "layer0": "flansmod:items/riotshield"
   },
   "display": {
     "thirdperson_righthand": {

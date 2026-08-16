@@ -1,6 +1,8 @@
 {
   "pack": {
     "pack_format": 74,
-    "description": "Modern Weapons Pack Defaults"
+    "description": "Modern Weapons Pack Defaults",
+    "min_format": 74,
+    "max_format": 74
   }
 }

@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/Foregrip"
+    "layer0": "flansmod:items/foregrip"
   },
   "display": {
     "thirdperson_righthand": {

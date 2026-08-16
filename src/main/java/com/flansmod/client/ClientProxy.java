@@ -298,8 +298,56 @@ public class ClientProxy extends CommonProxy
 		}
 		if(sources != null)
 		{
-			sources.add(new FolderRepositorySource(FlansMod.flanDir.toPath(), PackType.CLIENT_RESOURCES, PackSource.BUILT_IN,
-					new DirectoryValidator(path -> true)));
+			sources.add(new net.minecraft.server.packs.repository.RepositorySource()
+			{
+				@Override
+				public void loadPacks(java.util.function.Consumer<net.minecraft.server.packs.repository.Pack> onLoad)
+				{
+					java.io.File flanDir = FlansMod.flanDir;
+					if(flanDir == null || !flanDir.isDirectory())
+						return;
+					java.io.File[] packDirs = flanDir.listFiles(java.io.File::isDirectory);
+					if(packDirs == null)
+						return;
+					for(java.io.File packDir : packDirs)
+					{
+						try
+						{
+							if(!new java.io.File(packDir, "pack.mcmeta").exists())
+								continue;
+							String packId = "flan/" + packDir.getName();
+							net.minecraft.server.packs.PackLocationInfo info = new net.minecraft.server.packs.PackLocationInfo(packId,
+									Component.literal(packDir.getName()), PackSource.BUILT_IN, java.util.Optional.empty());
+							java.nio.file.Path path = packDir.toPath();
+							net.minecraft.server.packs.repository.Pack.ResourcesSupplier supplier =
+									new net.minecraft.server.packs.repository.Pack.ResourcesSupplier()
+							{
+								@Override
+								public net.minecraft.server.packs.PackResources openPrimary(net.minecraft.server.packs.PackLocationInfo locationInfo)
+								{
+									return new net.minecraft.server.packs.PathPackResources(locationInfo, path);
+								}
+
+								@Override
+								public net.minecraft.server.packs.PackResources openFull(net.minecraft.server.packs.PackLocationInfo locationInfo,
+										net.minecraft.server.packs.repository.Pack.Metadata metadata)
+								{
+									return new net.minecraft.server.packs.PathPackResources(locationInfo, path);
+								}
+							};
+							net.minecraft.server.packs.repository.Pack pack = net.minecraft.server.packs.repository.Pack.readMetaAndCreate(info, supplier,
+									PackType.CLIENT_RESOURCES,
+									new net.minecraft.server.packs.PackSelectionConfig(true, net.minecraft.server.packs.repository.Pack.Position.TOP, false));
+							onLoad.accept(pack);
+							FlansMod.log.info("Registered content pack as resource pack : " + packDir.getName());
+						}
+						catch(Exception e)
+						{
+							FlansMod.log.warn("Failed to load content pack as resource pack : " + packDir.getName(), e);
+						}
+					}
+				}
+			});
 		}
 		FlansMod.log.info("Loaded textures and models.");
 	}
@@ -585,6 +633,9 @@ public class ClientProxy extends CommonProxy
 					File itemModelsDir = new File(contentPackDir, "/assets/flansmod/models/item");
 					if(!itemModelsDir.exists())
 						itemModelsDir.mkdirs();
+					File itemsDir = new File(contentPackDir, "/assets/flansmod/items");
+					if(!itemsDir.exists())
+						itemsDir.mkdirs();
 					File blockModelsDir = new File(contentPackDir, "/assets/flansmod/models/block");
 					if(!blockModelsDir.exists())
 						blockModelsDir.mkdirs();
@@ -592,10 +643,27 @@ public class ClientProxy extends CommonProxy
 					if(!blockstatesDir.exists())
 						blockstatesDir.mkdirs();
 
-					if(typeToCheckFor != EnumType.team && typeToCheckFor != EnumType.playerClass)
+					String lowerName = type.shortName.toLowerCase();
+					String iconPath = type.iconPath == null ? "" : type.iconPath.toLowerCase();
+
+					if(typeToCheckFor == EnumType.box || typeToCheckFor == EnumType.armourBox || typeToCheckFor == EnumType.itemHolder)
 					{
-						createJSONFile(new File(itemModelsDir, type.shortName.toLowerCase() + ".json"),
-								"{ \"parent\": \"minecraft:item/generated\", \"textures\": { \"layer0\": \"flansmod:items/" + type.iconPath + "\" } }");
+						//Block boxes reference the pack's existing block model by short name
+						String registryName = (type.contentPack + "_" + type.shortName).toLowerCase().replaceAll("[^a-z0-9/._-]", "_");
+						String blockModel = "flansmod:block/" + lowerName;
+						createJSONFile(new File(blockstatesDir, registryName + ".json"),
+								"{ \"variants\": { \"\": { \"model\": \"" + blockModel + "\" } } }");
+						createJSONFile(new File(itemModelsDir, registryName + ".json"),
+								"{ \"parent\": \"" + blockModel + "\" }");
+						createJSONFile(new File(itemsDir, registryName + ".json"),
+								"{ \"model\": { \"type\": \"minecraft:model\", \"model\": \"flansmod:item/" + registryName + "\" } }");
+					}
+					else if(typeToCheckFor != EnumType.team && typeToCheckFor != EnumType.playerClass)
+					{
+						createJSONFile(new File(itemModelsDir, lowerName + ".json"),
+								"{ \"parent\": \"minecraft:item/generated\", \"textures\": { \"layer0\": \"flansmod:items/" + iconPath + "\" } }");
+						createJSONFile(new File(itemsDir, lowerName + ".json"),
+								"{ \"model\": { \"type\": \"minecraft:model\", \"model\": \"flansmod:item/" + lowerName + "\" } }");
 					}
 				}
 			}

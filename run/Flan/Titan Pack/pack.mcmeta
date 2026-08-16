@@ -1,6 +1,8 @@
 {
   "pack": {
     "pack_format": 74,
-    "description": "Titan Pack Expansion"
+    "description": "Titan Pack Expansion",
+    "min_format": 74,
+    "max_format": 74
   }
 }

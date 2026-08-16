@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/MediumTankTurret"
+    "layer0": "flansmod:items/mediumtankturret"
   },
   "display": {
     "thirdperson_lefthand": {

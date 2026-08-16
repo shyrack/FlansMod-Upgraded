@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/CatTrack"
+    "layer0": "flansmod:items/cattrack"
   },
   "display": {
     "thirdperson_lefthand": {

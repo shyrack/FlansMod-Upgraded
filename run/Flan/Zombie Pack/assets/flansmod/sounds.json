@@ -2,85 +2,85 @@
   "BearTrap": {
     "category": "player",
     "sounds": [
-      "flansmod:BearTrap"
+      "flansmod:beartrap"
     ]
   },
   "CreeperExplode": {
     "category": "player",
     "sounds": [
-      "flansmod:CreeperExplode"
+      "flansmod:creeperexplode"
     ]
   },
   "MP5KShoot": {
     "category": "player",
     "sounds": [
-      "flansmod:MP5KShoot"
+      "flansmod:mp5kshoot"
     ]
   },
   "MP5KReload": {
     "category": "player",
     "sounds": [
-      "flansmod:MP5KReload"
+      "flansmod:mp5kreload"
     ]
   },
   "ColtPythonShoot": {
     "category": "player",
     "sounds": [
-      "flansmod:ColtPythonShoot"
+      "flansmod:coltpythonshoot"
     ]
   },
   "ColtPythonReload": {
     "category": "player",
     "sounds": [
-      "flansmod:ColtPythonReload"
+      "flansmod:coltpythonreload"
     ]
   },
   "M4CarbineShoot": {
     "category": "player",
     "sounds": [
-      "flansmod:M4CarbineShoot"
+      "flansmod:m4carbineshoot"
     ]
   },
   "M4CarbineReload": {
     "category": "player",
     "sounds": [
-      "flansmod:M4CarbineReload"
+      "flansmod:m4carbinereload"
     ]
   },
   "ShotgunShoot": {
     "category": "player",
     "sounds": [
-      "flansmod:ShotgunShoot"
+      "flansmod:shotgunshoot"
     ]
   },
   "ShotgunReload": {
     "category": "player",
     "sounds": [
-      "flansmod:ShotgunReload"
+      "flansmod:shotgunreload"
     ]
   },
   "WinchesterModel70Shoot": {
     "category": "player",
     "sounds": [
-      "flansmod:WinchesterModel70Shoot"
+      "flansmod:winchestermodel70shoot"
     ]
   },
   "WinchesterModel70Reload": {
     "category": "player",
     "sounds": [
-      "flansmod:WinchesterModel70Reload"
+      "flansmod:winchestermodel70reload"
     ]
   },
   "FlareGunShoot": {
     "category": "player",
     "sounds": [
-      "flansmod:FlareGunShoot"
+      "flansmod:flaregunshoot"
     ]
   },
   "FlareGunReload": {
     "category": "player",
     "sounds": [
-      "flansmod:FlareGunReload"
+      "flansmod:flaregunreload"
     ]
   }
 }

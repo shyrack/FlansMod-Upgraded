@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/AutoFueler"
+    "layer0": "flansmod:items/autofueler"
   },
   "display": {
     "thirdperson_lefthand": {

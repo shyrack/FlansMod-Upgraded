@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/HoRo"
+    "layer0": "flansmod:items/horo"
   },
   "display": {
     "thirdperson_righthand": {

@@ -1,5 +1,5 @@
 {
-  "parent": "flansmod:block/mwArmour",
+  "parent": "flansmod:block/mwarmour",
   "display": {
     "thirdperson": {
       "rotation": [

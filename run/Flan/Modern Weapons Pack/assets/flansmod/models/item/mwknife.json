@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/Knife"
+    "layer0": "flansmod:items/knife"
   },
   "display": {
     "thirdperson_lefthand": {

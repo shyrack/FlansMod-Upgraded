@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/R700_Markings"
+    "layer0": "flansmod:items/r700_markings"
   },
   "display": {
     "thirdperson_righthand": {

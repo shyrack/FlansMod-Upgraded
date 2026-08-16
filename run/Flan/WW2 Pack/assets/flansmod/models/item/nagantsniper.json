@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/MosinNagantSniper"
+    "layer0": "flansmod:items/mosinnagantsniper"
   },
   "display": {
     "thirdperson_righthand": {

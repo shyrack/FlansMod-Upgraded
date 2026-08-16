@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/SIGP226Ammo"
+    "layer0": "flansmod:items/sigp226ammo"
   },
   "display": {
     "thirdperson_lefthand": {

@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/BulldozerBoots"
+    "layer0": "flansmod:items/bulldozerboots"
   },
   "display": {
     "thirdperson_lefthand": {

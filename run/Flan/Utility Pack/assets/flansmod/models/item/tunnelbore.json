@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/TunnelBore"
+    "layer0": "flansmod:items/tunnelbore"
   },
   "display": {
     "thirdperson_righthand": {

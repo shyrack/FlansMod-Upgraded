@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/WW2Binoculars"
+    "layer0": "flansmod:items/ww2binoculars"
   },
   "display": {
     "thirdperson_righthand": {

@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/Executioner"
+    "layer0": "flansmod:items/executioner"
   },
   "display": {
     "thirdperson_righthand": {

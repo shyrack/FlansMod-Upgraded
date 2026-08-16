@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/R870Ammo"
+    "layer0": "flansmod:items/r870ammo"
   },
   "display": {
     "thirdperson_lefthand": {

@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/SASHelmet"
+    "layer0": "flansmod:items/sashelmet"
   },
   "display": {
     "thirdperson_lefthand": {

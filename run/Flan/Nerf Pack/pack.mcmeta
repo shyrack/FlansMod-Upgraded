@@ -1,6 +1,8 @@
 {
   "pack": {
     "pack_format": 74,
-    "description": "Nerf Pack Defaults"
+    "description": "Nerf Pack Defaults",
+    "min_format": 74,
+    "max_format": 74
   }
 }

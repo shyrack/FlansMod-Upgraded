@@ -14,7 +14,7 @@
   "propSound": {
     "category": "player",
     "sounds": [
-      "flansmod:propSound"
+      "flansmod:propsound"
     ]
   }
 }

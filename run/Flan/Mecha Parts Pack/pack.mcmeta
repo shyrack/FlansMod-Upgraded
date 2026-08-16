@@ -1,6 +1,8 @@
 {
   "pack": {
     "pack_format": 74,
-    "description": "Mecha Defaults"
+    "description": "Mecha Defaults",
+    "min_format": 74,
+    "max_format": 74
   }
 }

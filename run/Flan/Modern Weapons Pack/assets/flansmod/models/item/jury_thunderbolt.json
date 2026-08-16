@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/Jury_Thunderbolt"
+    "layer0": "flansmod:items/jury_thunderbolt"
   },
   "display": {
     "thirdperson_righthand": {

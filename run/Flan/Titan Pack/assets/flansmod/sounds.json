@@ -2,13 +2,13 @@
   "RocketRumble": {
     "category": "player",
     "sounds": [
-      "flansmod:RocketRumble"
+      "flansmod:rocketrumble"
     ]
   },
   "Chirp": {
     "category": "player",
     "sounds": [
-      "flansmod:Chirp"
+      "flansmod:chirp"
     ]
   }
 }

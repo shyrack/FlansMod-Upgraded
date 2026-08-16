@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/mp44Ammo"
+    "layer0": "flansmod:items/mp44ammo"
   },
   "display": {
     "thirdperson_lefthand": {

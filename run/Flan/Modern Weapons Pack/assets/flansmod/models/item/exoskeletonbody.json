@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/ExoskeletonChest"
+    "layer0": "flansmod:items/exoskeletonchest"
   },
   "display": {
     "thirdperson_lefthand": {

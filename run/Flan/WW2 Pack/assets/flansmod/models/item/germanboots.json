@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/GermanBoots"
+    "layer0": "flansmod:items/germanboots"
   },
   "display": {
     "thirdperson_lefthand": {

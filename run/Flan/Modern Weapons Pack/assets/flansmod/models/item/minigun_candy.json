@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/Minigun_Candy"
+    "layer0": "flansmod:items/minigun_candy"
   },
   "display": {
     "thirdperson_righthand": {

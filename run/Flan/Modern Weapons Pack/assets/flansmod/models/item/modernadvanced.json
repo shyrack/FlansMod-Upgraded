@@ -1,5 +1,5 @@
 {
-  "parent": "flansmod:block/modernAdvanced",
+  "parent": "flansmod:block/modernadvanced",
   "display": {
     "thirdperson": {
       "rotation": [

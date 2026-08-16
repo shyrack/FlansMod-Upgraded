@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/RewardBox_Modern_Regular"
+    "layer0": "flansmod:items/rewardbox_modern_regular"
   },
   "display": {
     "thirdperson_lefthand": {

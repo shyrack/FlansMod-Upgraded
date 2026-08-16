@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/SmallIronBody"
+    "layer0": "flansmod:items/smallironbody"
   },
   "display": {
     "thirdperson_lefthand": {

@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/TriplaneWing"
+    "layer0": "flansmod:items/triplanewing"
   },
   "display": {
     "thirdperson_lefthand": {

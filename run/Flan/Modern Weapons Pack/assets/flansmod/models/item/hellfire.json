@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/Hellfire"
+    "layer0": "flansmod:items/hellfire"
   },
   "display": {
     "thirdperson_lefthand": {

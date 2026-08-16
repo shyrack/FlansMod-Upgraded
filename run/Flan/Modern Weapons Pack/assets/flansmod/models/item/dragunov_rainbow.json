@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/Dragunov_Rainbow"
+    "layer0": "flansmod:items/dragunov_rainbow"
   },
   "display": {
     "thirdperson_righthand": {

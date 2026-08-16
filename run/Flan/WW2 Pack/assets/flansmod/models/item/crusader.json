@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/Crusader"
+    "layer0": "flansmod:items/crusader"
   },
   "display": {
     "thirdperson_righthand": {

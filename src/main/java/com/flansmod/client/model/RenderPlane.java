@@ -57,6 +57,11 @@ public class RenderPlane extends EntityRenderer<EntityPlane, RenderPlane.State> 
 		super.extractRenderState(entityPlane, state, partialTick);
 		state.plane = entityPlane;
 		state.type = entityPlane.getPlaneType();
+		if(state.type == null || state.type.model == null)
+		{
+			state.model = null;
+			return;
+		}
 		state.model = (ModelPlane)state.type.model;
 		Paintjob paintjob = state.type.getPaintjob(entityPlane.getDriveableData().paintjobID);
 		state.texture = FlansModResourceHandler.getPaintjobTexture(paintjob);

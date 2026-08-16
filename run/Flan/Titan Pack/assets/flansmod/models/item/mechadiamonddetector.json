@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/DiamondDetector"
+    "layer0": "flansmod:items/diamonddetector"
   },
   "display": {
     "thirdperson_lefthand": {

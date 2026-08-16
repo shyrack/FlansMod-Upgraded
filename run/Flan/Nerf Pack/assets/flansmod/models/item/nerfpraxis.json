@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/Praxis"
+    "layer0": "flansmod:items/praxis"
   },
   "display": {
     "thirdperson_lefthand": {

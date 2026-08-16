@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/boforsAmmo"
+    "layer0": "flansmod:items/boforsammo"
   },
   "display": {
     "thirdperson_lefthand": {

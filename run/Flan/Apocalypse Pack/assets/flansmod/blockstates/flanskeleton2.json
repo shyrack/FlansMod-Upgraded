@@ -1,16 +1,16 @@
 {
   "variants": {
     "facing=north": {
-      "model": "flansmod:flanSkeleton2"
+      "model": "flansmod:flanskeleton2"
     },
     "facing=east": {
-      "model": "flansmod:flanSkeleton2"
+      "model": "flansmod:flanskeleton2"
     },
     "facing=south": {
-      "model": "flansmod:flanSkeleton2"
+      "model": "flansmod:flanskeleton2"
     },
     "facing=west": {
-      "model": "flansmod:flanSkeleton2"
+      "model": "flansmod:flanskeleton2"
     }
   }
 }

@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/Silencer"
+    "layer0": "flansmod:items/silencer"
   },
   "display": {
     "thirdperson_righthand": {

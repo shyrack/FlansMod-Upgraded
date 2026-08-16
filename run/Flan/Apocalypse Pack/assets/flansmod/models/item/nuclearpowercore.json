@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/NuclearPowerCore"
+    "layer0": "flansmod:items/nuclearpowercore"
   },
   "display": {
     "thirdperson_lefthand": {

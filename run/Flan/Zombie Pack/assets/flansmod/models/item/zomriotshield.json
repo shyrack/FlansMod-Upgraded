@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/ZombieRiotShield"
+    "layer0": "flansmod:items/zombieriotshield"
   },
   "display": {
     "thirdperson_righthand": {

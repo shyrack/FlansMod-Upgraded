@@ -61,6 +61,11 @@ public class RenderMecha extends EntityRenderer<EntityMecha, RenderMecha.State> 
 		super.extractRenderState(mecha, state, partialTick);
 		state.mecha = mecha;
 		state.type = mecha.getMechaType();
+		if(state.type == null || state.type.model == null)
+		{
+			state.model = null;
+			return;
+		}
 		state.model = (ModelMecha)state.type.model;
 		Paintjob paintjob = state.type.getPaintjob(mecha.getDriveableData().paintjobID);
 		state.texture = FlansModResourceHandler.getPaintjobTexture(paintjob);
@@ -74,6 +79,8 @@ public class RenderMecha extends EntityRenderer<EntityMecha, RenderMecha.State> 
 		float scale = 1F / 16F;
 		MechaType type = state.type;
 		ModelMecha model = state.model;
+		if(model == null)
+			return;
 		float f1 = state.partialTick;
 
 		float dYaw = (mecha.axes.getYaw() - mecha.prevAxes.getYaw());

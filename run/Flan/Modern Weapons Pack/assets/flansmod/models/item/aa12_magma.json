@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/AA12_Magma"
+    "layer0": "flansmod:items/aa12_magma"
   },
   "display": {
     "thirdperson_righthand": {

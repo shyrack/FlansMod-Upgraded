@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/CreeperExplode"
+    "layer0": "flansmod:items/creeperexplode"
   },
   "display": {
     "thirdperson_lefthand": {

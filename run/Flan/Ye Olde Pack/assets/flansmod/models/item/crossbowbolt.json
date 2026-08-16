@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/CrossbowBolt"
+    "layer0": "flansmod:items/crossbowbolt"
   },
   "display": {
     "thirdperson_lefthand": {

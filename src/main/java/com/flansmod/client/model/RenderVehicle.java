@@ -56,6 +56,11 @@ public class RenderVehicle extends EntityRenderer<EntityVehicle, RenderVehicle.S
 		super.extractRenderState(vehicle, state, partialTick);
 		state.vehicle = vehicle;
 		state.type = vehicle.getVehicleType();
+		if(state.type == null || state.type.model == null)
+		{
+			state.model = null;
+			return;
+		}
 		state.model = (ModelVehicle)state.type.model;
 		Paintjob paintjob = state.type.getPaintjob(vehicle.getDriveableData().paintjobID);
 		state.texture = FlansModResourceHandler.getPaintjobTexture(paintjob);
@@ -68,6 +73,8 @@ public class RenderVehicle extends EntityRenderer<EntityVehicle, RenderVehicle.S
 		EntityVehicle vehicle = state.vehicle;
 		VehicleType type = state.type;
 		ModelVehicle modVehicle = state.model;
+		if(modVehicle == null)
+			return;
 		float f1 = state.partialTick;
 
 		float dYaw = (vehicle.axes.getYaw() - vehicle.prevAxes.getYaw());

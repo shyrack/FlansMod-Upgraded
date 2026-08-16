@@ -1,6 +1,8 @@
 {
   "pack": {
     "pack_format": 74,
-    "description": "Ye Olde Pack Defaults"
+    "description": "Ye Olde Pack Defaults",
+    "min_format": 74,
+    "max_format": 74
   }
 }

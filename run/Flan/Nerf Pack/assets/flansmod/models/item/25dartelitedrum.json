@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/25DartEliteDrum"
+    "layer0": "flansmod:items/25dartelitedrum"
   },
   "display": {
     "thirdperson_lefthand": {

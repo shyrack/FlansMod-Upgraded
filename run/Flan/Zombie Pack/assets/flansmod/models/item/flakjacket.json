@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/FlakJacket"
+    "layer0": "flansmod:items/flakjacket"
   },
   "display": {
     "thirdperson_lefthand": {

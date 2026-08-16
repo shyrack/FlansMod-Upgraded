@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/SingleFire"
+    "layer0": "flansmod:items/singlefire"
   },
   "display": {
     "thirdperson_lefthand": {

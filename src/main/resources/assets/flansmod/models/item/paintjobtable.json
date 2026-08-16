@@ -1,5 +1,5 @@
 {
-  "parent": "flansmod:block/paintjobTable",
+  "parent": "flansmod:block/paintjobtable",
   "display": {
     "thirdperson": {
       "rotation": [

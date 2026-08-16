@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/ChallyII"
+    "layer0": "flansmod:items/challyii"
   },
   "display": {
     "thirdperson_righthand": {

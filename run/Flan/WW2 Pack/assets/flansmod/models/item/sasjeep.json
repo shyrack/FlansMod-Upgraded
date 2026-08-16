@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/SASJeep"
+    "layer0": "flansmod:items/sasjeep"
   },
   "display": {
     "thirdperson_righthand": {

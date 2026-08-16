@@ -162,6 +162,9 @@ public class ContentManager
 	
 	public void RegisterModelRedirects()
 	{
+		//Legacy model prefix used by the Modern Weapons Pack type files
+		if(!FlansMod.modelDirectories.containsKey("jamespostmodernweapons"))
+			FlansMod.RegisterModelRedirect("jamespostmodernweapons", "com.flansmod.modernweapons.client.model");
 		for(IFlansModContentProvider provider : packs.values())
 			provider.RegisterModelRedirects();
 	}
@@ -354,6 +357,9 @@ public class ContentManager
 			{
 				try
 				{
+					//Bind components of previously registered items so that type
+					//parsing can create ItemStacks of them (e.g. seat guns)
+					FlansMod.bindItemComponents();
 					InfoType infoType = (typeClass.getConstructor(TypeFile.class).newInstance(typeFile));
 					infoType.read(typeFile);
 					if(!seenNames.add(infoType.shortName.toLowerCase()))

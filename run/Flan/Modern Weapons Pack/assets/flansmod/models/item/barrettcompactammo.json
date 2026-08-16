@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/BarrettCompactAmmo"
+    "layer0": "flansmod:items/barrettcompactammo"
   },
   "display": {
     "thirdperson_lefthand": {

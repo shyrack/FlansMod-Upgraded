@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/ColtPython_Black"
+    "layer0": "flansmod:items/coltpython_black"
   },
   "display": {
     "thirdperson_righthand": {

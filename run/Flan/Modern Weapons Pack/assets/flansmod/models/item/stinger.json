@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/Stinger"
+    "layer0": "flansmod:items/stinger"
   },
   "display": {
     "thirdperson_righthand": {

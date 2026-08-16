@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/BoatBody"
+    "layer0": "flansmod:items/boatbody"
   },
   "display": {
     "thirdperson_lefthand": {

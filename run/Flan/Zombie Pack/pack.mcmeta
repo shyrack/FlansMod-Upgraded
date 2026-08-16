@@ -1,6 +1,8 @@
 {
   "pack": {
     "pack_format": 74,
-    "description": "Zombie Pack Defaults"
+    "description": "Zombie Pack Defaults",
+    "min_format": 74,
+    "max_format": 74
   }
 }

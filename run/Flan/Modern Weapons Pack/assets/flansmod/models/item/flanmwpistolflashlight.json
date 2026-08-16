@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/PistolFlashlight"
+    "layer0": "flansmod:items/pistolflashlight"
   },
   "display": {
     "thirdperson_righthand": {

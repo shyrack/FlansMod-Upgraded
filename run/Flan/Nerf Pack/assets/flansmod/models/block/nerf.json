@@ -1,12 +1,12 @@
 {
   "parent": "block/cube",
   "textures": {
-    "particle": "flansmod:blocks/NerfBoxSide",
-    "down": "flansmod:blocks/NerfBoxSide",
-    "up": "flansmod:blocks/NerfBoxTop",
-    "north": "flansmod:blocks/NerfBoxSide",
-    "east": "flansmod:blocks/NerfBoxSide",
-    "south": "flansmod:blocks/NerfBoxSide",
-    "west": "flansmod:blocks/NerfBoxSide"
+    "particle": "flansmod:blocks/nerfboxside",
+    "down": "flansmod:blocks/nerfboxside",
+    "up": "flansmod:blocks/nerfboxtop",
+    "north": "flansmod:blocks/nerfboxside",
+    "east": "flansmod:blocks/nerfboxside",
+    "south": "flansmod:blocks/nerfboxside",
+    "west": "flansmod:blocks/nerfboxside"
   }
 }
