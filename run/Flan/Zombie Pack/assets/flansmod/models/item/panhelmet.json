@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/panhelmet"
+    "layer0": "flansmod:item/panhelmet"
   },
   "display": {
     "thirdperson_lefthand": {

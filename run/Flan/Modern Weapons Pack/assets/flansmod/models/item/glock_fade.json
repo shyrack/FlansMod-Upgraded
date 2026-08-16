@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/glock_fade"
+    "layer0": "flansmod:item/glock_fade"
   },
   "display": {
     "thirdperson_righthand": {

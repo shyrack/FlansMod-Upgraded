@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/sg550ammo"
+    "layer0": "flansmod:item/sg550ammo"
   },
   "display": {
     "thirdperson_lefthand": {

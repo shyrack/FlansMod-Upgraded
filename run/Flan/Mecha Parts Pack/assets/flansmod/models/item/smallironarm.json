@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/smallironarm"
+    "layer0": "flansmod:item/smallironarm"
   },
   "display": {
     "thirdperson_lefthand": {

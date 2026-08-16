@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/humvee"
+    "layer0": "flansmod:item/humvee"
   },
   "display": {
     "thirdperson_righthand": {

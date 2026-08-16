@@ -1,7 +1,7 @@
 {
 	"credit": "Made with Blockbench",
 	"textures": {
-		"0": "flansmod:items/diamond_glove_3d"
+		"0": "flansmod:item/diamond_glove_3d"
 	},
 	"elements": [
 		{

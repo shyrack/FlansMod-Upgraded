@@ -33,10 +33,10 @@ public class FlansModResourceHandler
 	private static HashMap<String, SoundEvent> soundMap = new HashMap<>();
 	private static HashMap<String, Identifier> blockMap = new HashMap<>();
 	
-	public static Identifier flag = Identifier.fromNamespaceAndPath("flansmod", "textures/items/flagpole.png");
-	public static Identifier[] opStick = new Identifier[]{Identifier.fromNamespaceAndPath("flansmod", "textures/items/opstick_ownership.png"),
-			Identifier.fromNamespaceAndPath("flansmod", "textures/items/opstick_connecting.png"), Identifier.fromNamespaceAndPath("flansmod", "textures/items/opstick_mapping.png"),
-			Identifier.fromNamespaceAndPath("flansmod", "textures/items/opstick_destruction.png")};
+	public static Identifier flag = Identifier.fromNamespaceAndPath("flansmod", "textures/item/flagpole.png");
+	public static Identifier[] opStick = new Identifier[]{Identifier.fromNamespaceAndPath("flansmod", "textures/item/opstick_ownership.png"),
+			Identifier.fromNamespaceAndPath("flansmod", "textures/item/opstick_connecting.png"), Identifier.fromNamespaceAndPath("flansmod", "textures/item/opstick_mapping.png"),
+			Identifier.fromNamespaceAndPath("flansmod", "textures/item/opstick_destruction.png")};
 	
 	public static Identifier getIcon(InfoType infoType)
 	{
@@ -44,7 +44,7 @@ public class FlansModResourceHandler
 		{
 			return iconMap.get(infoType);
 		}
-		Identifier resLoc = Identifier.fromNamespaceAndPath("flansmod", "textures/items/" + infoType.iconPath.toLowerCase() + ".png");
+		Identifier resLoc = Identifier.fromNamespaceAndPath("flansmod", "textures/item/" + infoType.iconPath.toLowerCase() + ".png");
 		iconMap.put(infoType, resLoc);
 		return resLoc;
 	}

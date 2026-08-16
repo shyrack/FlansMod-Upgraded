@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/flamethrowerammo"
+    "layer0": "flansmod:item/flamethrowerammo"
   },
   "display": {
     "thirdperson_lefthand": {

@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/chinu"
+    "layer0": "flansmod:item/chinu"
   },
   "display": {
     "thirdperson_righthand": {

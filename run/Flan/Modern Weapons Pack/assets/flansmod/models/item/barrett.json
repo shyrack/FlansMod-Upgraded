@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/barrett"
+    "layer0": "flansmod:item/barrett"
   },
   "display": {
     "thirdperson_righthand": {

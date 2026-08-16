@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/raider"
+    "layer0": "flansmod:item/raider"
   },
   "display": {
     "thirdperson_lefthand": {

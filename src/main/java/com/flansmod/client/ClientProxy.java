@@ -661,7 +661,7 @@ public class ClientProxy extends CommonProxy
 					else if(typeToCheckFor != EnumType.team && typeToCheckFor != EnumType.playerClass)
 					{
 						createJSONFile(new File(itemModelsDir, lowerName + ".json"),
-								"{ \"parent\": \"minecraft:item/generated\", \"textures\": { \"layer0\": \"flansmod:items/" + iconPath + "\" } }");
+								"{ \"parent\": \"minecraft:item/generated\", \"textures\": { \"layer0\": \"flansmod:item/" + iconPath + "\" } }");
 						createJSONFile(new File(itemsDir, lowerName + ".json"),
 								"{ \"model\": { \"type\": \"minecraft:model\", \"model\": \"flansmod:item/" + lowerName + "\" } }");
 					}

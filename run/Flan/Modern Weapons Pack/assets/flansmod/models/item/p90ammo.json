@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/p90ammo"
+    "layer0": "flansmod:item/p90ammo"
   },
   "display": {
     "thirdperson_lefthand": {

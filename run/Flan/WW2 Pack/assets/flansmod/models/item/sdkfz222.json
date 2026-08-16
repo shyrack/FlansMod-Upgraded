@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/sdkfz222"
+    "layer0": "flansmod:item/sdkfz222"
   },
   "display": {
     "thirdperson_righthand": {

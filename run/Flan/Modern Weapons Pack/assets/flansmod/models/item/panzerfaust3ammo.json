@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/panzerfaust3ammo"
+    "layer0": "flansmod:item/panzerfaust3ammo"
   },
   "display": {
     "thirdperson_lefthand": {

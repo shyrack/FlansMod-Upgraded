@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/swatchest"
+    "layer0": "flansmod:item/swatchest"
   },
   "display": {
     "thirdperson_lefthand": {

@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/panzerschreck"
+    "layer0": "flansmod:item/panzerschreck"
   },
   "display": {
     "thirdperson_righthand": {

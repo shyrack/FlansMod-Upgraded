@@ -1,12 +1,12 @@
 {
   "parent": "block/cube",
   "textures": {
-    "particle": "flansmod:blocks/advancedmodernboxside",
-    "down": "flansmod:blocks/boxbottom",
-    "up": "flansmod:blocks/advancedmodernboxtop",
-    "north": "flansmod:blocks/advancedmodernboxside",
-    "east": "flansmod:blocks/advancedmodernboxside",
-    "south": "flansmod:blocks/advancedmodernboxside",
-    "west": "flansmod:blocks/advancedmodernboxside"
+    "particle": "flansmod:block/advancedmodernboxside",
+    "down": "flansmod:block/boxbottom",
+    "up": "flansmod:block/advancedmodernboxtop",
+    "north": "flansmod:block/advancedmodernboxside",
+    "east": "flansmod:block/advancedmodernboxside",
+    "south": "flansmod:block/advancedmodernboxside",
+    "west": "flansmod:block/advancedmodernboxside"
   }
 }

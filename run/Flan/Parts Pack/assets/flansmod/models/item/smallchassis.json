@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/smallcarchassis"
+    "layer0": "flansmod:item/smallcarchassis"
   },
   "display": {
     "thirdperson_lefthand": {

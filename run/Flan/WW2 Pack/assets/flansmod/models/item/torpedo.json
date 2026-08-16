@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/torpedo"
+    "layer0": "flansmod:item/torpedo"
   },
   "display": {
     "thirdperson_lefthand": {

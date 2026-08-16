@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/kubelwagen"
+    "layer0": "flansmod:item/kubelwagen"
   },
   "display": {
     "thirdperson_righthand": {

@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/leeenfieldsniper"
+    "layer0": "flansmod:item/leeenfieldsniper"
   },
   "display": {
     "thirdperson_righthand": {

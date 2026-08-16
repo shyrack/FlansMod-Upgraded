@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/tiger131"
+    "layer0": "flansmod:item/tiger131"
   },
   "display": {
     "thirdperson_righthand": {

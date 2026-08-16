@@ -1,12 +1,12 @@
 {
   "parent": "block/cube",
   "textures": {
-    "particle": "flansmod:blocks/planecraftingtableside",
-    "down": "flansmod:blocks/boxbottom",
-    "up": "flansmod:blocks/vehiclecraftingtable",
-    "north": "flansmod:blocks/planecraftingtableside",
-    "east": "flansmod:blocks/planecraftingtableside",
-    "south": "flansmod:blocks/planecraftingtableside",
-    "west": "flansmod:blocks/planecraftingtableside"
+    "particle": "flansmod:block/planecraftingtableside",
+    "down": "flansmod:block/boxbottom",
+    "up": "flansmod:block/vehiclecraftingtable",
+    "north": "flansmod:block/planecraftingtableside",
+    "east": "flansmod:block/planecraftingtableside",
+    "south": "flansmod:block/planecraftingtableside",
+    "west": "flansmod:block/planecraftingtableside"
   }
 }

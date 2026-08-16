@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/r700ammo"
+    "layer0": "flansmod:item/r700ammo"
   },
   "display": {
     "thirdperson_lefthand": {

@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/skorpion"
+    "layer0": "flansmod:item/skorpion"
   },
   "display": {
     "thirdperson_righthand": {

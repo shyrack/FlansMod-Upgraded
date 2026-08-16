@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/minigunexplosiveammo"
+    "layer0": "flansmod:item/minigunexplosiveammo"
   },
   "display": {
     "thirdperson_lefthand": {

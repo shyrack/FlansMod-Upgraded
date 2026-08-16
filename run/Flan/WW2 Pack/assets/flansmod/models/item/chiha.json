@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/chiha"
+    "layer0": "flansmod:item/chiha"
   },
   "display": {
     "thirdperson_righthand": {

@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/r870_birch"
+    "layer0": "flansmod:item/r870_birch"
   },
   "display": {
     "thirdperson_righthand": {

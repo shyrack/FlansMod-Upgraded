@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/jury_chaos"
+    "layer0": "flansmod:item/jury_chaos"
   },
   "display": {
     "thirdperson_righthand": {

@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/juggernautbody"
+    "layer0": "flansmod:item/juggernautbody"
   },
   "display": {
     "thirdperson_lefthand": {

@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/makarov_brown"
+    "layer0": "flansmod:item/makarov_brown"
   },
   "display": {
     "thirdperson_righthand": {

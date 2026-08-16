@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/mwmedicbag"
+    "layer0": "flansmod:item/mwmedicbag"
   },
   "display": {
     "thirdperson_lefthand": {

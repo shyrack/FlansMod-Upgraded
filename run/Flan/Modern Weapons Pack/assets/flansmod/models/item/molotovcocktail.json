@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/molotov"
+    "layer0": "flansmod:item/molotov"
   },
   "display": {
     "thirdperson_lefthand": {

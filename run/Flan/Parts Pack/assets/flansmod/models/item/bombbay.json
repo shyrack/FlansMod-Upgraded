@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/bombbay"
+    "layer0": "flansmod:item/bombbay"
   },
   "display": {
     "thirdperson_lefthand": {

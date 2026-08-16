@@ -1,12 +1,12 @@
 {
   "parent": "block/cube",
   "textures": {
-    "particle": "flansmod:blocks/zombieweaponbox",
-    "down": "flansmod:blocks/zombieweaponbox",
-    "up": "flansmod:blocks/zombieweaponboxtop",
-    "north": "flansmod:blocks/zombieweaponbox",
-    "east": "flansmod:blocks/zombieweaponbox",
-    "south": "flansmod:blocks/zombieweaponbox",
-    "west": "flansmod:blocks/zombieweaponbox"
+    "particle": "flansmod:block/zombieweaponbox",
+    "down": "flansmod:block/zombieweaponbox",
+    "up": "flansmod:block/zombieweaponboxtop",
+    "north": "flansmod:block/zombieweaponbox",
+    "east": "flansmod:block/zombieweaponbox",
+    "south": "flansmod:block/zombieweaponbox",
+    "west": "flansmod:block/zombieweaponbox"
   }
 }

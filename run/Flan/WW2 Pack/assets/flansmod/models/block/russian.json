@@ -1,12 +1,12 @@
 {
   "parent": "block/cube",
   "textures": {
-    "particle": "flansmod:blocks/russianbox",
-    "down": "flansmod:blocks/boxbottom",
-    "up": "flansmod:blocks/boxtop",
-    "north": "flansmod:blocks/russianbox",
-    "east": "flansmod:blocks/russianbox",
-    "south": "flansmod:blocks/russianbox",
-    "west": "flansmod:blocks/russianbox"
+    "particle": "flansmod:block/russianbox",
+    "down": "flansmod:block/boxbottom",
+    "up": "flansmod:block/boxtop",
+    "north": "flansmod:block/russianbox",
+    "east": "flansmod:block/russianbox",
+    "south": "flansmod:block/russianbox",
+    "west": "flansmod:block/russianbox"
   }
 }

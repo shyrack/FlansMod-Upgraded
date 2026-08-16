@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/acr_quackquack"
+    "layer0": "flansmod:item/acr_quackquack"
   },
   "display": {
     "thirdperson_righthand": {

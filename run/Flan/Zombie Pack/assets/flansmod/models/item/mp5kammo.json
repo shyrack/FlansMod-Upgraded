@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/mp5kammo"
+    "layer0": "flansmod:item/mp5kammo"
   },
   "display": {
     "thirdperson_lefthand": {

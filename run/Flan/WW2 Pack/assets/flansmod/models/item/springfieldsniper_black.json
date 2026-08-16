@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/springfieldsniper_black"
+    "layer0": "flansmod:item/springfieldsniper_black"
   },
   "display": {
     "thirdperson_righthand": {

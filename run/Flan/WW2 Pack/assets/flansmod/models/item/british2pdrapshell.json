@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/tankshell2pdrap"
+    "layer0": "flansmod:item/tankshell2pdrap"
   },
   "display": {
     "thirdperson_lefthand": {

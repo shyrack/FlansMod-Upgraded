@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/aa12_undergrowth"
+    "layer0": "flansmod:item/aa12_undergrowth"
   },
   "display": {
     "thirdperson_righthand": {

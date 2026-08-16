@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/m1garand_acacia"
+    "layer0": "flansmod:item/m1garand_acacia"
   },
   "display": {
     "thirdperson_righthand": {

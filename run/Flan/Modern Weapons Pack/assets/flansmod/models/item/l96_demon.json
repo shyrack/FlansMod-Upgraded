@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/l96_demon"
+    "layer0": "flansmod:item/l96_demon"
   },
   "display": {
     "thirdperson_righthand": {

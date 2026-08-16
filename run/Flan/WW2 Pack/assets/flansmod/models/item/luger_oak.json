@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/luger_oak"
+    "layer0": "flansmod:item/luger_oak"
   },
   "display": {
     "thirdperson_righthand": {

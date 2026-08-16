@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/hydra70"
+    "layer0": "flansmod:item/hydra70"
   },
   "display": {
     "thirdperson_lefthand": {

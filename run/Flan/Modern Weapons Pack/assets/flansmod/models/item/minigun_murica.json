@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/minigun_murica"
+    "layer0": "flansmod:item/minigun_murica"
   },
   "display": {
     "thirdperson_righthand": {

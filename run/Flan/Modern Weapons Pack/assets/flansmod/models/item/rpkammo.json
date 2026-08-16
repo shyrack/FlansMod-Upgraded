@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/rpkammo"
+    "layer0": "flansmod:item/rpkammo"
   },
   "display": {
     "thirdperson_lefthand": {

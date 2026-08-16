@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/smallwheel"
+    "layer0": "flansmod:item/smallwheel"
   },
   "display": {
     "thirdperson_lefthand": {

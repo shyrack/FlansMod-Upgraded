@@ -1,7 +1,7 @@
 {
 	"credit": "Made with Blockbench",
 	"textures": {
-		"0": "flansmod:items/gold_glove_3d"
+		"0": "flansmod:item/gold_glove_3d"
 	},
 	"elements": [
 		{

@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/v8engine"
+    "layer0": "flansmod:item/v8engine"
   },
   "display": {
     "thirdperson_lefthand": {

@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/mwammobag"
+    "layer0": "flansmod:item/mwammobag"
   },
   "display": {
     "thirdperson_lefthand": {

@@ -1,8 +1,8 @@
 {
 	"credit": "Made with Blockbench",
 	"textures": {
-		"0": "flansmod:items/nukranium_gauntlet",
-		"particle": "flansmod:items/nukranium_gauntlet"
+		"0": "flansmod:item/nukranium_gauntlet",
+		"particle": "flansmod:item/nukranium_gauntlet"
 	},
 	"elements": [
 		{

@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/germansnowhelmet"
+    "layer0": "flansmod:item/germansnowhelmet"
   },
   "display": {
     "thirdperson_lefthand": {

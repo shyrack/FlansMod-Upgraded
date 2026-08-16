@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/m1carbine_black"
+    "layer0": "flansmod:item/m1carbine_black"
   },
   "display": {
     "thirdperson_righthand": {

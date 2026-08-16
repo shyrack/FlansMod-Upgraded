@@ -22,7 +22,7 @@ public class RenderPowerCube implements BlockEntityRenderer<TileEntityPowerCube,
 		public float partialTick;
 	}
 	
-	private final Identifier TEXTURE = Identifier.fromNamespaceAndPath("flansmodapocalypse", "textures/blocks/powercube.png");
+	private final Identifier TEXTURE = Identifier.fromNamespaceAndPath("flansmodapocalypse", "textures/block/powercube.png");
 	private final ModelPowerCube model = new ModelPowerCube();
 	private final PoseStack poseStack = new PoseStack();
 	

@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/25dartbelt"
+    "layer0": "flansmod:item/25dartbelt"
   },
   "display": {
     "thirdperson_lefthand": {

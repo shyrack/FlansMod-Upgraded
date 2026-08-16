@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/c4remote"
+    "layer0": "flansmod:item/c4remote"
   },
   "display": {
     "thirdperson_lefthand": {

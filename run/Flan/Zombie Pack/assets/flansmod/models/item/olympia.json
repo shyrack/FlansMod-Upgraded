@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/olympia"
+    "layer0": "flansmod:item/olympia"
   },
   "display": {
     "thirdperson_righthand": {

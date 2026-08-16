@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/m21_royalgreen"
+    "layer0": "flansmod:item/m21_royalgreen"
   },
   "display": {
     "thirdperson_righthand": {

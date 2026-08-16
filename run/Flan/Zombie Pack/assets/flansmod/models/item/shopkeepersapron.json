@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/shopkeepersapron"
+    "layer0": "flansmod:item/shopkeepersapron"
   },
   "display": {
     "thirdperson_lefthand": {

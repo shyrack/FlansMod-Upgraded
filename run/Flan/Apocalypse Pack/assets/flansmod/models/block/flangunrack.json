@@ -1,7 +1,7 @@
 {
   "ambientocclusion": false,
   "textures": {
-    "particle": "flansmod:items/gunrack"
+    "particle": "flansmod:item/gunrack"
   },
   "elements": [
     {

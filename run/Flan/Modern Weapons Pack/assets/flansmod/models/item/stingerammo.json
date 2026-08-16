@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/stingerammo"
+    "layer0": "flansmod:item/stingerammo"
   },
   "display": {
     "thirdperson_lefthand": {

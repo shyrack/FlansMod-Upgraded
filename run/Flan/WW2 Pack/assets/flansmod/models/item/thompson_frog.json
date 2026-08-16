@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/thompson_frog"
+    "layer0": "flansmod:item/thompson_frog"
   },
   "display": {
     "thirdperson_righthand": {

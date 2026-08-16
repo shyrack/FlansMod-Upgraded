@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/acrammo"
+    "layer0": "flansmod:item/acrammo"
   },
   "display": {
     "thirdperson_lefthand": {

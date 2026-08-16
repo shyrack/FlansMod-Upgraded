@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/gl6_lurid"
+    "layer0": "flansmod:item/gl6_lurid"
   },
   "display": {
     "thirdperson_righthand": {

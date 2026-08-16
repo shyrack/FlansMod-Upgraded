@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/mediumdiamondbody"
+    "layer0": "flansmod:item/mediumdiamondbody"
   },
   "display": {
     "thirdperson_lefthand": {

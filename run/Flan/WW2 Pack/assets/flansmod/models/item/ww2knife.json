@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/ww2knife"
+    "layer0": "flansmod:item/ww2knife"
   },
   "display": {
     "thirdperson_lefthand": {

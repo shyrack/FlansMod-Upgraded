@@ -1,7 +1,7 @@
 {
   "ambientocclusion": false,
   "textures": {
-    "particle": "flansmod:items/skeleton"
+    "particle": "flansmod:item/skeleton"
   },
   "elements": [
     {

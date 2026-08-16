@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/acr_electric"
+    "layer0": "flansmod:item/acr_electric"
   },
   "display": {
     "thirdperson_righthand": {

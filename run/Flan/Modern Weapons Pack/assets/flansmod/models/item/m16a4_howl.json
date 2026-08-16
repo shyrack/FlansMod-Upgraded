@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/m16a4_howl"
+    "layer0": "flansmod:item/m16a4_howl"
   },
   "display": {
     "thirdperson_righthand": {

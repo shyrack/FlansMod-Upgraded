@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/marinepants"
+    "layer0": "flansmod:item/marinepants"
   },
   "display": {
     "thirdperson_lefthand": {

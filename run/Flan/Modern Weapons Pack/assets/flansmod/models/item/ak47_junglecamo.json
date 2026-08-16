@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/ak47_junglecamo"
+    "layer0": "flansmod:item/ak47_junglecamo"
   },
   "display": {
     "thirdperson_righthand": {

@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/webley"
+    "layer0": "flansmod:item/webley"
   },
   "display": {
     "thirdperson_righthand": {

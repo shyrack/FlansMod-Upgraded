@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/helicopterblade"
+    "layer0": "flansmod:item/helicopterblade"
   },
   "display": {
     "thirdperson_lefthand": {

@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/redstonemagnet"
+    "layer0": "flansmod:item/redstonemagnet"
   },
   "display": {
     "thirdperson_lefthand": {

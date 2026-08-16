@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/flaregun_red"
+    "layer0": "flansmod:item/flaregun_red"
   },
   "display": {
     "thirdperson_righthand": {

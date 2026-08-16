@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/zerotitan"
+    "layer0": "flansmod:item/zerotitan"
   },
   "display": {
     "thirdperson_righthand": {

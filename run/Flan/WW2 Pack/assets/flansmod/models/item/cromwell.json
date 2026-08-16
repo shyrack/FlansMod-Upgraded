@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/cromwell"
+    "layer0": "flansmod:item/cromwell"
   },
   "display": {
     "thirdperson_righthand": {

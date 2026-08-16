@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/metalwingsmall"
+    "layer0": "flansmod:item/metalwingsmall"
   },
   "display": {
     "thirdperson_lefthand": {

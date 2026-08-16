@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/p90_aqua"
+    "layer0": "flansmod:item/p90_aqua"
   },
   "display": {
     "thirdperson_righthand": {

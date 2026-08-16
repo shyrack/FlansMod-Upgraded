@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/orecrusher2000"
+    "layer0": "flansmod:item/orecrusher2000"
   },
   "display": {
     "thirdperson_lefthand": {

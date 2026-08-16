@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/m249_white"
+    "layer0": "flansmod:item/m249_white"
   },
   "display": {
     "thirdperson_righthand": {

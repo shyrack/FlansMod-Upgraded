@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/m1014_giraffe"
+    "layer0": "flansmod:item/m1014_giraffe"
   },
   "display": {
     "thirdperson_righthand": {

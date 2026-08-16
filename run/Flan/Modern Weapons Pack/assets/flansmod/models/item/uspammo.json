@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/uspammo"
+    "layer0": "flansmod:item/uspammo"
   },
   "display": {
     "thirdperson_lefthand": {

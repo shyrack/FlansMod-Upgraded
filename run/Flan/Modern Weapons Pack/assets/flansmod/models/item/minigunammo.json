@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/minigunammo"
+    "layer0": "flansmod:item/minigunammo"
   },
   "display": {
     "thirdperson_lefthand": {

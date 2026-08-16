@@ -1,7 +1,7 @@
 {
   "parent": "builtin/generated",
   "textures": {
-    "layer0": "flansmod:items/kar98ksniper_green"
+    "layer0": "flansmod:item/kar98ksniper_green"
   },
   "display": {
     "thirdperson_righthand": {
