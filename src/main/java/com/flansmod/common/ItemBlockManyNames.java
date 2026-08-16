@@ -1,35 +1,21 @@
 package com.flansmod.common;
 
-import net.minecraft.block.Block;
-import net.minecraft.creativetab.CreativeTabs;
-import net.minecraft.item.ItemBlock;
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.level.block.Block;
 
-public class ItemBlockManyNames extends ItemBlock
+public class ItemBlockManyNames extends BlockItem
 {
 	
 	public ItemBlockManyNames(Block b)
 	{
-		super(b);
-		setHasSubtypes(true);
-		setRegistryName(b.getRegistryName() + "_item");
+		super(b, new Item.Properties().setId(net.minecraft.resources.ResourceKey.create(
+				net.minecraft.core.registries.BuiltInRegistries.ITEM.key(),
+				net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(b))));
 	}
-	
-	@Override
-	public String getTranslationKey(ItemStack stack)
+
+	public ItemBlockManyNames(Block b, Item.Properties properties)
 	{
-		return super.getTranslationKey() + "." + stack.getItemDamage();
-	}
-	
-	@Override
-	public int getMetadata(int par1)
-	{
-		return par1;
-	}
-	
-	@Override
-	public CreativeTabs[] getCreativeTabs()
-	{
-		return new CreativeTabs[]{FlansMod.tabFlanDriveables, FlansMod.tabFlanGuns, FlansMod.tabFlanTeams, FlansMod.tabFlanParts};
+		super(b, properties);
 	}
 }

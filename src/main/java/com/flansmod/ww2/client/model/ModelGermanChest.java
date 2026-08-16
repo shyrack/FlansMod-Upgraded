@@ -20,31 +20,31 @@ public class ModelGermanChest extends ModelCustomArmour //Same as Filename
 	public ModelGermanChest() //Same as Filename
 	{
 		bodyModel = new ModelRendererTurbo[25];
-		bodyModel[0] = new ModelRendererTurbo(this, 1, 25, textureX, textureY); // Box 5
-		bodyModel[1] = new ModelRendererTurbo(this, 97, 17, textureX, textureY); // Box 6
-		bodyModel[2] = new ModelRendererTurbo(this, 49, 25, textureX, textureY); // Box 7
-		bodyModel[3] = new ModelRendererTurbo(this, 73, 33, textureX, textureY); // Box 8
-		bodyModel[4] = new ModelRendererTurbo(this, 97, 33, textureX, textureY); // Box 9
-		bodyModel[5] = new ModelRendererTurbo(this, 1, 41, textureX, textureY); // Box 10
-		bodyModel[6] = new ModelRendererTurbo(this, 17, 41, textureX, textureY); // Box 13
-		bodyModel[7] = new ModelRendererTurbo(this, 49, 41, textureX, textureY); // Box 14
-		bodyModel[8] = new ModelRendererTurbo(this, 81, 49, textureX, textureY); // Box 15
-		bodyModel[9] = new ModelRendererTurbo(this, 105, 49, textureX, textureY); // Box 18
-		bodyModel[10] = new ModelRendererTurbo(this, 1, 57, textureX, textureY); // Box 20
-		bodyModel[11] = new ModelRendererTurbo(this, 25, 57, textureX, textureY); // Box 22
-		bodyModel[12] = new ModelRendererTurbo(this, 49, 73, textureX, textureY); // Box 27
-		bodyModel[13] = new ModelRendererTurbo(this, 1, 49, textureX, textureY); // Box 35
-		bodyModel[14] = new ModelRendererTurbo(this, 113, 65, textureX, textureY); // Box 36
-		bodyModel[15] = new ModelRendererTurbo(this, 1, 73, textureX, textureY); // Box 37
-		bodyModel[16] = new ModelRendererTurbo(this, 113, 73, textureX, textureY); // Box 38
-		bodyModel[17] = new ModelRendererTurbo(this, 78, 6, textureX, textureY); // Box 0
-		bodyModel[18] = new ModelRendererTurbo(this, 78, 6, textureX, textureY); // Box 1
-		bodyModel[19] = new ModelRendererTurbo(this, 78, 6, textureX, textureY); // Box 2
-		bodyModel[20] = new ModelRendererTurbo(this, 49, 41, textureX, textureY); // Box 3
-		bodyModel[21] = new ModelRendererTurbo(this, 49, 41, textureX, textureY); // Box 4
-		bodyModel[22] = new ModelRendererTurbo(this, 1, 1, textureX, textureY); // Box 0
-		bodyModel[23] = new ModelRendererTurbo(this, 49, 73, textureX, textureY); // Box 31
-		bodyModel[24] = new ModelRendererTurbo(this, 49, 73, textureX, textureY); // Box 32
+		bodyModel[0] = new ModelRendererTurbo(null, 1, 25, textureX, textureY); // Box 5
+		bodyModel[1] = new ModelRendererTurbo(null, 97, 17, textureX, textureY); // Box 6
+		bodyModel[2] = new ModelRendererTurbo(null, 49, 25, textureX, textureY); // Box 7
+		bodyModel[3] = new ModelRendererTurbo(null, 73, 33, textureX, textureY); // Box 8
+		bodyModel[4] = new ModelRendererTurbo(null, 97, 33, textureX, textureY); // Box 9
+		bodyModel[5] = new ModelRendererTurbo(null, 1, 41, textureX, textureY); // Box 10
+		bodyModel[6] = new ModelRendererTurbo(null, 17, 41, textureX, textureY); // Box 13
+		bodyModel[7] = new ModelRendererTurbo(null, 49, 41, textureX, textureY); // Box 14
+		bodyModel[8] = new ModelRendererTurbo(null, 81, 49, textureX, textureY); // Box 15
+		bodyModel[9] = new ModelRendererTurbo(null, 105, 49, textureX, textureY); // Box 18
+		bodyModel[10] = new ModelRendererTurbo(null, 1, 57, textureX, textureY); // Box 20
+		bodyModel[11] = new ModelRendererTurbo(null, 25, 57, textureX, textureY); // Box 22
+		bodyModel[12] = new ModelRendererTurbo(null, 49, 73, textureX, textureY); // Box 27
+		bodyModel[13] = new ModelRendererTurbo(null, 1, 49, textureX, textureY); // Box 35
+		bodyModel[14] = new ModelRendererTurbo(null, 113, 65, textureX, textureY); // Box 36
+		bodyModel[15] = new ModelRendererTurbo(null, 1, 73, textureX, textureY); // Box 37
+		bodyModel[16] = new ModelRendererTurbo(null, 113, 73, textureX, textureY); // Box 38
+		bodyModel[17] = new ModelRendererTurbo(null, 78, 6, textureX, textureY); // Box 0
+		bodyModel[18] = new ModelRendererTurbo(null, 78, 6, textureX, textureY); // Box 1
+		bodyModel[19] = new ModelRendererTurbo(null, 78, 6, textureX, textureY); // Box 2
+		bodyModel[20] = new ModelRendererTurbo(null, 49, 41, textureX, textureY); // Box 3
+		bodyModel[21] = new ModelRendererTurbo(null, 49, 41, textureX, textureY); // Box 4
+		bodyModel[22] = new ModelRendererTurbo(null, 1, 1, textureX, textureY); // Box 0
+		bodyModel[23] = new ModelRendererTurbo(null, 49, 73, textureX, textureY); // Box 31
+		bodyModel[24] = new ModelRendererTurbo(null, 49, 73, textureX, textureY); // Box 32
 		
 		bodyModel[0].addShapeBox(-4.5F, 7.3F, -2.2F, 16, 8, 5, 0F, 0.1F, 0F, 0.1F, -6.9F, 0F, 0.1F, -6.9F, 0F, -0.51F, 0.1F, 0F, -0.5F, 0.1F, -6.7F, 0.1F, -6.9F, -6.7F, 0.1F, -6.9F, -6.7F, -0.5F, 0.1F, -6.7F, -0.5F); // Box 5
 		bodyModel[0].setRotationPoint(0F, 0F, 0F);
@@ -123,9 +123,9 @@ public class ModelGermanChest extends ModelCustomArmour //Same as Filename
 		
 		
 		leftArmModel = new ModelRendererTurbo[3];
-		leftArmModel[0] = new ModelRendererTurbo(this, 89, 65, textureX, textureY); // Box 26
-		leftArmModel[1] = new ModelRendererTurbo(this, 73, 1, textureX, textureY); // Box 31
-		leftArmModel[2] = new ModelRendererTurbo(this, 49, 1, textureX, textureY); // Box 42
+		leftArmModel[0] = new ModelRendererTurbo(null, 89, 65, textureX, textureY); // Box 26
+		leftArmModel[1] = new ModelRendererTurbo(null, 73, 1, textureX, textureY); // Box 31
+		leftArmModel[2] = new ModelRendererTurbo(null, 49, 1, textureX, textureY); // Box 42
 		
 		leftArmModel[0].addShapeBox(-1F, 4.8F, -2F, 4, 1, 4, 0F, 0.3F, 0F, 0.3F, 0.3F, 0F, 0.3F, 0.3F, 0F, 0.3F, 0.3F, 0F, 0.3F, 0.3F, 0F, 0.3F, 0.3F, 0F, 0.3F, 0.3F, 0F, 0.3F, 0.3F, 0F, 0.3F); // Box 26
 		leftArmModel[0].setRotationPoint(0F, 0F, 0F);
@@ -138,9 +138,9 @@ public class ModelGermanChest extends ModelCustomArmour //Same as Filename
 		
 		
 		rightArmModel = new ModelRendererTurbo[3];
-		rightArmModel[0] = new ModelRendererTurbo(this, 49, 1, textureX, textureY); // Box 1
-		rightArmModel[1] = new ModelRendererTurbo(this, 65, 65, textureX, textureY); // Box 25
-		rightArmModel[2] = new ModelRendererTurbo(this, 41, 1, textureX, textureY); // Box 30
+		rightArmModel[0] = new ModelRendererTurbo(null, 49, 1, textureX, textureY); // Box 1
+		rightArmModel[1] = new ModelRendererTurbo(null, 65, 65, textureX, textureY); // Box 25
+		rightArmModel[2] = new ModelRendererTurbo(null, 41, 1, textureX, textureY); // Box 30
 		
 		rightArmModel[0].addShapeBox(-3F, -2.2F, -2F, 8, 15, 4, 0F, 0.2F, 0F, 0.15F, -3.8F, 0F, 0.15F, -3.8F, 0F, 0.15F, 0.2F, 0F, 0.15F, 0.2F, -7F, 0.15F, -3.8F, -7F, 0.15F, -3.8F, -7F, 0.15F, 0.2F, -7F, 0.15F); // Box 1
 		rightArmModel[0].setRotationPoint(0F, 0F, 0F);

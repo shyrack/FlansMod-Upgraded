@@ -1,11 +1,8 @@
 package com.flansmod.common.network;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
 
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.PlayerHandler;
@@ -26,34 +23,33 @@ public class PacketMGFire extends PacketBase
 	}
 	
 	@Override
-	public void encodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void encodeInto(ByteBuf data)
 	{
 		data.writeBoolean(held);
 	}
 	
 	@Override
-	public void decodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void decodeInto(ByteBuf data)
 	{
 		held = data.readBoolean();
 	}
 	
 	@Override
-	public void handleServerSide(EntityPlayerMP playerEntity)
+	public void handleServerSide(ServerPlayer playerEntity)
 	{
 		EntityMG mg = PlayerHandler.getPlayerData(playerEntity).mountingGun;
 		if(mg != null)
 		{
 			mg.mouseHeld(held);
 		}
-		else if(playerEntity.getRidingEntity() instanceof EntityAAGun)
+		else if(playerEntity.getVehicle() instanceof EntityAAGun)
 		{
-			((EntityAAGun)playerEntity.getRidingEntity()).setMouseHeld(held);
+			((EntityAAGun)playerEntity.getVehicle()).setMouseHeld(held);
 		}
 	}
 	
 	@Override
-	@SideOnly(Side.CLIENT)
-	public void handleClientSide(EntityPlayer clientPlayer)
+	public void handleClientSide(Player clientPlayer)
 	{
 		FlansMod.log.warn("MG firing packet received on client. Skipping.");
 	}

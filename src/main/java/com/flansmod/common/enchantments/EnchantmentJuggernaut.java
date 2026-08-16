@@ -1,46 +1,17 @@
 package com.flansmod.common.enchantments;
 
-import net.minecraft.enchantment.Enchantment;
-import net.minecraft.enchantment.EnchantmentDamage;
-import net.minecraft.enchantment.EnumEnchantmentType;
-import net.minecraft.enchantment.Enchantment.Rarity;
-import net.minecraft.inventory.EntityEquipmentSlot;
+import net.minecraft.core.HolderSet;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.EquipmentSlotGroup;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.enchantment.Enchantment;
 
-public class EnchantmentJuggernaut extends Enchantment
+public class EnchantmentJuggernaut
 {
-	protected EnchantmentJuggernaut() 
+	public static Enchantment build(Identifier id, HolderSet<Item> supportedItems)
 	{
-		super(Rarity.VERY_RARE, EnumEnchantmentType.ARMOR, 
-				new EntityEquipmentSlot[] 
-						{ 
-							EntityEquipmentSlot.HEAD, 
-							EntityEquipmentSlot.CHEST, 
-							EntityEquipmentSlot.LEGS, 
-							EntityEquipmentSlot.FEET, 
-						} );
+		return Enchantment.enchantment(
+				Enchantment.definition(supportedItems, 1, 4, Enchantment.constantCost(25), Enchantment.constantCost(75), 1, EquipmentSlotGroup.ARMOR))
+				.build(id);
 	}
-	
-	@Override
-    public int getMaxLevel()
-    {
-        return 1;
-    }
-	
-	@Override
-    public boolean isTreasureEnchantment()
-    {
-        return true;
-    }
-	
-	@Override
-    public int getMinEnchantability(int enchantmentLevel)
-    {
-        return enchantmentLevel * 25;
-    }
-	
-	@Override
-    public int getMaxEnchantability(int enchantmentLevel)
-    {
-        return this.getMinEnchantability(enchantmentLevel) + 50;
-    }
 }

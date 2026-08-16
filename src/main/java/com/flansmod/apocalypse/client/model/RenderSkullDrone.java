@@ -1,122 +1,90 @@
 package com.flansmod.apocalypse.client.model;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.ItemRenderer;
-import net.minecraft.client.renderer.OpenGlHelper;
-import net.minecraft.client.renderer.RenderHelper;
-import net.minecraft.client.renderer.RenderItem;
-import net.minecraft.client.renderer.block.model.IBakedModel;
-import net.minecraft.client.renderer.entity.Render;
-import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.entity.Entity;
-import net.minecraft.inventory.EntityEquipmentSlot;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.world.World;
-import net.minecraftforge.client.event.RenderWorldLastEvent;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.fml.client.registry.IRenderFactory;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-
 import com.flansmod.apocalypse.common.entity.EntitySkullDrone;
-import com.flansmod.apocalypse.common.entity.EntityNukeDrop;
-import com.flansmod.apocalypse.common.entity.EntitySkullBoss;
-import com.flansmod.apocalypse.common.entity.EntityTeleporter;
-import com.flansmod.client.ClientProxy;
-import com.flansmod.client.handlers.FlansModResourceHandler;
-import com.flansmod.client.model.ModelGun;
-import com.flansmod.common.guns.GunType;
-import com.flansmod.common.guns.ItemGun;
-import com.flansmod.common.vector.Vector3f;
 
-public class RenderSkullDrone extends Render<EntitySkullDrone>
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.entity.EntityRenderer;
+import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.resources.Identifier;
+
+import com.flansmod.client.model.ModelRenderer;
+
+public class RenderSkullDrone extends EntityRenderer<EntitySkullDrone, RenderSkullDrone.State>
 {
-	private static final ResourceLocation texture = new ResourceLocation("flansmodapocalypse", "textures/entity/skulldrone.png");
-	private ModelSkullDrone model;
-	private static final ItemRenderer renderer = new ItemRenderer(Minecraft.getMinecraft());
-	private static RenderItem renderItem;
-	
-	public RenderSkullDrone(RenderManager rm)
+	public static class State extends EntityRenderState
 	{
-		super(rm);
-		renderItem = Minecraft.getMinecraft().getRenderItem();
-		model = new ModelSkullDrone();
+		public float yaw;
+		public float tickCount;
+		public float partialTick;
 	}
 	
-	public void doRender(EntitySkullDrone entity, double x, double y, double z, float p_76986_8_, float partialTicks)
+	private final ModelSkullDrone model = new ModelSkullDrone();
+	private final PoseStack poseStack = new PoseStack();
+	private static final Identifier texture = Identifier.fromNamespaceAndPath("flansmodapocalypse", "textures/entity/skulldrone.png");
+	
+	public RenderSkullDrone(EntityRendererProvider.Context context)
 	{
-		bindEntityTexture(entity);
-		
-		GlStateManager.pushMatrix();
-		GlStateManager.translate(x, y, z);
-		
-		GlStateManager.rotate(-entity.rotationYaw, 0, 1, 0);
-		
-		GlStateManager.pushMatrix();
-		{
-			model.renderBase(1F / 16F);
-			
-			for(int i = 0; i < model.numPropellers; i++)
-			{
-				GlStateManager.pushMatrix();
-				GlStateManager.translate(model.propellerOrigins[i].x, model.propellerOrigins[i].y, model.propellerOrigins[i].z);
-				GlStateManager.rotate((entity.ticksExisted + partialTicks) * (i % 2== 0 ? -80f :80f), 0f, 1f, 0f);
-				GlStateManager.scale(2f,  2f, 2f);
-				model.renderPropeller(1f / 16f);
-				GlStateManager.popMatrix();
-			}
-		}
-		GlStateManager.popMatrix();
-			
-		GlStateManager.pushMatrix();
-		
-		ItemStack stack = entity.getItemStackFromSlot(EntityEquipmentSlot.MAINHAND);
-		if(!stack.isEmpty())
-		{
-			model.itemOrigin = new Vector3f(0f, -0.5f, 0f);
-			GlStateManager.translate(model.itemOrigin.x, model.itemOrigin.y, model.itemOrigin.z);
-			GlStateManager.rotate(entity.rotationPitch, 0, 0, 1);
-			
-			Item item = stack.getItem();
-			if(item instanceof ItemGun && ((ItemGun)item).GetType().model != null)
-			{
-				GunType gunType = ((ItemGun)item).GetType();
-				ModelGun model = gunType.model;
-				
-				//GlStateManager.rotate(-90F, 0F, 0F, 1F);
-				bindTexture(FlansModResourceHandler.getTexture(gunType));
-				ClientProxy.gunRenderer.renderGun(stack, gunType, 1F / 16F, model, entity.animations, 0F);
-			}
-			else
-			{
-				GlStateManager.rotate(-135F, 0F, 0F, 1F);
-				GlStateManager.translate(0F, -0.4F, 0F);
-				
-				IBakedModel ibakedmodel = renderItem.getItemModelMesher().getItemModel(stack);
-				renderItem.renderItem(stack, ibakedmodel);
-				
-				GlStateManager.disableRescaleNormal();
-			}
-		}
-		GlStateManager.popMatrix();
-		
-		GlStateManager.popMatrix();
+		super(context);
 	}
 	
 	@Override
-	protected ResourceLocation getEntityTexture(EntitySkullDrone entity)
+	public State createRenderState()
 	{
-		return texture;
+		return new State();
 	}
-		
-	public static class Factory implements IRenderFactory<EntitySkullDrone>
+	
+	@Override
+	public void extractRenderState(EntitySkullDrone entity, State state, float partialTick)
 	{
-		@Override
-		public Render<EntitySkullDrone> createRenderFor(RenderManager manager)
+		super.extractRenderState(entity, state, partialTick);
+		state.yaw = entity.getYRot();
+		state.tickCount = entity.tickCount;
+		state.partialTick = partialTick;
+	}
+	
+	@Override
+	public void submit(State state, PoseStack pose, SubmitNodeCollector collector, CameraRenderState camera)
+	{
+		pose.pushPose();
+		pose.mulPose(Axis.YP.rotationDegrees(-state.yaw));
+		
+		collector.submitCustomGeometry(pose, RenderTypes.entityCutout(texture), (p, consumer) ->
 		{
-			return new RenderSkullDrone(manager);
+			poseStack.pushPose();
+			poseStack.last().set(p);
+			ModelRenderer.beginRender(poseStack, consumer, state.lightCoords, OverlayTexture.NO_OVERLAY);
+			model.renderBase(1F / 16F);
+			ModelRenderer.endRender();
+			poseStack.popPose();
+		});
+		
+		for(int i = 0; i < model.numPropellers; i++)
+		{
+			pose.pushPose();
+			pose.translate(model.propellerOrigins[i].x, model.propellerOrigins[i].y, model.propellerOrigins[i].z);
+			pose.mulPose(Axis.YP.rotationDegrees((state.tickCount + state.partialTick) * (i % 2 == 0 ? -80f : 80f)));
+			pose.scale(2f, 2f, 2f);
+			collector.submitCustomGeometry(pose, RenderTypes.entityCutout(texture), (p, consumer) ->
+			{
+				poseStack.pushPose();
+				poseStack.last().set(p);
+				ModelRenderer.beginRender(poseStack, consumer, state.lightCoords, OverlayTexture.NO_OVERLAY);
+				model.renderPropeller(1f / 16f);
+				ModelRenderer.endRender();
+				poseStack.popPose();
+			});
+			pose.popPose();
 		}
+		
+		// TODO APOCALYPSE: 1.12.2 rendered the held gun model via ClientProxy.gunRenderer;
+		// gun model rendering not ported
+		
+		pose.popPose();
 	}
 }

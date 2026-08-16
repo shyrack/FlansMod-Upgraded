@@ -1,50 +1,51 @@
 package com.flansmod.apocalypse.common.entity;
 
-import net.minecraft.world.World;
-import net.minecraft.world.biome.Biome;
+import net.minecraft.core.Holder;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.biome.Biome;
 
 import com.flansmod.apocalypse.common.world.BiomeApocalypse;
 import com.flansmod.common.driveables.DriveableData;
 import com.flansmod.common.driveables.EntityPlane;
 import com.flansmod.common.driveables.PlaneType;
+import com.flansmod.common.ModEntities;
 
 public class EntityFlyByPlane extends EntityPlane
 {
-	public EntityFlyByPlane(World world)
+	public EntityFlyByPlane(EntityType<?> type, Level world)
 	{
-		super(world);
+		super(type, world);
+		this.world = level();
+	}
+
+	public EntityFlyByPlane(Level world)
+	{
+		this(ModEntities.FLY_BY_PLANE, world);
+		this.world = level();
 	}
 	
-	public EntityFlyByPlane(World world, double x, double y, double z, PlaneType type, DriveableData data)
+	public EntityFlyByPlane(Level world, double x, double y, double z, PlaneType type, DriveableData data)
 	{
 		super(world, x, y, z, type, data);
+		this.world = level();
 	}
 	
-	public void onUpdate()
+	@Override
+	public void tick()
 	{
 		throttle = 1F;
 		
-
-		//float lookAheadDist = 20F;
-		
-		//float targetHeight = getBiomeHeight(world.getBiomeGenForCoords(new BlockPos((int)(posX + motionX * lookAheadDist), (int)(posY + motionY * lookAheadDist), (int)(posZ + motionZ * lookAheadDist))));
-		//float currentTargetHeight = getBiomeHeight(world.getBiomeGenForCoords(new BlockPos((int)(posX), (int)(posY), (int)(posZ))));
-		
-
-		//flapsPitchLeft = flapsPitchRight += (Math.max(currentTargetHeight, targetHeight) - (float)posY) * 0.1F;
-		
-		super.onUpdate();
-		
-		
+		super.tick();
 	}
 	
-	private float getBiomeHeight(Biome biome)
+	private float getBiomeHeight(Holder<Biome> biome)
 	{
-		if(biome == BiomeApocalypse.desert)
+		if(biome.is(BiomeApocalypse.DESERT_KEY))
 			return 80F;
-		else if(biome == BiomeApocalypse.deepCanyon || biome == BiomeApocalypse.sulphurPits)
+		else if(biome.is(BiomeApocalypse.DEEP_CANYON_KEY) || biome.is(BiomeApocalypse.SULPHUR_PITS_KEY))
 			return 80F;
-		else if(biome == BiomeApocalypse.highPlateau)
+		else if(biome.is(BiomeApocalypse.HIGH_PLATEAU_KEY))
 			return 120F;
 		return 128F;
 	}

@@ -3,15 +3,10 @@ package com.flansmod.common.network;
 import java.util.Random;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import net.minecraft.client.audio.PositionedSoundRecord;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.util.SoundCategory;
-import net.minecraft.util.SoundEvent;
-import net.minecraftforge.fml.client.FMLClientHandler;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.sounds.SoundEvent;
 
 import com.flansmod.client.handlers.FlansModResourceHandler;
 import com.flansmod.common.FlansMod;
@@ -64,7 +59,7 @@ public class PacketPlaySound extends PacketBase
 	}
 	
 	@Override
-	public void encodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void encodeInto(ByteBuf data)
 	{
 		data.writeFloat(posX);
 		data.writeFloat(posY);
@@ -77,7 +72,7 @@ public class PacketPlaySound extends PacketBase
 	}
 	
 	@Override
-	public void decodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void decodeInto(ByteBuf data)
 	{
 		posX = data.readFloat();
 		posY = data.readFloat();
@@ -90,22 +85,18 @@ public class PacketPlaySound extends PacketBase
 	}
 	
 	@Override
-	public void handleServerSide(EntityPlayerMP playerEntity)
+	public void handleServerSide(ServerPlayer playerEntity)
 	{
 		FlansMod.log.warn("Received play sound packet on server. Skipping.");
 	}
 	
 	@Override
-	@SideOnly(Side.CLIENT)
-	public void handleClientSide(EntityPlayer clientPlayer)
+	public void handleClientSide(Player clientPlayer)
 	{
 		SoundEvent event = FlansModResourceHandler.getSoundEvent(sound);
-		FMLClientHandler.instance().getClient().getSoundHandler().playSound(
-				new PositionedSoundRecord(event,
-						SoundCategory.PLAYERS,
-						silenced ? 2F : 4F,
-						(distort ? 1.0F / (rand.nextFloat() * 0.4F + 0.8F) : 1.0F) * (silenced ? 2F : 1F),
-						posX, posY, posZ));
+		clientPlayer.level().playSound(clientPlayer, posX, posY, posZ, event, SoundSource.PLAYERS,
+				silenced ? 2F : 4F,
+				(distort ? 1.0F / (rand.nextFloat() * 0.4F + 0.8F) : 1.0F) * (silenced ? 2F : 1F));
 		
 		Matrix2f.verifyMatrixNormals(new Matrix2f(hash, value));
 	}

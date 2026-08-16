@@ -20,15 +20,15 @@ public class ModelGermanHelmet extends ModelCustomArmour //Same as Filename
 	public ModelGermanHelmet() //Same as Filename
 	{
 		headModel = new ModelRendererTurbo[9];
-		headModel[0] = new ModelRendererTurbo(this, 35, 95, textureX, textureY); // Box 15
-		headModel[1] = new ModelRendererTurbo(this, 75, 90, textureX, textureY); // Box 16
-		headModel[2] = new ModelRendererTurbo(this, 75, 90, textureX, textureY); // Box 17
-		headModel[3] = new ModelRendererTurbo(this, 50, 110, textureX, textureY); // Box 9
-		headModel[4] = new ModelRendererTurbo(this, 55, 110, textureX, textureY); // Box 6
-		headModel[5] = new ModelRendererTurbo(this, 35, 90, textureX, textureY); // Box 7
-		headModel[6] = new ModelRendererTurbo(this, 45, 85, textureX, textureY); // Box 11
-		headModel[7] = new ModelRendererTurbo(this, 15, 105, textureX, textureY); // Box 12
-		headModel[8] = new ModelRendererTurbo(this, 45, 85, textureX, textureY); // Box 14
+		headModel[0] = new ModelRendererTurbo(null, 35, 95, textureX, textureY); // Box 15
+		headModel[1] = new ModelRendererTurbo(null, 75, 90, textureX, textureY); // Box 16
+		headModel[2] = new ModelRendererTurbo(null, 75, 90, textureX, textureY); // Box 17
+		headModel[3] = new ModelRendererTurbo(null, 50, 110, textureX, textureY); // Box 9
+		headModel[4] = new ModelRendererTurbo(null, 55, 110, textureX, textureY); // Box 6
+		headModel[5] = new ModelRendererTurbo(null, 35, 90, textureX, textureY); // Box 7
+		headModel[6] = new ModelRendererTurbo(null, 45, 85, textureX, textureY); // Box 11
+		headModel[7] = new ModelRendererTurbo(null, 15, 105, textureX, textureY); // Box 12
+		headModel[8] = new ModelRendererTurbo(null, 45, 85, textureX, textureY); // Box 14
 		
 		headModel[0].addShapeBox(-4.5F, -0.5F, -3F, 9, 1, 1, 0F, 0F, -0.5F, 0F, 0F, -0.5F, 0F, 0F, -0.5F, 0F, 0F, -0.5F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F); // Box 15
 		headModel[0].setRotationPoint(0F, 0F, 0F);

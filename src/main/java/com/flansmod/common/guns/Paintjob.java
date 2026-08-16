@@ -2,7 +2,7 @@ package com.flansmod.common.guns;
 
 import java.util.HashMap;
 
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.item.ItemStack;
 
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.paintjob.PaintableType;

@@ -1,9 +1,8 @@
 package com.flansmod.common.network;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
 
 import com.flansmod.client.teams.ClientTeamsData;
 import com.flansmod.common.FlansMod;
@@ -13,25 +12,25 @@ public class PacketAddSingleRewardBoxInstance extends PacketBase
 	public int boxHash;
 	
 	@Override
-	public void encodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void encodeInto(ByteBuf data)
 	{
 		data.writeInt(boxHash);
 	}
 	
 	@Override
-	public void decodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void decodeInto(ByteBuf data)
 	{
 		boxHash = data.readInt();
 	}
 	
 	@Override
-	public void handleServerSide(EntityPlayerMP playerEntity)
+	public void handleServerSide(ServerPlayer playerEntity)
 	{
 		FlansMod.Assert(false, "Handled single reward box packet on server!");
 	}
 	
 	@Override
-	public void handleClientSide(EntityPlayer clientPlayer)
+	public void handleClientSide(Player clientPlayer)
 	{
 		ClientTeamsData.AddRewardBox(boxHash);
 	}

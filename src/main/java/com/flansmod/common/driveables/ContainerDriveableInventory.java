@@ -1,24 +1,25 @@
 package com.flansmod.common.driveables;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.InventoryPlayer;
-import net.minecraft.inventory.Container;
-import net.minecraft.inventory.Slot;
-import net.minecraft.item.ItemStack;
-import net.minecraft.world.World;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 
-public class ContainerDriveableInventory extends Container
+public class ContainerDriveableInventory extends AbstractContainerMenu
 {
-	public InventoryPlayer inventory;
-	public World world;
+	public Inventory inventory;
+	public Level world;
 	public EntityDriveable plane;
 	public int numItems;
 	public int screen;
 	public int maxScroll;
 	public int scroll;
 	
-	public ContainerDriveableInventory(InventoryPlayer inventoryplayer, World worldy, EntityDriveable entPlane, int i)
+	public ContainerDriveableInventory(Inventory inventoryplayer, Level worldy, EntityDriveable entPlane, int i)
 	{
+		super(null, 0);
 		inventory = inventoryplayer;
 		world = worldy;
 		plane = entPlane;
@@ -64,7 +65,7 @@ public class ContainerDriveableInventory extends Container
 					int yPos = -1000;
 					if(slotsDone < 3 + scroll && slotsDone >= scroll)
 						yPos = 25 + 19 * slotsDone;
-					addSlotToContainer(new Slot(plane.driveableData, j, 29, yPos));
+					addSlot(new Slot(plane.driveableData, j, 29, yPos));
 					slotsDone++;
 				}
 				break;
@@ -86,7 +87,7 @@ public class ContainerDriveableInventory extends Container
 						yPos = 25 + 19 * (row - scroll);
 					for(int col = 0; col < ((row + scroll + 1) * 8 <= numItems ? 8 : numItems % 8); col++)
 					{
-						addSlotToContainer(new Slot(plane.driveableData, startSlot + row * 8 + col, 10 + 18 * col, yPos));
+						addSlot(new Slot(plane.driveableData, startSlot + row * 8 + col, 10 + 18 * col, yPos));
 					}
 				}
 				break;
@@ -98,82 +99,49 @@ public class ContainerDriveableInventory extends Container
 		{
 			for(int col = 0; col < 9; col++)
 			{
-				addSlotToContainer(new Slot(inventoryplayer, col + row * 9 + 9, 8 + col * 18, 98 + row * 18));
+				addSlot(new Slot(inventoryplayer, col + row * 9 + 9, 8 + col * 18, 98 + row * 18));
 			}
 			
 		}
 		//Quickbar slots
 		for(int col = 0; col < 9; col++)
 		{
-			addSlotToContainer(new Slot(inventoryplayer, col, 8 + col * 18, 156));
+			addSlot(new Slot(inventoryplayer, col, 8 + col * 18, 156));
 		}
 	}
 	
 	public void updateScroll(int scrololol)
 	{
 		scroll = scrololol;
-		switch(screen)
-		{
-			case 0:
-			{
-				int slotsDone = 0;
-				for(int i = 0; i < plane.driveableData.numGuns; i++)
-				{
-					int yPos = -1000;
-					if(slotsDone < 3 + scroll && slotsDone >= scroll)
-						yPos = 25 + 19 * (slotsDone - scroll);
-					inventorySlots.get(slotsDone).yPos = yPos;
-					slotsDone++;
-				}
-				break;
-			}
-			case 1:
-			case 2:
-			case 3:
-			{
-				int m = ((numItems + 7) / 8);
-				for(int row = 0; row < m; row++)
-				{
-					int yPos = -1000;
-					if(row < 3 + scroll && row >= scroll)
-						yPos = 25 + 19 * (row - scroll);
-					for(int col = 0; col < ((row + 1) * 8 <= numItems ? 8 : numItems % 8); col++)
-					{
-						inventorySlots.get(row * 8 + col).yPos = yPos;
-					}
-				}
-				break;
-			}
-		}
 	}
 	
 	@Override
-	public boolean canInteractWith(EntityPlayer entityplayer)
+	public boolean stillValid(Player entityplayer)
 	{
 		return true;
 	}
 	
 	@Override
-	public ItemStack transferStackInSlot(EntityPlayer player, int slotID)
+	public ItemStack quickMoveStack(Player player, int slotID)
 	{
 		ItemStack stack = ItemStack.EMPTY.copy();
-		Slot currentSlot = inventorySlots.get(slotID);
+		Slot currentSlot = slots.get(slotID);
 		
-		if(currentSlot != null && currentSlot.getHasStack())
+		if(currentSlot != null && currentSlot.hasItem())
 		{
-			ItemStack slotStack = currentSlot.getStack();
+			ItemStack slotStack = currentSlot.getItem();
 			stack = slotStack.copy();
 			
 			if(slotID >= numItems)
 			{
-				if(!mergeItemStack(slotStack, 0, numItems, false))
+				if(!moveItemStackTo(slotStack, 0, numItems, false))
 				{
 					return ItemStack.EMPTY.copy();
 				}
 			}
 			else
 			{
-				if(!mergeItemStack(slotStack, numItems, inventorySlots.size(), true))
+				if(!moveItemStackTo(slotStack, numItems, slots.size(), true))
 				{
 					return ItemStack.EMPTY.copy();
 				}
@@ -181,11 +149,11 @@ public class ContainerDriveableInventory extends Container
 			
 			if(slotStack.getCount() == 0)
 			{
-				currentSlot.putStack(ItemStack.EMPTY.copy());
+				currentSlot.set(ItemStack.EMPTY.copy());
 			}
 			else
 			{
-				currentSlot.onSlotChanged();
+				currentSlot.setChanged();
 			}
 			
 			if(slotStack.getCount() == stack.getCount())

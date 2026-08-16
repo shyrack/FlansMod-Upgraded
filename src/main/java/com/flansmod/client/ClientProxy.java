@@ -3,43 +3,39 @@ package com.flansmod.client;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
 
-import org.lwjgl.input.Keyboard;
-import org.lwjgl.input.Mouse;
+import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
+import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
+import net.fabricmc.fabric.api.event.player.UseBlockCallback;
+import net.fabricmc.fabric.api.event.player.UseEntityCallback;
+import net.fabricmc.fabric.api.event.player.UseItemCallback;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.block.model.ModelResourceLocation;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.Item;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.SoundEvent;
-import net.minecraft.util.math.AxisAlignedBB;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.util.text.TextComponentString;
-import net.minecraft.world.World;
-import net.minecraftforge.client.event.ModelRegistryEvent;
-import net.minecraftforge.client.model.ModelLoader;
-import net.minecraftforge.client.resource.VanillaResourceType;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.RegistryEvent;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent;
-import net.minecraftforge.fml.client.FMLClientHandler;
-import net.minecraftforge.fml.client.registry.ClientRegistry;
-import net.minecraftforge.fml.client.registry.RenderingRegistry;
-import net.minecraftforge.fml.common.FMLModContainer;
-import net.minecraftforge.fml.common.MetadataCollection;
-import net.minecraftforge.fml.common.discovery.ContainerType;
-import net.minecraftforge.fml.common.discovery.ModCandidate;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.packs.PackType;
+import net.minecraft.server.packs.repository.FolderRepositorySource;
+import net.minecraft.server.packs.repository.PackRepository;
+import net.minecraft.server.packs.repository.PackSource;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.validation.DirectoryValidator;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 
 import com.flansmod.client.debug.EntityDebugAABB;
 import com.flansmod.client.debug.EntityDebugDot;
@@ -95,7 +91,6 @@ import com.flansmod.common.guns.EntityGrenade;
 import com.flansmod.common.guns.EntityMG;
 import com.flansmod.common.guns.Paintjob;
 import com.flansmod.common.guns.boxes.BlockGunBox;
-import com.flansmod.common.guns.boxes.BoxType;
 import com.flansmod.common.guns.boxes.GunBoxType;
 import com.flansmod.common.network.PacketBuyArmour;
 import com.flansmod.common.network.PacketBuyWeapon;
@@ -113,174 +108,202 @@ import com.flansmod.common.types.EnumType;
 import com.flansmod.common.types.InfoType;
 import com.flansmod.common.vector.Vector3f;
 
-@SideOnly(Side.CLIENT)
 public class ClientProxy extends CommonProxy
 {
 	public static String modelDir = "com.flansmod.client.model.";
-	
+
 	/* These renderers handle rendering in hand items */
 	public static RenderGun gunRenderer;
-	
+
 	public List<SoundEvent> eventsToRegister = new ArrayList<>();
-	
+
 	private FlansModClient flansModClient;
-	
+
 	@Override
 	public void preInit()
 	{
-		MinecraftForge.EVENT_BUS.register(this);
 	}
-	
+
 	@Override
 	public void init()
 	{
 		flansModClient = new FlansModClient();
 		flansModClient.load();
-		
-		ClientRegistry.bindTileEntitySpecialRenderer(TileEntityItemHolder.class, new RenderItemHolder());
-		
-		// Create one event handler for the client and register it with MC Forge and FML
+
 		ClientEventHandler eventHandler = new ClientEventHandler();
-		MinecraftForge.EVENT_BUS.register(eventHandler);
-	}
-	
-	@SubscribeEvent
-	public void registerSoundEvents(RegistryEvent.Register<SoundEvent> event)
-	{
-		FlansMod.log.info("Registering sounds.");
-		
-		for(SoundEvent sound : eventsToRegister)
+
+		//Client side driveable interaction raycasts
+		AttackEntityCallback.EVENT.register((player, level, hand, entity, hitResult) ->
 		{
-			event.getRegistry().register(sound);
-		}
-		
-		event.getRegistry().register(FlansModResourceHandler.getSoundEvent("bulletFlyby"));
-		event.getRegistry().register(FlansModResourceHandler.getSoundEvent("UnlockNotch"));
-	}
-	
-	@SubscribeEvent
-	public void registerModels(ModelRegistryEvent event)
-	{
-		//ItemModelMesher mesher = Minecraft.getMinecraft().getRenderItem().getItemModelMesher();
-		FlansMod.log.info("Registering models.");
-		
-		//Register a null vanilla renderer to avoid error messages spamming chat - doesn't work.
-		for(InfoType type : InfoType.infoTypes.values())
+			playerClickAttack(player, entity);
+			return InteractionResult.PASS;
+		});
+		UseEntityCallback.EVENT.register((player, level, hand, entity, hitResult) ->
 		{
-			if(type != null && type.item != null)
+			playerClickInteract(player, entity, hand);
+			return InteractionResult.PASS;
+		});
+		UseBlockCallback.EVENT.register((player, level, hand, hitResult) ->
+		{
+			playerClickBlock(player, hitResult.getBlockPos());
+			return InteractionResult.PASS;
+		});
+		UseItemCallback.EVENT.register((player, level, hand) ->
+		{
+			playerClickItem(player);
+			return InteractionResult.PASS;
+		});
+	}
+
+	public void playerClickAttack(Player player, Entity target)
+	{
+		Vec3 eye = player.getEyePosition(0F);
+		Vec3 look = player.getViewVector(1.0F);
+		double interactDistance = player.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.ENTITY_INTERACTION_RANGE).getValue();
+		look = look.normalize().scale(interactDistance);
+
+		for(Entity entity : player.level().getEntitiesOfClass(EntityDriveable.class, player.getBoundingBox().inflate(8D)))
+		{
+			if(entity instanceof EntityDriveable)
 			{
-				if(type instanceof PaintableType)
-				{
-					for(Paintjob paintjob : ((PaintableType)type).paintjobs)
-					{
-						ModelLoader.registerItemVariants(type.item,
-								new ResourceLocation("flansmod:" + type.shortName + (paintjob.iconName.equals("") ? "" : ("_" + paintjob.iconName))));
-						ModelLoader.setCustomModelResourceLocation(type.item, paintjob.ID, new ModelResourceLocation("flansmod:" + type.shortName + (paintjob.iconName.equals("") ? "" : ("_" + paintjob.iconName)), "inventory"));
-					}
-				}
-				else
-					ModelLoader.setCustomModelResourceLocation(type.item, 0, new ModelResourceLocation("flansmod:" + type.shortName, "inventory"));
+				EntityDriveable d = (EntityDriveable)entity;
+				Vec3 L = entity.position().subtract(eye);
+				double tca = L.dot(look);
+				if(tca < 0)
+					continue;
+				double d2 = L.dot(L) - tca * tca;
+				if(d2 > d.getDriveableType().hitboxRadius)
+					continue;
+				DriveablePart partHit = d.raytraceParts(new Vector3f((float)eye.x, (float)eye.y, (float)eye.z), new Vector3f((float)look.x, (float)look.y, (float)look.z));
+				Minecraft.getInstance().gameMode.attack(player, d);
 			}
 		}
-		
-		FlansMod.Assert(FlansMod.workbenchItem == Item.getItemFromBlock(FlansMod.workbench), "ItemBlock Mismatch");
-		
-		ModelLoader.setCustomModelResourceLocation(FlansMod.workbenchItem, 0, new ModelResourceLocation("flansmod:flansworkbench_guns", "inventory"));
-		ModelLoader.setCustomModelResourceLocation(FlansMod.workbenchItem, 0, new ModelResourceLocation("flansmod:flansworkbench_guns", "inventory"));
-		ModelLoader.setCustomModelResourceLocation(FlansMod.workbenchItem, 1, new ModelResourceLocation("flansmod:flansworkbench_vehicles", "inventory"));
-		ModelLoader.setCustomModelResourceLocation(FlansMod.workbenchItem, 2, new ModelResourceLocation("flansmod:flansworkbench_parts", "inventory"));
-		ModelLoader.registerItemVariants(FlansMod.workbenchItem,
-				new ResourceLocation("flansmod:flansWorkbench_guns"),
-				new ResourceLocation("flansmod:flansWorkbench_parts"),
-				new ResourceLocation("flansmod:flansWorkbench_vehicles"));
-		
-		ModelLoader.setCustomModelResourceLocation(FlansMod.opStick, 0, new ModelResourceLocation("flansmod:opstick_Ownership", "inventory"));
-		ModelLoader.setCustomModelResourceLocation(FlansMod.opStick, 1, new ModelResourceLocation("flansmod:opstick_Connecting", "inventory"));
-		ModelLoader.setCustomModelResourceLocation(FlansMod.opStick, 2, new ModelResourceLocation("flansmod:opstick_Mapping", "inventory"));
-		ModelLoader.setCustomModelResourceLocation(FlansMod.opStick, 3, new ModelResourceLocation("flansmod:opstick_Destruction", "inventory"));
-		ModelLoader.registerItemVariants(FlansMod.opStick,
-				new ResourceLocation("flansmod:opstick_Ownership"),
-				new ResourceLocation("flansmod:opstick_Connecting"),
-				new ResourceLocation("flansmod:opstick_Mapping"),
-				new ResourceLocation("flansmod:opstick_Destruction"));
-		
-		ModelLoader.setCustomModelResourceLocation(FlansMod.spawnerItem, 0, new ModelResourceLocation("flansmod:teamsSpawner_items", "inventory"));
-		ModelLoader.setCustomModelResourceLocation(FlansMod.spawnerItem, 1, new ModelResourceLocation("flansmod:teamsSpawner_players", "inventory"));
-		ModelLoader.setCustomModelResourceLocation(FlansMod.spawnerItem, 2, new ModelResourceLocation("flansmod:teamsSpawner_vehicles", "inventory"));
-		ModelLoader.registerItemVariants(FlansMod.spawnerItem,
-				new ResourceLocation("flansmod:teamsSpawner_items"),
-				new ResourceLocation("flansmod:teamsSpawner_players"),
-				new ResourceLocation("flansmod:teamsSpawner_vehicles"));
-		
-		ModelLoader.setCustomModelResourceLocation(FlansMod.flag, 0, new ModelResourceLocation("flansmod:flagpole", "inventory"));
-		ModelLoader.setCustomModelResourceLocation(FlansMod.rainbowPaintcan, 0, new ModelResourceLocation("flansmod:rainbowPaintcan", "inventory"));
-		ModelLoader.setCustomModelResourceLocation(Item.getItemFromBlock(FlansMod.paintjobTable), 0, new ModelResourceLocation("flansmod:paintjobTable", "inventory"));
-		ModelLoader.setCustomModelResourceLocation(Item.getItemFromBlock(FlansMod.gunpowderBlock), 0, new ModelResourceLocation("flansmod:gunpowderblock", "inventory"));
-		ModelLoader.registerItemVariants(Item.getItemFromBlock(FlansMod.paintjobTable),
-				new ResourceLocation("flansmod:paintjobTable"));
-		ModelLoader.setCustomModelResourceLocation(FlansMod.crosshairsymbol, 0, new ModelResourceLocation("flansmod:crosshairsymbol", "inventory"));
 	}
-	
+
+	public void playerClickInteract(Player player, Entity target, InteractionHand hand)
+	{
+		Vec3 eye = player.getEyePosition(0F);
+		Vec3 look = player.getViewVector(1.0F);
+		double interactDistance = player.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.ENTITY_INTERACTION_RANGE).getValue();
+		look = look.normalize().scale(interactDistance);
+
+		for(Entity entity : player.level().getEntitiesOfClass(EntityDriveable.class, player.getBoundingBox().inflate(8D)))
+		{
+			if(entity instanceof EntityDriveable)
+			{
+				EntityDriveable d = (EntityDriveable)entity;
+				Vec3 L = entity.position().subtract(eye);
+				double tca = L.dot(look);
+				if(tca < 0)
+					continue;
+				double d2 = L.dot(L) - tca * tca;
+				if(d2 > d.getDriveableType().hitboxRadius)
+					continue;
+				DriveablePart partHit = d.raytraceParts(new Vector3f((float)eye.x, (float)eye.y, (float)eye.z), new Vector3f((float)look.x, (float)look.y, (float)look.z));
+				Minecraft.getInstance().gameMode.interact(player, d, new net.minecraft.world.phys.EntityHitResult(d), hand);
+			}
+		}
+	}
+
+	public void playerClickBlock(Player player, BlockPos pos)
+	{
+		Vec3 eye = player.getEyePosition(0F);
+		Vec3 look = player.getViewVector(1.0F);
+		double interactDistance = player.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.ENTITY_INTERACTION_RANGE).getValue();
+		look = look.normalize().scale(interactDistance);
+
+		for(Entity entity : player.level().getEntitiesOfClass(EntityDriveable.class, player.getBoundingBox().inflate(8D)))
+		{
+			if(entity instanceof EntityDriveable)
+			{
+				EntityDriveable d = (EntityDriveable)entity;
+				Vec3 L = entity.position().subtract(eye);
+				double tca = L.dot(look);
+				if(tca < 0)
+					continue;
+				double d2 = L.dot(L) - tca * tca;
+				if(d2 > d.getDriveableType().hitboxRadius)
+					continue;
+				d.raytraceParts(new Vector3f((float)eye.x, (float)eye.y, (float)eye.z), new Vector3f((float)look.x, (float)look.y, (float)look.z));
+				Minecraft.getInstance().gameMode.attack(player, d);
+			}
+		}
+	}
+
+	public void playerClickItem(Player player)
+	{
+		Vec3 eye = player.getEyePosition(0F);
+		Vec3 look = player.getViewVector(1.0F);
+		double interactDistance = player.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.ENTITY_INTERACTION_RANGE).getValue();
+		look = look.normalize().scale(interactDistance);
+
+		for(Entity entity : player.level().getEntitiesOfClass(EntityDriveable.class, player.getBoundingBox().inflate(8D)))
+		{
+			if(entity instanceof EntityDriveable)
+			{
+				EntityDriveable d = (EntityDriveable)entity;
+				Vec3 L = entity.position().subtract(eye);
+				double tca = L.dot(look);
+				if(tca < 0)
+					continue;
+				double d2 = L.dot(L) - tca * tca;
+				if(d2 > d.getDriveableType().hitboxRadius)
+					continue;
+				d.raytraceParts(new Vector3f((float)eye.x, (float)eye.y, (float)eye.z), new Vector3f((float)look.x, (float)look.y, (float)look.z));
+				Minecraft.getInstance().gameMode.interact(player, d, new net.minecraft.world.phys.EntityHitResult(d), net.minecraft.world.InteractionHand.MAIN_HAND);
+			}
+		}
+	}
+
+	@Override
+	public void registerSoundEvents()
+	{
+		for(SoundEvent sound : eventsToRegister)
+		{
+			Identifier id = BuiltInRegistries.SOUND_EVENT.getKey(sound);
+			if(id != null && BuiltInRegistries.SOUND_EVENT.get(id) == null && !BuiltInRegistries.SOUND_EVENT.containsKey(id))
+				Registry.register(BuiltInRegistries.SOUND_EVENT, id, sound);
+		}
+		SoundEvent bulletFlyby = FlansModResourceHandler.getSoundEvent("bulletflyby");
+		if(bulletFlyby != null && !BuiltInRegistries.SOUND_EVENT.containsKey(BuiltInRegistries.SOUND_EVENT.getKey(bulletFlyby)))
+			Registry.register(BuiltInRegistries.SOUND_EVENT, BuiltInRegistries.SOUND_EVENT.getKey(bulletFlyby), bulletFlyby);
+	}
+
 	/**
 	 * This method reloads all textures from all mods and resource packs. It forces Minecraft to read images from the content packs added after mod init
 	 */
 	@Override
 	public void forceReload()
-	{	
-		FMLClientHandler.instance().refreshResources(VanillaResourceType.MODELS, VanillaResourceType.TEXTURES, VanillaResourceType.SOUNDS, VanillaResourceType.LANGUAGES);
+	{
+		Minecraft.getInstance().reloadResourcePacks();
 	}
-	
-	
+
 	/**
-	 * This method grabs all the content packs and puts them in a list. The client side part registers them as FMLModContainers which adds their resources to the game after a refresh
+	 * This method grabs all the content packs and puts them in a list. The client side part registers them as resource packs
 	 */
 	@Override
 	public void LoadAssetsFromFlanFolder()
-	{		
-		// Icons, Skins, Models
-		// Get the classloader in order to load the images
-		ClassLoader classloader = (net.minecraft.client.Minecraft.class).getClassLoader();
-		Method method = null;
+	{
+		PackRepository repo = Minecraft.getInstance().getResourcePackRepository();
+		java.util.Set<net.minecraft.server.packs.repository.RepositorySource> sources = null;
 		try
 		{
-			method = (java.net.URLClassLoader.class).getDeclaredMethod("addURL", java.net.URL.class);
-			method.setAccessible(true);
+			java.lang.reflect.Field f = PackRepository.class.getDeclaredField("sources");
+			f.setAccessible(true);
+			sources = (java.util.Set<net.minecraft.server.packs.repository.RepositorySource>)f.get(repo);
 		}
 		catch(Exception e)
 		{
-			FlansMod.log.error("Failed to get class loader. All content loading will now fail.");
-			FlansMod.log.throwing(e);
+			FlansMod.log.error("Failed to access pack repository sources", e);
 		}
-		
-		for(File file : FlansMod.flanDir.listFiles())
+		if(sources != null)
 		{
-			if(file.isDirectory() || zipJar.matcher(file.getName()).matches())
-			{
-				try
-				{
-					method.invoke(classloader, file.toURI().toURL());
-					
-					HashMap<String, Object> map = new HashMap<>();
-					map.put("modid", FlansMod.MODID);
-					map.put("name", "Flan's Mod : " + file.getName());
-					map.put("version", "1");
-					FMLModContainer container = new FMLModContainer("com.flansmod.common.FlansMod", new ModCandidate(file, file, file.isDirectory() ? ContainerType.DIR : ContainerType.JAR), map);
-					container.bindMetadata(MetadataCollection.from(null, ""));
-					FMLClientHandler.instance().addModAsResource(container);
-					
-				}
-				catch(Exception e)
-				{
-					FlansMod.log.error("Failed to load images for content pack : " + file.getName());
-					FlansMod.log.throwing(e);
-				}
-				// Add the directory to the content pack list
-				FlansMod.log.info("Loaded content pack : " + file.getName());
-			}
+			sources.add(new FolderRepositorySource(FlansMod.flanDir.toPath(), PackType.CLIENT_RESOURCES, PackSource.BUILT_IN,
+					new DirectoryValidator(path -> true)));
 		}
 		FlansMod.log.info("Loaded textures and models.");
 	}
-	
+
 	/**
 	 * Register entity renderers
 	 */
@@ -288,63 +311,61 @@ public class ClientProxy extends CommonProxy
 	public void registerRenderers()
 	{
 		FlansMod.log.info("Registering Renderers");
-		
-		RenderingRegistry.registerEntityRenderingHandler(EntityBullet.class, new RenderBullet.Factory());
-		RenderingRegistry.registerEntityRenderingHandler(EntityGrenade.class, new RenderGrenade.Factory());
-		RenderingRegistry.registerEntityRenderingHandler(EntityPlane.class, new RenderPlane.Factory());
-		RenderingRegistry.registerEntityRenderingHandler(EntityVehicle.class, new RenderVehicle.Factory());
-		RenderingRegistry.registerEntityRenderingHandler(EntityAAGun.class, new RenderAAGun.Factory());
-		RenderingRegistry.registerEntityRenderingHandler(EntityFlagpole.class, new RenderFlagpole.Factory());
-		RenderingRegistry.registerEntityRenderingHandler(EntityFlag.class, new RenderFlag.Factory());
-		RenderingRegistry.registerEntityRenderingHandler(EntitySeat.class, new RenderNull.Factory<EntitySeat>());
-		RenderingRegistry.registerEntityRenderingHandler(EntityWheel.class, new RenderNull.Factory<EntityWheel>());
-		RenderingRegistry.registerEntityRenderingHandler(EntityMG.class, new RenderMG.Factory());
-		RenderingRegistry.registerEntityRenderingHandler(EntityParachute.class, new RenderParachute.Factory());
-		RenderingRegistry.registerEntityRenderingHandler(EntityDebugDot.class, new RenderDebugDot.Factory());
-		RenderingRegistry.registerEntityRenderingHandler(EntityDebugVector.class, new RenderDebugVector.Factory());
-		RenderingRegistry.registerEntityRenderingHandler(EntityDebugAABB.class, new RenderDebugAABB.Factory());
-		RenderingRegistry.registerEntityRenderingHandler(EntityMecha.class, new RenderMecha.Factory());
-		RenderingRegistry.registerEntityRenderingHandler(EntityItemCustomRender.class, new RenderGunItem.Factory());
-		
-		ClientRegistry.bindTileEntitySpecialRenderer(TileEntitySpawner.class, new TileEntitySpawnerRenderer());
+
+		EntityRendererRegistry.register(com.flansmod.common.ModEntities.BULLET, RenderBullet::new);
+		EntityRendererRegistry.register(com.flansmod.common.ModEntities.GRENADE, RenderGrenade::new);
+		EntityRendererRegistry.register(com.flansmod.common.ModEntities.PLANE, RenderPlane::new);
+		EntityRendererRegistry.register(com.flansmod.common.ModEntities.VEHICLE, RenderVehicle::new);
+		EntityRendererRegistry.register(com.flansmod.common.ModEntities.AA_GUN, RenderAAGun::new);
+		EntityRendererRegistry.register(com.flansmod.common.ModEntities.FLAGPOLE, RenderFlagpole::new);
+		EntityRendererRegistry.register(com.flansmod.common.ModEntities.FLAG, RenderFlag::new);
+		EntityRendererRegistry.register(com.flansmod.common.ModEntities.SEAT, RenderNull::new);
+		EntityRendererRegistry.register(com.flansmod.common.ModEntities.WHEEL, RenderNull::new);
+		EntityRendererRegistry.register(com.flansmod.common.ModEntities.MG, RenderMG::new);
+		EntityRendererRegistry.register(com.flansmod.common.ModEntities.PARACHUTE, RenderParachute::new);
+		EntityRendererRegistry.register(com.flansmod.common.ModEntities.DEBUG_DOT, RenderDebugDot::new);
+		EntityRendererRegistry.register(com.flansmod.common.ModEntities.DEBUG_VECTOR, RenderDebugVector::new);
+		EntityRendererRegistry.register(com.flansmod.common.ModEntities.DEBUG_AABB, RenderDebugAABB::new);
+		EntityRendererRegistry.register(com.flansmod.common.ModEntities.MECHA, RenderMecha::new);
+		EntityRendererRegistry.register(com.flansmod.common.ModEntities.CUSTOM_ITEM, RenderGunItem::new);
 	}
-	
+
 	/**
 	 * Old one time tutorial code that displays messages the first time you enter a plane / vehicle. Needs reworking
 	 */
 	@Override
-	public void doTutorialStuff(EntityPlayer player, EntityDriveable entityType)
+	public void doTutorialStuff(Player player, EntityDriveable entityType)
 	{
 		if(!FlansModClient.doneTutorial)
 		{
 			FlansModClient.doneTutorial = true;
-			
-			player.sendMessage(new TextComponentString("Press " + Keyboard.getKeyName(KeyInputHandler.vehicleMenuKey.getKeyCode()) + " to open the menu"));
-			player.sendMessage(new TextComponentString("Press " + Keyboard.getKeyName(Minecraft.getMinecraft().gameSettings.keyBindSneak.getKeyCode()) + " to get out"));
-			player.sendMessage(new TextComponentString("Press " + Keyboard.getKeyName(KeyInputHandler.controlSwitchKey.getKeyCode()) + " to switch controls"));
-			player.sendMessage(new TextComponentString("Press " + Keyboard.getKeyName(KeyInputHandler.modeKey.getKeyCode()) + " to switch VTOL mode"));
+
+			player.sendSystemMessage(Component.literal("Press " + net.minecraft.network.chat.Component.translatable(KeyInputHandler.vehicleMenuKey.getName()).getString() + " to open the menu"));
+			player.sendSystemMessage(Component.literal("Press " + net.minecraft.network.chat.Component.translatable(Minecraft.getInstance().options.keyShift.getName()).getString() + " to get out"));
+			player.sendSystemMessage(Component.literal("Press " + net.minecraft.network.chat.Component.translatable(KeyInputHandler.controlSwitchKey.getName()).getString() + " to switch controls"));
+			player.sendSystemMessage(Component.literal("Press " + net.minecraft.network.chat.Component.translatable(KeyInputHandler.modeKey.getName()).getString() + " to switch VTOL mode"));
 			if(entityType instanceof EntityPlane)
 			{
 				if(PlaneType.getPlane(((EntityPlane)entityType).driveableType).hasGear)
-					player.sendMessage(new TextComponentString("Press " + Keyboard.getKeyName(KeyInputHandler.gearKey.getKeyCode()) + " to switch the gear"));
+					player.sendSystemMessage(Component.literal("Press " + net.minecraft.network.chat.Component.translatable(KeyInputHandler.gearKey.getName()).getString() + " to switch the gear"));
 				if(PlaneType.getPlane(((EntityPlane)entityType).driveableType).hasDoor)
-					player.sendMessage(new TextComponentString("Press " + Keyboard.getKeyName(KeyInputHandler.doorKey.getKeyCode()) + " to switch the doors"));
+					player.sendSystemMessage(Component.literal("Press " + net.minecraft.network.chat.Component.translatable(KeyInputHandler.doorKey.getName()).getString() + " to switch the doors"));
 				if(PlaneType.getPlane(((EntityPlane)entityType).driveableType).hasWing)
-					player.sendMessage(new TextComponentString("Press " + Keyboard.getKeyName(KeyInputHandler.modeKey.getKeyCode()) + " to switch the wings"));
+					player.sendSystemMessage(Component.literal("Press " + net.minecraft.network.chat.Component.translatable(KeyInputHandler.modeKey.getName()).getString() + " to switch the wings"));
 			}
 		}
 	}
-	
+
 	/**
 	 * Adds the client side text message regarding mouse control mode switching
 	 */
 	@Override
-	public void changeControlMode(EntityPlayer player)
+	public void changeControlMode(Player player)
 	{
 		if(FlansModClient.flipControlMode())
-			player.sendMessage(new TextComponentString("Mouse Control mode is now set to " + FlansModClient.controlModeMouse));
+			player.sendSystemMessage(Component.literal("Mouse Control mode is now set to " + FlansModClient.controlModeMouse));
 	}
-	
+
 	/**
 	 * Whether the player is in mouse control mode for planes. Now the default setting for planes, but it can be deactivated to look around while flying
 	 */
@@ -353,43 +374,44 @@ public class ClientProxy extends CommonProxy
 	{
 		return FlansModClient.controlModeMouse;
 	}
-	
+
 	/**
 	 * Client GUI object getter
 	 */
 	@Override
-	public Object getClientGui(int ID, EntityPlayer player, World world, int x, int y, int z)
+	public Object getClientGui(int ID, Player player, Level world, int x, int y, int z)
 	{
 		//Null riding entity, don't open GUI in this case
-		if(((ID >= 6 && ID <= 10) || ID == 12) && player.getRidingEntity() == null) return null;
-		
+		if(((ID >= 6 && ID <= 10) || ID == 12) && player.getVehicle() == null)
+			return null;
+
 		switch(ID)
 		{
-			case 0: return new GuiDriveableCrafting(player.inventory);
+			case 0: return new GuiDriveableCrafting(player.getInventory());
 			case 1: return new GuiDriveableRepair(player);
-			case 2: return new GuiGunModTable(player.inventory, world);
-			case 5: return new GuiGunBox(player.inventory, ((BlockGunBox)world.getBlockState(new BlockPos(x, y, z)).getBlock()).type);
-			case 6: return new GuiDriveableInventory(player.inventory, world, ((EntitySeat)player.getRidingEntity()).driveable, 0);
-			case 7: return new GuiDriveableInventory(player.inventory, world, ((EntitySeat)player.getRidingEntity()).driveable, 1);
-			case 8: return new GuiDriveableFuel(player.inventory, world, ((EntitySeat)player.getRidingEntity()).driveable);
-			case 9: return new GuiDriveableInventory(player.inventory, world, ((EntitySeat)player.getRidingEntity()).driveable, 2);
-			case 10: return new GuiMechaInventory(player.inventory, world, (EntityMecha)((EntitySeat)player.getRidingEntity()).driveable);
-			case 11: return new GuiArmourBox(player.inventory, ((BlockArmourBox)world.getBlockState(new BlockPos(x, y, z)).getBlock()).type);
-			case 12: return new GuiDriveableInventory(player.inventory, world, ((EntitySeat)player.getRidingEntity()).driveable, 3);
-			case 13: return new GuiPaintjobTable(player.inventory, world, (TileEntityPaintjobTable)world.getTileEntity(new BlockPos(x, y, z)));
+			case 2: return new GuiGunModTable(player.getInventory(), world);
+			case 5: return new GuiGunBox(player.getInventory(), ((BlockGunBox)world.getBlockState(new BlockPos(x, y, z)).getBlock()).type);
+			case 6: return new GuiDriveableInventory(player.getInventory(), world, ((EntitySeat)player.getVehicle()).driveable, 0);
+			case 7: return new GuiDriveableInventory(player.getInventory(), world, ((EntitySeat)player.getVehicle()).driveable, 1);
+			case 8: return new GuiDriveableFuel(player.getInventory(), world, ((EntitySeat)player.getVehicle()).driveable);
+			case 9: return new GuiDriveableInventory(player.getInventory(), world, ((EntitySeat)player.getVehicle()).driveable, 2);
+			case 10: return new GuiMechaInventory(player.getInventory(), world, (EntityMecha)((EntitySeat)player.getVehicle()).driveable);
+			case 11: return new GuiArmourBox(player.getInventory(), ((BlockArmourBox)world.getBlockState(new BlockPos(x, y, z)).getBlock()).type);
+			case 12: return new GuiDriveableInventory(player.getInventory(), world, ((EntitySeat)player.getVehicle()).driveable, 3);
+			case 13: return new GuiPaintjobTable(player.getInventory(), world, (TileEntityPaintjobTable)world.getBlockEntity(new BlockPos(x, y, z)));
 		}
 		return null;
 	}
-	
+
 	/**
 	 * Called when the player presses the plane inventory key. Opens menu client side
 	 */
 	@Override
-	public void openDriveableMenu(EntityPlayer player, World world, EntityDriveable driveable)
+	public void openDriveableMenu(Player player, Level world, EntityDriveable driveable)
 	{
-		FMLClientHandler.instance().getClient().displayGuiScreen(new GuiDriveableMenu(player.inventory, world, driveable));
+		Minecraft.getInstance().setScreen(new GuiDriveableMenu(player.getInventory(), world, driveable));
 	}
-	
+
 	/**
 	 * Helper method that sorts out packages with model name input
 	 * For example, the model class "com.flansmod.client.model.mw.ModelMP5"
@@ -421,7 +443,7 @@ public class ClientProxy extends CommonProxy
 		}
 		return modelDir + in;
 	}
-	
+
 	/**
 	 * Generic model loader method for getting model classes and casting them to the required class type
 	 */
@@ -432,16 +454,16 @@ public class ClientProxy extends CommonProxy
 			return null;
 		try
 		{
-			return typeClass.cast(Class.forName(getModelName(s)).getConstructor().newInstance());
+			return typeClass.cast(Class.forName(getModelName(s)).getDeclaredConstructor().newInstance());
 		}
 		catch(Exception e)
 		{
 			FlansMod.log.error("Failed to load model : " + shortName + " (" + s + ")");
-			FlansMod.log.throwing(e);
+			FlansMod.log.error(e.getMessage());
 		}
 		return null;
 	}
-	
+
 	/**
 	 * Sound loading method. Defers to FlansModResourceHandler
 	 */
@@ -459,60 +481,60 @@ public class ClientProxy extends CommonProxy
 			eventsToRegister.add(event);
 		}
 	}
-	
+
 	/**
 	 * Checks whether "player" is the current player. Always false on server, since there is no current player
 	 */
 	@Override
-	public boolean isThePlayer(EntityPlayer player)
+	public boolean isThePlayer(Player player)
 	{
-		return player == FMLClientHandler.instance().getClient().player;
+		return player == Minecraft.getInstance().player;
 	}
-	
+
 	/* Gun and armour box crafting methods */
 	@Override
 	public void buyGun(GunBoxType type, InfoType gun)
 	{
 		FlansMod.getPacketHandler().sendToServer(new PacketBuyWeapon(type, gun));
-		PlayerData data = PlayerHandler.getPlayerData(Minecraft.getMinecraft().player);
+		PlayerData data = PlayerHandler.getPlayerData(Minecraft.getInstance().player);
 		data.shootTimeLeft = data.shootTimeRight = 10;
 	}
-	
+
 	@Override
 	public void buyArmour(String shortName, int piece, ArmourBoxType box)
 	{
 		FlansMod.getPacketHandler().sendToServer(new PacketBuyArmour(box.shortName, shortName, piece));
-		PlayerData data = PlayerHandler.getPlayerData(Minecraft.getMinecraft().player);
+		PlayerData data = PlayerHandler.getPlayerData(Minecraft.getInstance().player);
 		data.shootTimeLeft = data.shootTimeRight = 10;
 	}
-	
+
 	@Override
-	public void craftDriveable(EntityPlayer player, DriveableType type)
+	public void craftDriveable(Player player, DriveableType type)
 	{
 		//Craft it this side (so the inventory updates immediately) and then send a packet to the server so that it is crafted that side too
 		super.craftDriveable(player, type);
-		if(player.world.isRemote)
+		if(player.level().isClientSide())
 			FlansMod.getPacketHandler().sendToServer(new PacketCraftDriveable(type.shortName));
 	}
-	
+
 	@Override
-	public void repairDriveable(EntityPlayer driver, EntityDriveable driving, DriveablePart part)
+	public void repairDriveable(Player driver, EntityDriveable driving, DriveablePart part)
 	{
 		//Repair it this side (so the inventory updates immediately) and then send a packet to the server so that it is repaired that side too
 		super.repairDriveable(driver, driving, part);
-		if(driver.world.isRemote)
+		if(driver.level().isClientSide())
 			FlansMod.getPacketHandler().sendToServer(new PacketRepairDriveable(part.type));
 	}
-	
+
 	/**
 	 * Helper method that returns whether there is a GUI open
 	 */
 	@Override
 	public boolean isScreenOpen()
 	{
-		return Minecraft.getMinecraft().currentScreen != null;
+		return Minecraft.getInstance().screen != null;
 	}
-	
+
 	/**
 	 * Mecha input getters
 	 */
@@ -522,86 +544,33 @@ public class ClientProxy extends CommonProxy
 		switch(key)
 		{
 			case 0: //Press Forwards
-				return keyDown(Minecraft.getMinecraft().gameSettings.keyBindForward.getKeyCode());
-			
+				return Minecraft.getInstance().options.keyUp.isDown();
+
 			case 1: //Press Backwards
-				return keyDown(Minecraft.getMinecraft().gameSettings.keyBindBack.getKeyCode());
-			
+				return Minecraft.getInstance().options.keyDown.isDown();
+
 			case 2: //Press Left
-				return keyDown(Minecraft.getMinecraft().gameSettings.keyBindLeft.getKeyCode());
-			
+				return Minecraft.getInstance().options.keyLeft.isDown();
+
 			case 3: //Press Right
-				return keyDown(Minecraft.getMinecraft().gameSettings.keyBindRight.getKeyCode());
-			
+				return Minecraft.getInstance().options.keyRight.isDown();
+
 			case 4: //Press Jump
-				return keyDown(Minecraft.getMinecraft().gameSettings.keyBindJump.getKeyCode());
+				return Minecraft.getInstance().options.keyJump.isDown();
 		}
 		return false;
 	}
-	
+
 	/**
 	 * Helper method that deals with the way Minecraft handles binding keys to the mouse
 	 */
 	@Override
 	public boolean keyDown(int keyCode)
 	{
-		return (keyCode < 0 ? Mouse.isButtonDown(keyCode + 100) : Keyboard.isKeyDown(keyCode));
+		return net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper.getBoundKeyOf(Minecraft.getInstance().options.keyJump).getValue() == keyCode
+				&& Minecraft.getInstance().options.keyJump.isDown();
 	}
-	
-	@SubscribeEvent
-	public void playerClick(PlayerInteractEvent event) 
-	{
-		Vec3d eye = event.getEntityPlayer().getPositionEyes(0f);
-		Vec3d look = event.getEntityPlayer().getLookVec();
-		double interactDistance = event.getEntityPlayer().getEntityAttribute(EntityPlayer.REACH_DISTANCE).getAttributeValue();
-		look.normalize();
-		look.scale(interactDistance);
-		
-		if(event instanceof PlayerInteractEvent.LeftClickBlock 
-		|| event instanceof PlayerInteractEvent.RightClickBlock)
-			interactDistance = Math.min(interactDistance, Math.sqrt(event.getPos().distanceSq(eye.x, eye.y, eye.z)));
-		
-		if(event instanceof PlayerInteractEvent.EntityInteractSpecific)
-			interactDistance = Math.min(interactDistance, ((PlayerInteractEvent.EntityInteractSpecific)event).getLocalPos().distanceTo(eye));
-	
-		if(event instanceof PlayerInteractEvent.EntityInteract)
-			interactDistance = Math.min(interactDistance, ((PlayerInteractEvent.EntityInteract)event).getTarget().getDistance(eye.x, eye.y, eye.z));
-		
-		
-		for(Entity entity : event.getWorld().getLoadedEntityList()) 
-		{
-			if(entity instanceof EntityDriveable)
-			{
-				EntityDriveable d = (EntityDriveable)entity;
-				
-				// Quick sphere ray intersect test
-				Vec3d L = entity.getPositionVector().subtract(eye);
-		        double tca = L.dotProduct(look);
-		        if (tca < 0) 
-		        	continue;
-		        double d2 = L.dotProduct(L) - tca * tca; 
-		        if (d2 > d.getDriveableType().hitboxRadius) 
-		        	continue;
-		        		        
-		        // Check against collision boxes
-		        DriveablePart partHit = d.raytraceParts(new Vector3f(eye), new Vector3f(look));
-		        
-		        if(event instanceof PlayerInteractEvent.LeftClickEmpty
-		        || event instanceof PlayerInteractEvent.LeftClickBlock)
-		        	Minecraft.getMinecraft().playerController.attackEntity(event.getEntityPlayer(), d);
-		        
-		        if(event instanceof PlayerInteractEvent.RightClickEmpty
-		        || event instanceof PlayerInteractEvent.RightClickBlock)
-		        	Minecraft.getMinecraft().playerController.interactWithEntity(event.getEntityPlayer(), d, event.getHand());
-		        
-				if(event instanceof PlayerInteractEvent.RightClickItem)
-				{
-					event.setCanceled(true);
-				}
-			}
-		}
-	}
-	
+
 	@Override
 	public void addMissingJSONs(HashMap<Integer, InfoType> types)
 	{
@@ -622,61 +591,21 @@ public class ClientProxy extends CommonProxy
 					File blockstatesDir = new File(contentPackDir, "/assets/flansmod/blockstates");
 					if(!blockstatesDir.exists())
 						blockstatesDir.mkdirs();
-					
-					//Do block json for boxes
-					if(typeToCheckFor == EnumType.armourBox || typeToCheckFor == EnumType.box)
+
+					if(typeToCheckFor != EnumType.team && typeToCheckFor != EnumType.playerClass)
 					{
-						BoxType box = (BoxType)type;
-						
-						createJSONFile(new File(itemModelsDir, type.shortName.toLowerCase() + "_item.json"), "{ \"parent\": \"flansmod:block/" + type.shortName + "\", \"display\": { \"thirdperson\": { \"rotation\": [ 10, -45, 170 ], \"translation\": [ 0, 1.5, -2.75 ], \"scale\": [ 0.375, 0.375, 0.375 ] } } }");
-						createJSONFile(new File(blockModelsDir, type.shortName.toLowerCase() + ".json"), "{ \"parent\": \"block/cube\", \"textures\": { \"particle\": \"flansmod:blocks/" + box.sideTexturePath +
-								"\", \"down\": \"flansmod:blocks/" + box.bottomTexturePath + "\", \"up\": \"flansmod:blocks/" + box.topTexturePath + "\", \"north\": \"flansmod:blocks/" + box.sideTexturePath +
-								"\", \"east\": \"flansmod:blocks/" + box.sideTexturePath + "\", \"south\": \"flansmod:blocks/" + box.sideTexturePath + "\", \"west\": \"flansmod:blocks/" + box.sideTexturePath + "\" } } ");
-						createJSONFile(new File(blockstatesDir, type.shortName.toLowerCase() + ".json"), "{ \"variants\": { \"normal\": { \"model\": \"flansmod:" + type.shortName + "\" } } }");
-					}
-					else if(type instanceof PaintableType && type.GetModel() != null)
-					{
-						for(Paintjob paintjob : ((PaintableType)type).paintjobs)
-						{
-							createJSONFile(new File(itemModelsDir, (type.shortName + (paintjob.iconName.equals("") ? "" : ("_" + paintjob.iconName)) + ".json").toLowerCase()),
-									"{ \"parent\": \"builtin/generated\", \"textures\": { \"layer0\": \"flansmod:items/" + type.iconPath + (paintjob.iconName.equals("") ? "" : ("_" + paintjob.iconName)) + "\" },"
-											+ " \"display\": { "
-											+ "\"thirdperson_righthand\": { \"rotation\": [ 0, 90, -45 ], \"translation\": [ 0, 2, -2 ], \"scale\": [ 0, 0, 0 ] },"
-											+ " \"thirdperson_lefthand\": { \"rotation\": [ 0, 90, -45 ], \"translation\": [ 0, 2, -2 ], \"scale\": [ 0, 0, 0 ] },"
-											+ " \"firstperson_righthand\": { \"rotation\": [ 0, -135, 25 ], \"translation\": [ 0, 4, 2 ], \"scale\": [ 1, 1, 1 ] },"
-											+ " \"firstperson_lefthand\": { \"rotation\": [ 0, -135, 25 ], \"translation\": [ 0, 4, 2 ], \"scale\": [ 1, 1, 1 ] } "
-											+ "} }");
-						}
-					}
-					else if(typeToCheckFor == EnumType.itemHolder)
-					{
-						createJSONFile(new File(blockstatesDir, type.shortName.toLowerCase() + ".json"),
-								"{ \"variants\": { \"facing=north\": { \"model\": \"flansmod:" + type.shortName +
-										"\" }, \"facing=east\": { \"model\": \"flansmod:" + type.shortName +
-										"\" }, \"facing=south\": { \"model\": \"flansmod:" + type.shortName +
-										"\" }, \"facing=west\": { \"model\": \"flansmod:" + type.shortName + "\" } } }");
-						createJSONFile(new File(blockModelsDir, type.shortName.toLowerCase() + ".json"), "{ \"ambientocclusion\": false, \"textures\": { \"particle\": \"flansmod:items/" + type.iconPath + "\" }, \"elements\": [ {\"from\": [ 0, 0, 0 ],\"to\": [ 0, 0, 0 ], \"faces\": { \"down\":  { \"texture\": \"#down\", \"cullface\": \"down\" }, \"up\":    { \"texture\": \"#up\", \"cullface\": \"up\" }, \"north\": { \"texture\": \"#north\", \"cullface\": \"north\" }, \"south\": { \"texture\": \"#south\", \"cullface\": \"south\" }, \"west\":  { \"texture\": \"#west\", \"cullface\": \"west\" }, \"east\":  { \"texture\": \"#east\", \"cullface\": \"east\" } } } ] }");
-						createJSONFile(new File(itemModelsDir, type.shortName.toLowerCase() + "_item.json"), "{ \"parent\": \"builtin/generated\", \"textures\": { \"layer0\": \"flansmod:items/" + type.iconPath + "\" }, \"display\": { \"thirdperson\": { \"rotation\": [ -90, 0, 0 ], \"translation\": [ 0, 1, -3 ], \"scale\": [ 0.55, 0.55, 0.55 ] }, \"firstperson\": { \"rotation\": [ 0, -135, 25 ], \"translation\": [ 0, 4, 2 ], \"scale\": [ 1.7, 1.7, 1.7 ] } } }");
-					}
-					//Create the item JSON for normal items
-					else if(typeToCheckFor != EnumType.team && typeToCheckFor != EnumType.playerClass)
-					{
-						createJSONFile(new File(itemModelsDir, type.shortName.toLowerCase() + ".json"), "{ \"parent\": \"builtin/generated\", \"textures\": { \"layer0\": \"flansmod:items/" + type.iconPath + "\" }, \"display\": { "
-								+ "\"thirdperson_lefthand\": { \"rotation\": [ 0, 90, -35 ], \"translation\": [ 0, 1.25, -2.5 ], \"scale\": [ 0.85, 0.85, 0.85 ] }, "
-								+ "\"thirdperson_righthand\": { \"rotation\": [ 0, 90, -35 ], \"translation\": [ 0, 1.25, -2.5 ], \"scale\": [ 0.85, 0.85, 0.85 ] }, "
-								+ "\"firstperson_lefthand\": { \"rotation\": [ 0, -45, 25 ], \"translation\": [ 0, 4, 2 ], \"scale\": [ 0.85, 0.85, 0.85 ] }, "
-								+ "\"firstperson_righthand\": { \"rotation\": [ 0, -45, 25 ], \"translation\": [ 0, 4, 2 ], \"scale\": [ 0.85, 0.85, 0.85 ] }"
-								+ " } }");
+						createJSONFile(new File(itemModelsDir, type.shortName.toLowerCase() + ".json"),
+								"{ \"parent\": \"minecraft:item/generated\", \"textures\": { \"layer0\": \"flansmod:items/" + type.iconPath + "\" } }");
 					}
 				}
 			}
 			catch(Exception e)
 			{
-				FlansMod.log.throwing(e);
+				FlansMod.log.error(e.getMessage());
 			}
 		}
 	}
-	
+
 	private void createJSONFile(File file, String contents) throws Exception
 	{
 		if(FlansMod.forceUpdateJSONs)
@@ -686,7 +615,7 @@ public class ClientProxy extends CommonProxy
 				if(!file.delete())
 					FlansMod.log.warn("FAILED TO DELETE");
 			}
-			
+
 			file.createNewFile();
 			BufferedWriter out = new BufferedWriter(new FileWriter(file));
 			out.write(contents);

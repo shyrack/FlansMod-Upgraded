@@ -3,10 +3,9 @@ package com.flansmod.common.teams;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
-import net.minecraftforge.common.ForgeChunkManager.Ticket;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.Level;
 
 import com.flansmod.common.FlansMod;
 
@@ -14,12 +13,11 @@ public class TeamsMap
 {
 	public String shortName;
 	public String name;
-	public Ticket chunkLoadingTicket;
 	public ArrayList<ITeamBase> bases = new ArrayList<>();
 	public int minPlayers = 0, maxPlayers = 1000000;
 	public ArrayList<PermanentBaseData> permanentBaseData = new ArrayList<>();
 	
-	public TeamsMap(World world, String sn, String n)
+	public TeamsMap(Level world, String sn, String n)
 	{
 		shortName = sn;
 		name = n;
@@ -64,7 +62,7 @@ public class TeamsMap
 		for(ITeamObject object : base.getObjects())
 		{
 			if(object.isSpawnPoint())
-				data.spawnPoints.add(new BlockPos(object.getPosX(), object.getPosY(), object.getPosZ()));
+				data.spawnPoints.add(BlockPos.containing(object.getPosX(), object.getPosY(), object.getPosZ()));
 		}
 	}
 	
@@ -117,34 +115,34 @@ public class TeamsMap
 	{
 	}
 	
-	public TeamsMap(World world, NBTTagCompound tags)
+	public TeamsMap(Level world, CompoundTag tags)
 	{
-		shortName = tags.getString("ShortName");
-		name = tags.getString("Name");
-		minPlayers = tags.getInteger("MinPlayers");
-		maxPlayers = tags.getInteger("MaxPlayers");
+		shortName = tags.getStringOr("ShortName", "");
+		name = tags.getStringOr("Name", "");
+		minPlayers = tags.getIntOr("MinPlayers", 0);
+		maxPlayers = tags.getIntOr("MaxPlayers", 0);
 		
-		int iNumBases = tags.getInteger("NumBases");
+		int iNumBases = tags.getIntOr("NumBases", 0);
 		for(int i = 0; i < iNumBases; i++)
 		{
 			PermanentBaseData data = new PermanentBaseData();
-			data.readBaseFromNBT(tags.getCompoundTag("Base_" + i));
+			data.readBaseFromNBT(tags.getCompoundOrEmpty("Base_" + i));
 			permanentBaseData.add(data);
 		}
 	}
 	
-	public void writeToNBT(NBTTagCompound tags)
+	public void writeToNBT(CompoundTag tags)
 	{
-		tags.setString("ShortName", shortName);
-		tags.setString("Name", name);
-		tags.setInteger("MinPlayers", minPlayers);
-		tags.setInteger("MaxPlayers", maxPlayers);
-		tags.setInteger("NumBases", permanentBaseData.size());
+		tags.putString("ShortName", shortName);
+		tags.putString("Name", name);
+		tags.putInt("MinPlayers", minPlayers);
+		tags.putInt("MaxPlayers", maxPlayers);
+		tags.putInt("NumBases", permanentBaseData.size());
 		for(int i = 0; i < permanentBaseData.size(); i++)
 		{
-			NBTTagCompound baseTags = new NBTTagCompound();
+			CompoundTag baseTags = new CompoundTag();
 			permanentBaseData.get(i).writeBaseToNBT(baseTags);
-			tags.setTag("Base_" + i, baseTags);
+			tags.put("Base_" + i, baseTags);
 		}
 	}
 }

@@ -1,46 +1,49 @@
 package com.flansmod.apocalypse.common.entity;
 
 import com.flansmod.apocalypse.common.FlansModApocalypse;
-import com.flansmod.apocalypse.common.world.buildings.WorldGenBossPillar;
 import com.flansmod.common.FlansMod;
+import com.flansmod.common.ModEntities;
 import com.flansmod.common.guns.EntityDamageSourceFlan;
 import com.flansmod.common.guns.ItemGun;
 import com.flansmod.common.network.PacketPlaySound;
 
-import net.minecraft.enchantment.EnchantmentHelper;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLiving;
-import net.minecraft.entity.MoverType;
-import net.minecraft.entity.SharedMonsterAttributes;
-import net.minecraft.entity.item.EntityItem;
-import net.minecraft.entity.item.EntityTNTPrimed;
-import net.minecraft.entity.monster.EntityShulker;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.init.Blocks;
-import net.minecraft.init.Items;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.network.datasync.DataParameter;
-import net.minecraft.network.datasync.DataSerializers;
-import net.minecraft.network.datasync.EntityDataManager;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.EnumHand;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.BossInfo;
-import net.minecraft.world.BossInfoServer;
-import net.minecraft.world.World;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.BossEvent;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.MoverType;
+import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.item.PrimedTnt;
+import net.minecraft.server.level.ServerBossEvent;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.tags.DamageTypeTags;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.level.Level;
 
-public class EntitySkullBoss extends EntityLiving
+public class EntitySkullBoss extends Mob
 {
-    protected static final DataParameter<Byte> ACTION = EntityDataManager.<Byte>createKey(EntitySkullBoss.class, DataSerializers.BYTE);
-    protected static final DataParameter<Integer> LOOKING_AT_ENTITY = EntityDataManager.<Integer>createKey(EntitySkullBoss.class, DataSerializers.VARINT);
-    private final BossInfoServer bossInfo = (BossInfoServer)(new BossInfoServer(this.getDisplayName(), BossInfo.Color.WHITE, BossInfo.Overlay.PROGRESS)).setDarkenSky(true);
+	protected Level world;
+    protected static final EntityDataAccessor<Byte> ACTION = SynchedEntityData.defineId(EntitySkullBoss.class, EntityDataSerializers.BYTE);
+    protected static final EntityDataAccessor<Integer> LOOKING_AT_ENTITY = SynchedEntityData.defineId(EntitySkullBoss.class, EntityDataSerializers.INT);
+    private final ServerBossEvent bossInfo = (ServerBossEvent)new ServerBossEvent(java.util.UUID.randomUUID(), this.getDisplayName(), BossEvent.BossBarColor.WHITE, BossEvent.BossBarOverlay.PROGRESS).setDarkenScreen(true);
     private int timeInCurrentMode = 0;
-    private EnumAction prevAction = EnumAction.IDLE;
+    private UseAnim prevAction = UseAnim.IDLE;
     
-    public enum EnumAction
+    public enum UseAnim
     {
     	IDLE,
     	LAUGH,
@@ -56,7 +59,7 @@ public class EntitySkullBoss extends EntityLiving
     // in degrees
     public float GetSpawnSpin(float partialTicks)
     {
-    	if(GetCurrentAction() == EnumAction.SPAWN_DRONES)
+    	if(GetCurrentAction() == UseAnim.SPAWN_DRONES)
     	{
     		float parametric = (float)(timeInCurrentMode + partialTicks) / (float)kLaughTicks;
     		float smoothstep =  parametric * parametric * (3 - 2 * parametric);
@@ -68,7 +71,7 @@ public class EntitySkullBoss extends EntityLiving
     
     public float GetLaughFactor(float partialTicks)
     {
-    	if(GetCurrentAction() == EnumAction.LAUGH || GetCurrentAction() == EnumAction.SHOOT_TNT)
+    	if(GetCurrentAction() == UseAnim.LAUGH || GetCurrentAction() == UseAnim.SHOOT_TNT)
     	{
     		float result = 0.0f;
     		float parametric = (float)(timeInCurrentMode + partialTicks) / (float)kLaughTicks;
@@ -85,34 +88,37 @@ public class EntitySkullBoss extends EntityLiving
     	return 0.0f;
     }
 	
-	public EntitySkullBoss(World worldIn) 
+	public EntitySkullBoss(EntityType<? extends Mob> type, Level world)
 	{
-		super(worldIn);
-		setSize(16F, 16F);
-		experienceValue = 5000;
+		super(type, world);
+		this.world = level();
+	}
+
+public EntitySkullBoss(Level worldIn)
+	{
+		this(ModEntities.SKULL_BOSS, worldIn);
+		this.world = level();
+
 		setNoGravity(true);
-		enablePersistence();
-		setNoAI(true);
-		ignoreFrustumCheck = true;
+		setPersistenceRequired();
+		setNoAi(true);
+		// TODO APOCALYPSE: ignoreFrustumCheck no longer exists
 	}
 	
-	@Override
-    protected void applyEntityAttributes()
-    {
-        super.applyEntityAttributes();
-        this.getEntityAttribute(SharedMonsterAttributes.MAX_HEALTH).setBaseValue(1024.0D);
-        //this.getEntityAttribute(SharedMonsterAttributes.ARMOR).setBaseValue(10d);
-        //this.getEntityAttribute(SharedMonsterAttributes.ARMOR_TOUGHNESS).setBaseValue(10d);
-    }
+	public static AttributeSupplier.Builder createAttributes()
+	{
+		return Mob.createMobAttributes()
+				.add(Attributes.MAX_HEALTH, 1024.0D);
+	}
 	
     /**
      * Add the given player to the list of players tracking this entity. For instance, a player may track a boss in
      * order to view its associated boss bar.
      */
 	@Override
-    public void addTrackingPlayer(EntityPlayerMP player)
+    public void startSeenByPlayer(ServerPlayer player)
     {
-        super.addTrackingPlayer(player);
+        super.startSeenByPlayer(player);
         this.bossInfo.addPlayer(player);
     }
 
@@ -121,32 +127,32 @@ public class EntitySkullBoss extends EntityLiving
      * more information on tracking.
      */
 	@Override
-    public void removeTrackingPlayer(EntityPlayerMP player)
+    public void stopSeenByPlayer(ServerPlayer player)
     {
-        super.removeTrackingPlayer(player);
+        super.stopSeenByPlayer(player);
         this.bossInfo.removePlayer(player);
     }
 	
-	private void SwitchAction(EnumAction action)
+	private void SwitchAction(UseAnim action)
 	{
-		dataManager.set(ACTION, (byte)action.ordinal());
+		entityData.set(ACTION, (byte)action.ordinal());
 		timeInCurrentMode = 0;
 	}
 	
-	public EnumAction GetCurrentAction()
+	public UseAnim GetCurrentAction()
 	{
-		return EnumAction.values()[dataManager.get(ACTION)];
+		return UseAnim.values()[entityData.get(ACTION)];
 	}
 	
 	@Override 
-	public void onUpdate()
+	public void tick()
 	{
-		super.onUpdate();
+		super.tick();
 		
 		timeInCurrentMode++;
 		this.fallDistance = 0f;
 		
-		EnumAction currentAction = GetCurrentAction();
+		UseAnim currentAction = GetCurrentAction();
 		if(currentAction != prevAction)
 		{
 			// For clients, we just get a data update, so check here for a change
@@ -154,15 +160,14 @@ public class EntitySkullBoss extends EntityLiving
 			prevAction = currentAction;
 		}
 		
-		if(!world.isRemote) 
+		if(!world.isClientSide()) 
 		{
 			float lerpSpeed = 0.1f;
-			float targetYHeight = 180f + (float)Math.sin(ticksExisted / 200f) * 40f;
-			this.motionX -= this.posX * lerpSpeed / 20f; 
-			this.motionZ -= this.posZ * lerpSpeed / 20f; 
-			this.motionY = (targetYHeight - this.posY) * lerpSpeed / 20f; 
+			float targetYHeight = 180f + (float)Math.sin(tickCount / 200f) * 40f;
+			this.setDeltaMovement(this.getDeltaMovement().x - this.getX() * lerpSpeed / 20f, this.getDeltaMovement().y, this.getDeltaMovement().z - this.getZ() * lerpSpeed / 20f);
+			this.setDeltaMovement(this.getDeltaMovement().x, (targetYHeight - this.getY()) * lerpSpeed / 20f, this.getDeltaMovement().z);
 			
-			this.move(MoverType.SELF, motionX, motionY, motionZ);
+			this.move(MoverType.SELF, this.getDeltaMovement());
 									
 			switch(currentAction)
 			{
@@ -170,13 +175,13 @@ public class EntitySkullBoss extends EntityLiving
 				{
 					if(timeInCurrentMode >= 20)	// After 1s in idle, choose another mode
 					{
-						switch(rand.nextInt(3))
+						switch(random.nextInt(3))
 						{
-							case 1: SwitchAction(EnumAction.LAUGH); break;
-							case 2: SwitchAction(EnumAction.SPAWN_DRONES); break;
-							case 0: SwitchAction(EnumAction.SHOOT_TNT); break;
+							case 1: SwitchAction(UseAnim.LAUGH); break;
+							case 2: SwitchAction(UseAnim.SPAWN_DRONES); break;
+							case 0: SwitchAction(UseAnim.SHOOT_TNT); break;
 							
-							default: SwitchAction(EnumAction.SHOOT_TNT); break;
+							default: SwitchAction(UseAnim.SHOOT_TNT); break;
 						}
 					}
 					break;
@@ -185,18 +190,18 @@ public class EntitySkullBoss extends EntityLiving
 				{
 					if(timeInCurrentMode == 2)
 					{
-						PacketPlaySound.sendSoundPacket(posX, posY, posZ, FlansMod.soundRange, dimension, "skullboss_laugh", false);
+						PacketPlaySound.sendSoundPacket(getX(), getY(), getZ(), FlansMod.soundRange, com.flansmod.common.guns.GunUtil.getDimensionId(world), "skullboss_laugh", false);
 						
 					}
 					
 					if(timeInCurrentMode % 5 == 0)
 					{
-						world.createExplosion(this, posX + rand.nextGaussian() * 10d, posY + rand.nextGaussian() * 10d, posZ + rand.nextGaussian() * 10d, 10f, false);
+						world.explode(this, getX() + random.nextGaussian() * 10d, getY() + random.nextGaussian() * 10d, getZ() + random.nextGaussian() * 10d, 10f, Level.ExplosionInteraction.NONE);
 					}
 					
 					if(timeInCurrentMode >= kLaughTicks)
 					{						
-						SwitchAction(EnumAction.IDLE);
+						SwitchAction(UseAnim.IDLE);
 					}
 					break;
 				}
@@ -204,27 +209,28 @@ public class EntitySkullBoss extends EntityLiving
 				{
 					if(timeInCurrentMode == 2)
 					{
-						PacketPlaySound.sendSoundPacket(posX, posY, posZ, FlansMod.soundRange, dimension, "skullboss_spawn", false);
+						PacketPlaySound.sendSoundPacket(getX(), getY(), getZ(), FlansMod.soundRange, com.flansmod.common.guns.GunUtil.getDimensionId(world), "skullboss_spawn", false);
 						
 						EntitySkullDrone drone = new EntitySkullDrone(world);
-						drone.setPosition(posX, posY - 5f, posZ);
-						ItemStack loadedGun = FlansModApocalypse.getLootGenerator().getRandomLoadedGun(rand, false);
-						drone.setHeldItem(EnumHand.MAIN_HAND, loadedGun);
-						drone.setInventorySlotContents(0, ((ItemGun)loadedGun.getItem()).getBulletItemStack(loadedGun, 0).copy());
+						drone.setPos(getX(), getY() - 5f, getZ());
+						ItemStack loadedGun = FlansModApocalypse.getLootGenerator().getRandomLoadedGun(new java.util.Random(), false);
+						drone.setItemInHand(InteractionHand.MAIN_HAND, loadedGun);
+						drone.setItem(0, ((ItemGun)loadedGun.getItem()).getBulletItemStack(loadedGun, 0).copy());
 						
-						int lookingAtID = dataManager.get(LOOKING_AT_ENTITY);
+						int lookingAtID = entityData.get(LOOKING_AT_ENTITY);
 						if(lookingAtID != 0)
 						{
-							Entity target = world.getEntityByID(lookingAtID);
-							drone.SetTarget(target);
+							Entity target = world.getEntity(lookingAtID);
+							if(target != null)
+								drone.SetTarget(target);
 						}
-						world.spawnEntity(drone);
+						((ServerLevel)world).addFreshEntity(drone);
 						
 					}
 					
 					if(timeInCurrentMode >= kLaughTicks)
 					{
-						SwitchAction(EnumAction.IDLE);
+						SwitchAction(UseAnim.IDLE);
 					}
 					break;
 				}
@@ -232,31 +238,31 @@ public class EntitySkullBoss extends EntityLiving
 				{
 					if(timeInCurrentMode % 20 == 0)
 					{
-						int lookingAtID = dataManager.get(LOOKING_AT_ENTITY);
+						int lookingAtID = entityData.get(LOOKING_AT_ENTITY);
 						if(lookingAtID != 0)
 						{
-							Entity target = world.getEntityByID(lookingAtID);
+							Entity target = world.getEntity(lookingAtID);
 							if(target != null)
 							{
-								EntityTNTPrimed tnt = new EntityTNTPrimed(world);
-								Vec3d dPos = new Vec3d(
-										target.posX - posX,
-										target.posY - posY,
-										target.posX - posX);
+								PrimedTnt tnt = new PrimedTnt(EntityType.TNT, world);
+								Vec3 dPos = new Vec3(
+										target.getX() - getX(),
+										target.getY() - getY(),
+										target.getZ() - getX());
 								
 								double distance = dPos.length();
 								dPos = dPos.normalize();
 								dPos = dPos.scale(2d);
 								
 								tnt.setNoGravity(true);
-								tnt.setPosition(posX + dPos.x, posY + dPos.y, posZ + dPos.z);
-								tnt.setVelocity(
-										(target.posX - posX) / 40d, 
-										(target.posY - posY) / 40d, 
-										(target.posZ - posZ) / 40d);
-								world.spawnEntity(tnt);
+								tnt.setPos(getX() + dPos.x, getY() + dPos.y, getZ() + dPos.z);
+								tnt.setDeltaMovement(
+										(target.getX() - getX()) / 40d, 
+										(target.getY() - getY()) / 40d, 
+										(target.getZ() - getZ()) / 40d);
+								((ServerLevel)world).addFreshEntity(tnt);
 								
-								PacketPlaySound.sendSoundPacket(posX, posY, posZ, FlansMod.soundRange, dimension, "fire.ignite", true);
+								PacketPlaySound.sendSoundPacket(getX(), getY(), getZ(), FlansMod.soundRange, com.flansmod.common.guns.GunUtil.getDimensionId(world), "fire.ignite", true);
 
 							}
 						}
@@ -264,58 +270,58 @@ public class EntitySkullBoss extends EntityLiving
 					
 					if(timeInCurrentMode >= kLaughTicks)
 					{
-						SwitchAction(EnumAction.IDLE);
+						SwitchAction(UseAnim.IDLE);
 					}
 					break;
 				}
 			}
 		}
 		
-		int lookingAtID = dataManager.get(LOOKING_AT_ENTITY);
+		int lookingAtID = entityData.get(LOOKING_AT_ENTITY);
 		if(lookingAtID != 0)
 		{
-			Entity entity = world.getEntityByID(lookingAtID);
-			if(entity == null || entity.isDead)
+			Entity entity = world.getEntity(lookingAtID);
+			if(entity == null || entity.isRemoved())
 			{
-				if(!world.isRemote)
-					dataManager.set(LOOKING_AT_ENTITY, 0);
+				if(!world.isClientSide())
+					entityData.set(LOOKING_AT_ENTITY, 0);
 			}
-			else if(!world.isRemote)
+			else if(!world.isClientSide())
 			{
-				double dX = entity.posX - posX;
-				double dY = entity.posY - posY;
-				double dZ = entity.posZ - posZ;
+				double dX = entity.getX() - getX();
+				double dY = entity.getY() - getY();
+				double dZ = entity.getZ() - getZ();
 				
 				float targetYaw = (float)(Math.atan2(dZ, dX) * 180d / Math.PI);
 				float targetPitch = (float)(Math.atan2(dY, Math.sqrt(dX * dX + dZ * dZ)) * 180d / Math.PI);
 				
-				float deltaYaw = targetYaw - rotationYaw;
-				float deltaPitch = targetPitch - rotationPitch;
+				float deltaYaw = targetYaw - getYRot();
+				float deltaPitch = targetPitch - getXRot();
 				
 				while(deltaYaw > 180f)
 					deltaYaw -= 360f;
 				while(deltaYaw < -180f)
 					deltaYaw += 360f;
 				
-				rotationYaw += deltaYaw / 20f;
-				rotationPitch += deltaPitch / 20f;
+				setYRot(getYRot() + deltaYaw / 20f);
+				setXRot(getXRot() + deltaPitch / 20f);
 			}
 		}
 		
-		this.bossInfo.setPercent(this.getHealth() / this.getMaxHealth());
+		this.bossInfo.setProgress(this.getHealth() / this.getMaxHealth());
 	}
 	
 	public void SetTarget(Entity target)
 	{
-		dataManager.set(LOOKING_AT_ENTITY, target == null ? 0 : target.getEntityId());
+		entityData.set(LOOKING_AT_ENTITY, target == null ? 0 : target.getId());
 	}
 	
 	@Override
-    public boolean attackEntityFrom(DamageSource source, float amount)
+    public boolean hurtServer(ServerLevel level, DamageSource source, float amount)
     {
-		if(source.isExplosion())
+		if(source.is(DamageTypeTags.IS_EXPLOSION))
 			return false;
-		if(source.getTrueSource() instanceof EntitySkullDrone || 
+		if(source.getEntity() instanceof EntitySkullDrone || 
 				source instanceof EntityDamageSourceFlan && ((EntityDamageSourceFlan)source).getCausedPlayer() == null)
 		{
 			return false; 
@@ -324,7 +330,7 @@ public class EntitySkullBoss extends EntityLiving
 		if(amount > 99f)
 			amount = 99f;
 		
-		switch(world.getWorldInfo().getDifficulty())
+		switch(world.getDifficulty())
 		{
 			case HARD:
 				amount *= 0.25f;
@@ -338,70 +344,61 @@ public class EntitySkullBoss extends EntityLiving
 				break;
 		}
 		
-		super.attackEntityFrom(source, amount);
-		if(!world.isRemote)
+		super.hurtServer(level, source, amount);
+		if(!world.isClientSide())
 		{
-			Entity sourceEntity = source.getTrueSource();
+			Entity sourceEntity = source.getEntity();
 			if(sourceEntity != null)
-				dataManager.set(LOOKING_AT_ENTITY, sourceEntity.getEntityId());
+				entityData.set(LOOKING_AT_ENTITY, sourceEntity.getId());
 		}
 		return true;
     }
 	
 	@Override
-	protected void entityInit() 
+	protected void defineSynchedData(SynchedEntityData.Builder builder) 
 	{
-		super.entityInit();
-		dataManager.register(ACTION, (byte)0);
-		dataManager.register(LOOKING_AT_ENTITY, 0);
+		super.defineSynchedData(builder);
+		builder.define(ACTION, (byte)0);
+		builder.define(LOOKING_AT_ENTITY, 0);
 		
-		PacketPlaySound.sendSoundPacket(posX, posY, posZ, FlansMod.soundRange, dimension, "skullboss_spawn", true);
+		PacketPlaySound.sendSoundPacket(getX(), getY(), getZ(), FlansMod.soundRange, com.flansmod.common.guns.GunUtil.getDimensionId(world), "skullboss_spawn", true);
 
 	}
 
 	@Override
-	public void readEntityFromNBT(NBTTagCompound tags) 
+	public void readAdditionalSaveData(ValueInput input) 
 	{
-		super.readEntityFromNBT(tags);
-		dataManager.set(ACTION, tags.getByte("Action"));
-		dataManager.set(LOOKING_AT_ENTITY, tags.getInteger("LookingAt"));
+		super.readAdditionalSaveData(input);
+		entityData.set(ACTION, input.getByteOr("Action", (byte)0));
+		entityData.set(LOOKING_AT_ENTITY, input.getIntOr("LookingAt", 0));
 	}
 
 	@Override
-	public void writeEntityToNBT(NBTTagCompound tags) 
+	public void addAdditionalSaveData(ValueOutput output) 
 	{
-		super.writeEntityToNBT(tags);
-		tags.setByte("Action", dataManager.get(ACTION));
-		tags.setInteger("LookingAt", dataManager.get(LOOKING_AT_ENTITY));
+		super.addAdditionalSaveData(output);
+		output.putByte("Action", entityData.get(ACTION));
+		output.putInt("LookingAt", entityData.get(LOOKING_AT_ENTITY));
 	}
 	
-	@Override 
-	public void setDead()
+	@Override
+	protected void dropCustomDeathLoot(ServerLevel level, DamageSource source, boolean maybeBlock)
 	{
-		super.setDead();
+		spawnAtLocation(level, new ItemStack(Items.GOLDEN_APPLE, random.nextInt(4) + 1));
+		spawnAtLocation(level, new ItemStack(Items.TOTEM_OF_UNDYING));
+		// Lots of gunpowder
+		spawnAtLocation(level, new ItemStack(Items.GUNPOWDER, random.nextInt(32) + 1));
+		spawnAtLocation(level, new ItemStack(Items.GUNPOWDER, random.nextInt(32) + 1));
+		spawnAtLocation(level, new ItemStack(Items.GUNPOWDER, random.nextInt(32) + 1));
+		spawnAtLocation(level, new ItemStack(FlansMod.gunpowderBlockItem, random.nextInt(4) + 1));
+		spawnAtLocation(level, new ItemStack(FlansMod.gunpowderBlockItem, random.nextInt(4) + 1));
+		spawnAtLocation(level, new ItemStack(FlansMod.gunpowderBlockItem, random.nextInt(4) + 1));
 		
-		if(!world.isRemote)
+		if(FlansModApocalypse.nukraniumGauntlet != null)
 		{
-			dropItem(Items.GOLDEN_APPLE, rand.nextInt(4) + 1);
-			dropItem(Items.TOTEM_OF_UNDYING, 1);
-			// Lots of gunpowder
-			dropItem(Items.GUNPOWDER, rand.nextInt(32) + 1);
-			dropItem(Items.GUNPOWDER, rand.nextInt(32) + 1);
-			dropItem(Items.GUNPOWDER, rand.nextInt(32) + 1);
-			dropItem(FlansMod.gunpowderBlockItem, rand.nextInt(4) + 1);
-			dropItem(FlansMod.gunpowderBlockItem, rand.nextInt(4) + 1);
-			dropItem(FlansMod.gunpowderBlockItem, rand.nextInt(4) + 1);
-			
-			if(FlansModApocalypse.nukraniumGauntlet != null)
-			{
-				ItemStack gauntlet = new ItemStack(FlansModApocalypse.nukraniumGauntlet);
-				// 50% enchanted, 50% clean
-				if(rand.nextBoolean())
-				{
-					EnchantmentHelper.addRandomEnchantment(world.rand, gauntlet, 50, true);
-				}
-				entityDropItem(gauntlet, 0.0f);
-			}
+			ItemStack gauntlet = new ItemStack(FlansModApocalypse.nukraniumGauntlet);
+			// TODO APOCALYPSE: 1.12.2 gave a 50% chance of a random enchantment; EnchantmentHelper.addRandomEnchantment no longer exists
+			spawnAtLocation(level, gauntlet);
 		}
 	}
 }

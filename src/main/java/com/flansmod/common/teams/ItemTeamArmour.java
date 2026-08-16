@@ -1,166 +1,128 @@
 package com.flansmod.common.teams;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
+import com.flansmod.common.ModItems;
+import java.util.function.Consumer;
 
-import com.google.common.collect.Multimap;
-import net.minecraft.client.model.ModelBiped;
-import net.minecraft.client.util.ITooltipFlag;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.SharedMonsterAttributes;
-import net.minecraft.entity.ai.attributes.AttributeModifier;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.SoundEvents;
-import net.minecraft.inventory.EntityEquipmentSlot;
-import net.minecraft.item.ItemArmor;
-import net.minecraft.item.ItemStack;
-import net.minecraft.potion.Potion;
-import net.minecraft.potion.PotionEffect;
-import net.minecraft.util.DamageSource;
-import net.minecraft.world.World;
-import net.minecraftforge.common.ISpecialArmor;
-import net.minecraftforge.common.util.EnumHelper;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.core.Holder;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.EquipmentSlotGroup;
+import net.minecraft.world.entity.ai.attributes.Attribute;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.ItemAttributeModifiers;
+import net.minecraft.world.item.component.TooltipDisplay;
 
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.types.IFlanItem;
 import com.flansmod.common.types.InfoType;
 
-public class ItemTeamArmour extends ItemArmor implements IFlanItem //, ISpecialArmor
+public class ItemTeamArmour extends Item implements IFlanItem
 {
 	public ArmourType type;
-	private ArmorMaterial material;
-	protected static final UUID[] uuid = new UUID[]{UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID()};
+	
+	protected static final Identifier KNOCKBACK_RESIST_MODIFIER = Identifier.fromNamespaceAndPath("flansmod", "armour_knockback_resist");
+	protected static final Identifier MOVEMENT_SPEED_MODIFIER = Identifier.fromNamespaceAndPath("flansmod", "armour_movement_speed");
+	
+	public ItemTeamArmour(Item.Properties properties)
+	{
+		super(properties);
+	}
 	
 	public ItemTeamArmour(ArmourType t)
 	{
-		super(EnumHelper.addArmorMaterial(
-					t.shortName, 
-					"", 
-					t.Durability, 
-					new int[] {t.DamageReductionAmount, t.DamageReductionAmount, t.DamageReductionAmount, t.DamageReductionAmount}, 
-					t.Enchantability, 
-					SoundEvents.ITEM_ARMOR_EQUIP_GENERIC, 
-					t.Toughness), 
-				0, 
-				EntityEquipmentSlot.values()[5 - t.type]);
+		super(buildProperties(t).setId(ModItems.itemKey(t)));
 		type = t;
 		type.item = this;
-		setRegistryName(type.shortName);
-		setCreativeTab(FlansMod.tabFlanTeams);
-		
-		if(type.Durability > 0)
-			setMaxDamage(type.Durability);
-		else
-			setMaxDamage(0);
 	}
 	
-	public ItemTeamArmour(ItemArmor.ArmorMaterial armorMaterial, int renderIndex, int armourType)
+	public Item setTranslationKey(String key)
 	{
-		super(armorMaterial, renderIndex, EntityEquipmentSlot.values()[5 - armourType]);
+		return this;
 	}
 	
-	@Override
-    public int getItemEnchantability()
-    {
-        return type.Enchantability;
-    }
-	
-	/*
-	@Override
-	public ArmorProperties getProperties(EntityLivingBase player, ItemStack armor, DamageSource source, double damage, int slot)
+	private static Item.Properties buildProperties(ArmourType t)
 	{
-		return new ArmorProperties(1, type.defence, Integer.MAX_VALUE);
+		Item.Properties properties = new Item.Properties().stacksTo(1)
+			.equippable(getEquipmentSlotForType(t.type));
+		if(t.Enchantability > 0)
+			properties = properties.enchantable(t.Enchantability);
+		if(t.Durability > 0)
+			properties = properties.durability(t.Durability);
+		ItemAttributeModifiers modifiers = ItemAttributeModifiers.EMPTY
+			.withModifierAdded(Attributes.KNOCKBACK_RESISTANCE, new AttributeModifier(KNOCKBACK_RESIST_MODIFIER, t.knockbackModifier, AttributeModifier.Operation.ADD_VALUE), getSlotGroupForType(t.type))
+			.withModifierAdded(Attributes.MOVEMENT_SPEED, new AttributeModifier(MOVEMENT_SPEED_MODIFIER, t.moveSpeedModifier - 1.0f, AttributeModifier.Operation.ADD_MULTIPLIED_BASE), getSlotGroupForType(t.type));
+		return properties.component(DataComponents.ATTRIBUTE_MODIFIERS, modifiers);
 	}
 	
-	@Override
-	public int getArmorDisplay(EntityPlayer player, ItemStack armor, int slot)
+	public static EquipmentSlot getEquipmentSlotForType(int type)
 	{
-		return (int)(type.defence * 20);
+		switch(type)
+		{
+			case 0: return EquipmentSlot.HEAD;
+			case 1: return EquipmentSlot.CHEST;
+			case 2: return EquipmentSlot.LEGS;
+			default: return EquipmentSlot.FEET;
+		}
 	}
 	
-	@Override
-	public void damageArmor(EntityLivingBase entity, ItemStack stack, DamageSource source, int damage, int slot)
+	public static EquipmentSlotGroup getSlotGroupForType(int type)
 	{
-		//Do nothing to the armour. It should not break as that would leave the player's team ambiguous
-	}
-	*/
-	
-	@Override
-	public String getArmorTexture(ItemStack stack, Entity entity, EntityEquipmentSlot slot, String armourType)
-	{
-		return "flansmod:armor/" + type.armourTextureName + "_" + (type.type == 2 ? "2" : "1") + ".png";
-	}
-	
-	@Override
-	@SideOnly(Side.CLIENT)
-	public ModelBiped getArmorModel(EntityLivingBase living, ItemStack stack, EntityEquipmentSlot slot, ModelBiped defaultModel)
-	{
-		return type.model;
+		switch(type)
+		{
+			case 0: return EquipmentSlotGroup.HEAD;
+			case 1: return EquipmentSlotGroup.CHEST;
+			case 2: return EquipmentSlotGroup.LEGS;
+			default: return EquipmentSlotGroup.FEET;
+		}
 	}
 	
 	@Override
-	public void addInformation(ItemStack stack, World world, List<String> lines, ITooltipFlag b)
+	public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay display, Consumer<Component> tooltip, TooltipFlag flag)
 	{
 		if(type.description != null)
 		{
-			Collections.addAll(lines, type.description.split("_"));
+			for(String line : type.description.split("_"))
+				tooltip.accept(Component.literal(line));
 		}
 		if(Math.abs(type.jumpModifier - 1F) > 0.01F)
-			lines.add("\u00a73+" + (int)((type.jumpModifier - 1F) * 100F) + "% Jump Height");
+			tooltip.accept(Component.literal("\u00a73+" + (int)((type.jumpModifier - 1F) * 100F) + "% Jump Height"));
 		if(type.smokeProtection)
-			lines.add("\u00a72+Smoke Protection");
+			tooltip.accept(Component.literal("\u00a72+Smoke Protection"));
 		if(type.nightVision)
-			lines.add("\u00a72+Night Vision");
+			tooltip.accept(Component.literal("\u00a72+Night Vision"));
 		if(type.negateFallDamage)
-			lines.add("\u00a72+Negates Fall Damage");
+			tooltip.accept(Component.literal("\u00a72+Negates Fall Damage"));
 	}
 	
-	protected static final UUID KNOCKBACK_RESIST_MODIFIER = UUID.fromString("77777777-645C-4F38-A497-9C13A33DB5CF");
-	protected static final UUID MOVEMENT_SPEED_MODIFIER = UUID.fromString("99999999-4180-4865-B01B-BCCE9785ACA3");
-	
 	@Override
-	public Multimap<String, AttributeModifier> getAttributeModifiers(EntityEquipmentSlot slot, ItemStack stack)
+	public void inventoryTick(ItemStack stack, ServerLevel level, Entity entity, EquipmentSlot slot)
 	{
-		Multimap multimap = super.getAttributeModifiers(slot, stack);
-		/** 0 = Helmet, 1 = Chestplate, 2 = Legs, 3 = Shoes */
-		boolean bShouldAdd = false;
-		switch(type.type)
+		if(entity instanceof Player player && slot == getEquipmentSlotForType(type.type))
 		{
-			case 0: bShouldAdd = slot == EntityEquipmentSlot.HEAD;
-				break;
-			case 1: bShouldAdd = slot == EntityEquipmentSlot.CHEST;
-				break;
-			case 2: bShouldAdd = slot == EntityEquipmentSlot.LEGS;
-				break;
-			case 3: bShouldAdd = slot == EntityEquipmentSlot.FEET;
-				break;
+			if(type.nightVision && FlansMod.ticker % 25 == 0)
+				player.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, 250)); // 16 = night vision
+			if(type.jumpModifier > 1.01F && FlansMod.ticker % 25 == 0)
+				player.addEffect(new MobEffectInstance(MobEffects.JUMP_BOOST, 250, (int)((type.jumpModifier - 1F) * 2F), true, false)); // 8 = jump boost
+			if(type.negateFallDamage)
+				player.fallDistance = 0F;
 		}
-		if(bShouldAdd)
-		{
-			multimap.put(SharedMonsterAttributes.KNOCKBACK_RESISTANCE.getName(), new AttributeModifier(uuid[type.type], "KnockbackResist", type.knockbackModifier, 0));
-			multimap.put(SharedMonsterAttributes.MOVEMENT_SPEED.getName(), new AttributeModifier(uuid[type.type], "MovementSpeed", type.moveSpeedModifier - 1.0f, 2));
-		}
-		return multimap;
 	}
 	
 	@Override
 	public InfoType getInfoType()
 	{
 		return type;
-	}
-	
-	@Override
-	public void onArmorTick(World world, EntityPlayer player, ItemStack itemStack)
-	{
-		if(type.nightVision && FlansMod.ticker % 25 == 0)
-			player.addPotionEffect(new PotionEffect(Potion.getPotionById(16), 250)); // 16 = night vision
-		if(type.jumpModifier > 1.01F && FlansMod.ticker % 25 == 0)
-			player.addPotionEffect(new PotionEffect(Potion.getPotionById(8), 250, (int)((type.jumpModifier - 1F) * 2F), true, false)); // 8 = jump boost
-		if(type.negateFallDamage)
-			player.fallDistance = 0F;
 	}
 }

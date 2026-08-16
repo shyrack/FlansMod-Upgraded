@@ -1,46 +1,46 @@
 package com.flansmod.common.driveables.mechas;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
-import io.netty.buffer.ByteBuf;
-import io.vavr.Tuple;
-import io.vavr.Tuple3;
-import io.vavr.collection.List;
-import io.vavr.control.Option;
-import net.minecraft.block.Block;
-import net.minecraft.block.material.Material;
-import net.minecraft.block.state.IBlockState;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.MoverType;
-import net.minecraft.entity.item.EntityItem;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.init.Blocks;
-import net.minecraft.init.Items;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemBlock;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.EnumHand;
-import net.minecraft.util.NonNullList;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.RayTraceResult;
-import net.minecraft.util.math.RayTraceResult.Type;
-import net.minecraft.world.GameType;
-import net.minecraft.world.World;
-import net.minecraft.world.WorldServer;
-import net.minecraftforge.common.ForgeHooks;
-import net.minecraftforge.fml.common.network.ByteBufUtils;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.MoverType;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.core.NonNullList;
+import net.minecraft.core.BlockPos;
+import net.minecraft.util.Mth;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.HitResult.Type;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.gamerules.GameRules;
+import net.minecraft.world.level.GameType;
+import net.minecraft.tags.DamageTypeTags;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.component.CustomData;
 
 import com.flansmod.client.debug.EntityDebugVector;
 import com.flansmod.client.model.GunAnimations;
 import com.flansmod.common.FlansMod;
+import com.flansmod.common.ModEntities;
 import com.flansmod.common.RotatedAxes;
 import com.flansmod.common.driveables.DriveableData;
 import com.flansmod.common.driveables.DriveablePart;
@@ -112,35 +112,41 @@ public class EntityMecha extends EntityDriveable
 	public GunAnimations leftAnimations = new GunAnimations(), rightAnimations = new GunAnimations();
 	boolean couldNotFindFuel;
 	
-	public EntityPlayer placer;
+	public Player placer;
 	
 	public float yOffset;
 	
-	public EntityMecha(World world)
+		public EntityMecha(EntityType<?> type, Level world)
 	{
-		super(world);
-		setSize(2F, 3F);
-		stepHeight = 3;
+		super(type, world);
+		this.world = level();
+	}
+
+public EntityMecha(Level world)
+	{
+		this(ModEntities.MECHA, world);
+		this.world = level();
+
 		legAxes = new RotatedAxes();
 		inventory = new MechaInventory(this);
 	}
 	
-	public EntityMecha(World world, double x, double y, double z, MechaType type, DriveableData data, NBTTagCompound tags)
+	public EntityMecha(Level world, double x, double y, double z, MechaType type, DriveableData data, CompoundTag tags)
 	{
 		super(world, type, data);
+		this.world = level();
 		legAxes = new RotatedAxes();
-		setSize(2F, 3F);
-		stepHeight = 3;
-		setPosition(x, y, z);
+
+		setPos(x, y, z);
 		initType(type, true, false);
 		inventory = new MechaInventory(this, tags);
 	}
 	
-	public EntityMecha(World world, double x, double y, double z, EntityPlayer placer, MechaType type, DriveableData data, NBTTagCompound tags)
+	public EntityMecha(Level world, double x, double y, double z, Player placer, MechaType type, DriveableData data, CompoundTag tags)
 	{
 		this(world, x, y, z, type, data, tags);
-		rotateYaw(placer.rotationYaw + 90F);
-		legAxes.rotateGlobalYaw(placer.rotationYaw + 90F);
+		rotateYaw(placer.getYRot() + 90F);
+		legAxes.rotateGlobalYaw(placer.getYRot() + 90F);
 		prevLegsYaw = legAxes.getYaw();
 		this.placer = placer;
 	}
@@ -149,47 +155,31 @@ public class EntityMecha extends EntityDriveable
 	protected void initType(DriveableType type, boolean firstTime, boolean clientSide)
 	{
 		super.initType(type, firstTime, clientSide);
-		setSize(((MechaType)type).width, ((MechaType)type).height);
 		stepHeight = ((MechaType)type).stepHeight;
+		if(inventory == null)
+			inventory = new MechaInventory(this);
 	}
 	
 	@Override
-	protected void writeEntityToNBT(NBTTagCompound tag)
+	protected void addAdditionalSaveData(net.minecraft.world.level.storage.ValueOutput output)
 	{
-		super.writeEntityToNBT(tag);
-		tag.setFloat("LegsYaw", legAxes.getYaw());
-		tag.setTag("Inventory", inventory.writeToNBT(new NBTTagCompound()));
+		super.addAdditionalSaveData(output);
+		CompoundTag tags = new CompoundTag();
+		tags.putFloat("LegsYaw", legAxes.getYaw());
+		if(inventory != null)
+			inventory.writeToNBT(tags);
+		output.store("FlanDataMecha", CompoundTag.CODEC, tags);
 	}
 	
 	@Override
-	protected void readEntityFromNBT(NBTTagCompound tag)
+	protected void readAdditionalSaveData(net.minecraft.world.level.storage.ValueInput input)
 	{
-		super.readEntityFromNBT(tag);
-		legAxes.setAngles(tag.getFloat("LegsYaw"), 0, 0);
-		inventory.readFromNBT(tag.getCompoundTag("Inventory"));
-	}
-	
-	@Override
-	public void writeSpawnData(ByteBuf data)
-	{
-		super.writeSpawnData(data);
-		ByteBufUtils.writeTag(data, inventory.writeToNBT(new NBTTagCompound()));
-	}
-	
-	@Override
-	public void readSpawnData(ByteBuf data)
-	{
-		super.readSpawnData(data);
-		legAxes.rotateGlobalYaw(axes.getYaw());
-		prevLegsYaw = legAxes.getYaw();
-		
-		inventory.readFromNBT(ByteBufUtils.readTag(data));
-	}
-	
-	@Override
-	public double getYOffset()
-	{
-		return yOffset;
+		super.readAdditionalSaveData(input);
+		CompoundTag tags = input.read("FlanDataMecha", CompoundTag.CODEC).orElse(new CompoundTag());
+		legAxes.setAngles(tags.getFloatOr("LegsYaw", 0F), 0, 0);
+		if(inventory == null)
+			inventory = new MechaInventory(this);
+		inventory.readFromNBT(tags);
 	}
 	
 	@Override
@@ -198,26 +188,26 @@ public class EntityMecha extends EntityDriveable
 	}
 	
 	@Override
-	public boolean processInitialInteract(EntityPlayer entityplayer, EnumHand hand)
+	public InteractionResult interact(Player entityplayer, InteractionHand hand, Vec3 pos)
 	{
-		if(isDead)
-			return false;
-		if(world.isRemote)
-			return false;
+		if(isRemoved())
+			return InteractionResult.PASS;
+		if(world.isClientSide())
+			return InteractionResult.PASS;
 		
 		//If they are using a repair tool, don't put them in
-		ItemStack currentItem = entityplayer.getHeldItemMainhand();
+		ItemStack currentItem = entityplayer.getMainHandItem();
 		if(currentItem != null && currentItem.getItem() instanceof ItemTool && ((ItemTool)currentItem.getItem()).type.healDriveables)
-			return true;
+			return InteractionResult.PASS;
 		
 		MechaType type = getMechaType();
 		//Check each seat in order to see if the player can sit in it
 		for(int i = 0; i <= type.numPassengers; i++)
 		{
 			if(getSeat(i) != null && getSeat(i).processInitialInteract(entityplayer, hand))
-				return true;
+				return InteractionResult.SUCCESS;
 		}
-		return false;
+		return InteractionResult.PASS;
 	}
 	
 	public MechaType getMechaType()
@@ -226,8 +216,7 @@ public class EntityMecha extends EntityDriveable
 	}
 	
 	@Override
-	@SideOnly(Side.CLIENT)
-	public boolean pressKey(int key, EntityPlayer player, boolean isOnEvent)
+	public boolean pressKey(int key, Player player, boolean isOnEvent)
 	{
 		MechaType type = getMechaType();
 		DriveableData data = getDriveableData();
@@ -236,12 +225,12 @@ public class EntityMecha extends EntityDriveable
 		{
 			case 4: //Jump
 			{
-				boolean canThrustCreatively = getSeat(0) != null && getSeat(0).getControllingPassenger() instanceof EntityPlayer
-						&& ((EntityPlayer)getSeat(0).getControllingPassenger()).capabilities.isCreativeMode;
-				if(onGround && (jumpDelay == 0) && (canThrustCreatively || data.fuelInTank > data.engine.fuelConsumption) && isPartIntact(EnumDriveablePart.hips))
+				boolean canThrustCreatively = getSeat(0) != null && getSeat(0).getControllingPassenger() instanceof Player
+						&& ((Player)getSeat(0).getControllingPassenger()).getAbilities().instabuild;
+				if(onGround() && (jumpDelay == 0) && (canThrustCreatively || data.fuelInTank > data.engine.fuelConsumption) && isPartIntact(EnumDriveablePart.hips))
 				{
 					jumpDelay = 20;
-					motionY += type.jumpVelocity;
+					setDeltaMovement(getDeltaMovement().x, getDeltaMovement().y + type.jumpVelocity, getDeltaMovement().z);
 					if(!canThrustCreatively)
 						data.fuelInTank -= data.engine.fuelConsumption;
 				}
@@ -249,8 +238,11 @@ public class EntityMecha extends EntityDriveable
 			}
 			case 7: //Inventory
 			{
-				FlansMod.getPacketHandler().sendToServer(new PacketDriveableGUI(4));
-				((EntityPlayer)getSeat(0).getControllingPassenger()).openGui(FlansMod.INSTANCE, 10, world, chunkCoordX, chunkCoordY, chunkCoordZ);
+				if(world.isClientSide())
+				{
+					FlansMod.getPacketHandler().sendToServer(new PacketDriveableGUI(4));
+					FlansMod.proxy.openDriveableMenu((Player)getSeat(0).getControllingPassenger(), world, this);
+				}
 				return true;
 			}
 			default:
@@ -262,14 +254,14 @@ public class EntityMecha extends EntityDriveable
 	
 	protected boolean creative()
 	{
-		return !(getSeat(0).getControllingPassenger() instanceof EntityPlayer) || ((EntityPlayer)getSeat(0).getControllingPassenger()).capabilities.isCreativeMode;
+		return !(getSeat(0).getControllingPassenger() instanceof Player) || ((Player)getSeat(0).getControllingPassenger()).getAbilities().instabuild;
 	}
 	
 	protected boolean useItem(boolean left)
 	{
 		if(left ? isPartIntact(EnumDriveablePart.leftArm) : isPartIntact(EnumDriveablePart.rightArm))
 		{
-			ItemStack heldStack = left ? inventory.getStackInSlot(EnumMechaSlotType.leftTool) : inventory.getStackInSlot(EnumMechaSlotType.rightTool);
+			ItemStack heldStack = left ? inventory.getItem(EnumMechaSlotType.leftTool) : inventory.getItem(EnumMechaSlotType.rightTool);
 			if(heldStack == null || heldStack.isEmpty())
 				return false;
 			
@@ -285,24 +277,24 @@ public class EntityMecha extends EntityDriveable
 				
 				Vector3f lookOrigin = new Vector3f(
 						(float)mechaType.seats[0].x / 16F,
-						(float)mechaType.seats[0].y / 16F + getSeat(0).getControllingPassenger().getMountedYOffset(),
+						(float)mechaType.seats[0].y / 16F + getSeat(0).getControllingPassenger().getEyeHeight(),
 						(float)mechaType.seats[0].z / 16F);
 				lookOrigin = axes.findLocalVectorGlobally(lookOrigin);
-				Vector3f.add(lookOrigin, new Vector3f(posX, posY, posZ), lookOrigin);
+				Vector3f.add(lookOrigin, new Vector3f((float)getX(), (float)getY(), (float)getZ()), lookOrigin);
 				
 				Vector3f lookVector = axes.findLocalVectorGlobally(getSeat(0).looking.findLocalVectorGlobally(new Vector3f(reach, 0F, 0F)));
 				
-				if(FlansMod.DEBUG && world.isRemote)
-					world.spawnEntity(new EntityDebugVector(world, lookOrigin, lookVector, 20));
+				if(FlansMod.DEBUG && world.isClientSide())
+					world.addFreshEntity(new EntityDebugVector(world, lookOrigin, lookVector, 20));
 				
 				Vector3f lookTarget = Vector3f.add(lookVector, lookOrigin, null);
 				
-				RayTraceResult hit = world.rayTraceBlocks(lookOrigin.toVec3(), lookTarget.toVec3());
+				HitResult hit = world.clip(new ClipContext(lookOrigin.toVec3(), lookTarget.toVec3(), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, this));
 				
-				//RayTraceResult hit = ((EntityLivingBase)seats[0].riddenByEntity).rayTrace(reach, 1F);
-				if(hit != null && hit.typeOfHit == Type.BLOCK)
+				//HitResult hit = ((LivingEntity)seats[0].riddenByEntity).rayTrace(reach, 1F);
+				if(hit != null && hit.getType() == Type.BLOCK)
 				{
-					BlockPos pos = hit.getBlockPos();
+					BlockPos pos = ((net.minecraft.world.phys.BlockHitResult)hit).getBlockPos();
 					if(breakingBlock == null || breakingBlock.x != pos.getX() || breakingBlock.y != pos.getY() || breakingBlock.z != pos.getZ())
 						breakingProgress = 0F;
 					breakingBlock = new Vector3i(pos.getX(), pos.getY(), pos.getZ());
@@ -326,7 +318,7 @@ public class EntityMecha extends EntityDriveable
 					for(; bulletID < gunType.numAmmoItemsInGun; bulletID++)
 					{
 						ItemStack checkingStack = gunItem.getBulletItemStack(heldStack, bulletID);
-						if(checkingStack != null && !checkingStack.isEmpty() && checkingStack.getItemDamage() < checkingStack.getMaxDamage())
+						if(checkingStack != null && !checkingStack.isEmpty() && checkingStack.getDamageValue() < checkingStack.getMaxDamage())
 						{
 							bulletStack = checkingStack;
 							break;
@@ -336,7 +328,7 @@ public class EntityMecha extends EntityDriveable
 					//If no bullet stack was found, reload
 					if(bulletStack == null || bulletStack.isEmpty())
 					{
-						gunItem.Reload(heldStack, world, this, driveableData, left ? EnumHand.MAIN_HAND : EnumHand.OFF_HAND, true, true, (infiniteAmmo() || creative()));
+						gunItem.Reload(heldStack, world, this, driveableData, left ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND, true, true, (infiniteAmmo() || creative()));
 					}
 					//A bullet stack was found, so try shooting with it
 					else if(bulletStack.getItem() instanceof ItemBullet || bulletStack.getItem() instanceof ItemGrenade)
@@ -360,7 +352,7 @@ public class EntityMecha extends EntityDriveable
 						
 						
 						//Damage the bullet item
-						bulletStack.setItemDamage(bulletStack.getItemDamage() + 1);
+						bulletStack.setDamageValue(bulletStack.getDamageValue() + 1);
 						
 						//Update the stack in the gun
 						gunItem.setBulletItemStack(heldStack, bulletStack, bulletID);
@@ -394,15 +386,15 @@ public class EntityMecha extends EntityDriveable
 		
 		Vector3f bulletOrigin = Vector3f.add(armOrigin, gunVector, null);
 		
-		bulletOrigin = Vector3f.add(new Vector3f(posX, posY, posZ), bulletOrigin, null);
+		bulletOrigin = Vector3f.add(new Vector3f((float)getX(), (float)getY(), (float)getZ()), bulletOrigin, null);
 		
-		if(!world.isRemote)
+		if(!world.isClientSide())
 		{
 			ShootableType shootableType = ((ItemShootable)bulletStack.getItem()).type;
 			if (shootableType instanceof BulletType)
 			{
 				FireableGun fireableGun = new FireableGun(gunType, gunType.getDamage(stack), gunType.getSpread(stack), gunType.getBulletSpeed(stack), gunType.getSpreadPattern(stack));
-				FiredShot shot = new FiredShot(fireableGun, (BulletType)shootableType, this, (EntityPlayerMP) getDriver());
+				FiredShot shot = new FiredShot(fireableGun, (BulletType)shootableType, this, (ServerPlayer) getDriver());
 				ShotHandler.fireGun(world, shot, gunType.numBullets*bulletType.numBullets, bulletOrigin, armVector);
 			}
 			else if (shootableType instanceof GrenadeType)
@@ -410,10 +402,10 @@ public class EntityMecha extends EntityDriveable
 				double yaw = Math.atan2(armVector.z, armVector.x);
 				double pitch = Math.atan2(Math.sqrt(armVector.z * armVector.z + armVector.x * armVector.x), armVector.y) - Math.PI/2;
 				Optional<Entity> ent = Optional.of(this);
-				Optional<EntityPlayer> player = Optional.ofNullable(getDriver());
+				Optional<Player> player = Optional.ofNullable(getDriver());
 				
 				EntityGrenade grenade = new EntityGrenade(world, bulletOrigin, (GrenadeType) shootableType, (float)Math.toDegrees(pitch), (float)Math.toDegrees(yaw + Math.PI*1.5), player, ent);
-				world.spawnEntity(grenade);
+				world.addFreshEntity(grenade);
 			}
 		}
 		
@@ -428,7 +420,7 @@ public class EntityMecha extends EntityDriveable
 		// Play a sound if the previous sound has finished
 		if((left ? soundDelayLeft : soundDelayRight) <= 0 && gunType.shootSound != null)
 		{
-			PacketPlaySound.sendSoundPacket(posX, posY, posZ, FlansMod.soundRange, dimension, gunType.shootSound, gunType.distortSound);
+			PacketPlaySound.sendSoundPacket(getX(), getY(), getZ(), FlansMod.soundRange, 0, gunType.shootSound, gunType.distortSound);
 			if(left)
 				soundDelayLeft = gunType.shootSoundLength;
 			else soundDelayRight = gunType.shootSoundLength;
@@ -436,20 +428,21 @@ public class EntityMecha extends EntityDriveable
 	}
 	
 	@Override
-	public void fall(float f, float l)
+	public boolean causeFallDamage(double f, float l, DamageSource source)
 	{
-		attackEntityFrom(DamageSource.FALL, f);
+		attackEntityFrom(level().damageSources().fall(), (float)f);
+		return true;
 	}
 	
 	@Override
 	public boolean attackEntityFrom(DamageSource damagesource, float i)
 	{
-		if(world.isRemote || isDead)
+		if(world.isClientSide() || isRemoved())
 			return true;
 		
 		MechaType type = getMechaType();
 		
-		if(damagesource.getDamageType().equals("fall"))
+		if(damagesource.is(DamageTypeTags.IS_FALL))
 		{
 			boolean takeFallDamage = type.takeFallDamage && !stopFallDamage();
 			boolean damageBlocksFromFalling = type.damageBlocksFromFalling || breakBlocksUponFalling();
@@ -469,49 +462,49 @@ public class EntityMecha extends EntityDriveable
 			
 			driveableData.parts.get(EnumDriveablePart.hips).attack(damageToInflict, false);
 			checkParts();
-			FlansMod.getPacketHandler().sendToAllAround(new PacketDriveableDamage(this), posX, posY, posZ, FlansMod.driveableUpdateRange, dimension);
+			FlansMod.getPacketHandler().sendToAllAround(new PacketDriveableDamage(this), getX(), getY(), getZ(), FlansMod.driveableUpdateRange, 0);
 			if(blockDamageFromFalling > 1)
 			{
-				world.createExplosion(this, posX, posY, posZ, blockDamageFromFalling, TeamsManager.explosions);
+				world.explode(this, getX(), getY(), getZ(), blockDamageFromFalling, TeamsManager.explosions, Level.ExplosionInteraction.BLOCK);
 			}
 		}
 		
-		else if(damagesource.damageType.equals("player") && damagesource.getTrueSource().onGround && (getSeat(0) == null || getSeat(0).getControllingPassenger() == null))
+		else if(damagesource.getMsgId().equals("player") && damagesource.getEntity() != null && damagesource.getEntity().onGround() && (getSeat(0) == null || getSeat(0).getControllingPassenger() == null))
 		{
-			ItemStack mechaStack = new ItemStack(type.item, 1, driveableData.paintjobID);
-			NBTTagCompound tags = new NBTTagCompound();
-			mechaStack.setTagCompound(tags);
+			ItemStack mechaStack = new ItemStack(type.item);
+			CompoundTag tags = new CompoundTag();
 			driveableData.writeToNBT(tags);
 			inventory.writeToNBT(tags);
-			entityDropItem(mechaStack, 0.5F);
+			mechaStack.set(DataComponents.CUSTOM_DATA, CustomData.of(tags));
+			spawnAtLocation((ServerLevel)world, mechaStack, 0.5F);
 			setDead();
 		}
 		else
 		{
-			driveableData.parts.get(EnumDriveablePart.core).attack(i * vulnerability(), damagesource.isFireDamage());
+			driveableData.parts.get(EnumDriveablePart.core).attack(i * vulnerability(), damagesource.is(DamageTypeTags.IS_FIRE));
 		}
 		return true;
 	}
 	
 	@Override
-	public void onUpdate()
+	public void tick()
 	{
-		super.onUpdate();
+		super.tick();
 		
 		if(!readyForUpdates)
 			return;
 		
 		EntitySeat driverSeat = getSeat(0);
 		Entity driver = driverSeat == null ? null : driverSeat.getControllingPassenger();
-		EntityLivingBase livingDriver = driver instanceof EntityLivingBase ? (EntityLivingBase)driver : null;
-		EntityPlayer playerDriver = driver instanceof EntityPlayer ? (EntityPlayer)driver : null;
+		LivingEntity livingDriver = driver instanceof LivingEntity ? (LivingEntity)driver : null;
+		Player playerDriver = driver instanceof Player ? (Player)driver : null;
 		boolean isCreative = playerDriver != null && playerDriver.isCreative();
 		
 		//Decrement delay variables
 		updateDelays();
 
 		//If the player left the driver's seat, stop digging / whatever
-		if(!world.isRemote && (driverSeat == null || driver == null))
+		if(!world.isClientSide() && (driverSeat == null || driver == null))
 			primaryShootHeld = secondaryShootHeld = false;
 		
 		//Update gun animations
@@ -537,9 +530,9 @@ public class EntityMecha extends EntityDriveable
 		updateDespawn(driver);
 
 		//Work out of this is client side and the player is driving
-		boolean thePlayerIsDrivingThis = world.isRemote && FlansMod.proxy.isThePlayer(playerDriver);
+		boolean thePlayerIsDrivingThis = world.isClientSide() && FlansMod.proxy.isThePlayer(playerDriver);
 		//Player is not driving this. Update its position from server update packets
-		if(world.isRemote && !thePlayerIsDrivingThis)
+		if(world.isClientSide() && !thePlayerIsDrivingThis)
 		{
 			//The driveable is currently moving towards its server position. Continue doing so.
 			if(serverPositionTransitionTicker > 0)
@@ -556,14 +549,13 @@ public class EntityMecha extends EntityDriveable
 		moveZ = 0;
 
 		float jetPackPower = jetPackPower();
-		if(!onGround
+		if(!onGround()
 				&& thePlayerIsDrivingThis
 				&& FlansMod.proxy.isKeyDown(4)
 				&& shouldFly()
 				&& (isCreative || data.fuelInTank >= (10F * jetPackPower)))
 		{
-			motionY *= 0.95;
-			motionY += (0.07 * jetPackPower);
+			setDeltaMovement(getDeltaMovement().x * 0.95, getDeltaMovement().y + (0.07 * jetPackPower), getDeltaMovement().z * 0.95);
 			fallDistance = 0;
 			if(!isCreative)
 			{
@@ -571,20 +563,19 @@ public class EntityMecha extends EntityDriveable
 			}
 			if(rocketTimer <= 0 && rocketPack().soundEffect != null)
 			{
-				PacketPlaySound.sendSoundPacket(posX, posY, posZ, FlansMod.soundRange, dimension, rocketPack().soundEffect, false);
+				PacketPlaySound.sendSoundPacket(getX(), getY(), getZ(), FlansMod.soundRange, 0, rocketPack().soundEffect, false);
 				rocketTimer = rocketPack().soundTime;
 			}
 		}
 
 		if(isInWater() && shouldFloat())
 		{
-			motionY *= 0.89;
-			motionY += 0.1;
+			setDeltaMovement(getDeltaMovement().x * 0.89, getDeltaMovement().y + 0.1, getDeltaMovement().z * 0.89);
 		}
 
 
 
-		Vector3f actualMotion = new Vector3f(0F, motionY - (16F / 400F), 0F);
+		Vector3f actualMotion = new Vector3f(0F, (float)(getDeltaMovement().y - (16F / 400F)), 0F);
 
 		if(livingDriver != null)
 		{
@@ -627,7 +618,7 @@ public class EntityMecha extends EntityDriveable
 
 				if((isCreative || data.fuelInTank > data.engine.fuelConsumption) && isPartIntact(EnumDriveablePart.hips))
 				{
-					if(!onGround && shouldFly() && (isCreative || data.fuelInTank > 10F * jetPackPower + data.engine.fuelConsumption))
+					if(!onGround() && shouldFly() && (isCreative || data.fuelInTank > 10F * jetPackPower + data.engine.fuelConsumption))
 					{
 						intent.scale(jetPackPower);
 						if(!isCreative)
@@ -644,7 +635,7 @@ public class EntityMecha extends EntityDriveable
 			}
 
 			//Block breaking
-			if(!world.isRemote)
+			if(!world.isClientSide())
 			{
 				//Use left and right items on the server side
 				if(primaryShootHeld)
@@ -658,19 +649,19 @@ public class EntityMecha extends EntityDriveable
 		}
 		else moveAI(actualMotion);
 		
-		motionY = actualMotion.y;
-		move(MoverType.SELF, actualMotion.x, actualMotion.y, actualMotion.z);
-		setPosition(posX, posY, posZ);
+		setDeltaMovement(actualMotion.x, actualMotion.y, actualMotion.z);
+		move(MoverType.SELF, new Vec3(actualMotion.x, actualMotion.y, actualMotion.z));
+		setPos(getX(), getY(), getZ());
 		
 		//Calculate movement on the client and then send position, rotation etc to the server
-		if(serverPosX != posX || serverPosY != posY || serverPosZ != posZ || serverYaw != axes.getYaw())
+		if(serverPosX != getX() || serverPosY != getY() || serverPosZ != getZ() || serverYaw != axes.getYaw())
 		{
 			if(thePlayerIsDrivingThis)
 			{
 				FlansMod.getPacketHandler().sendToServer(new PacketMechaControl(this));
-				serverPosX = posX;
-				serverPosY = posY;
-				serverPosZ = posZ;
+				serverPosX = getX();
+				serverPosY = getY();
+				serverPosZ = getZ();
 				serverYaw = axes.getYaw();
 			}
 		}
@@ -687,19 +678,18 @@ public class EntityMecha extends EntityDriveable
 		PostUpdate();
 	}
 	
-	private void mineBlock(Entity driver, EntityPlayer playerDriver, boolean isCreative, MechaType type,
+	private void mineBlock(Entity driver, Player playerDriver, boolean isCreative, MechaType type,
 						   DriveableData data)
 	{
 		if(breakingBlock != null)
 		{
 			//Get block and material
-			IBlockState state = world.getBlockState(new BlockPos(breakingBlock.x, breakingBlock.y, breakingBlock.z));
+			BlockState state = world.getBlockState(new BlockPos(breakingBlock.x, breakingBlock.y, breakingBlock.z));
 			Block blockHit = state.getBlock();
-			Material material = state.getMaterial();
 			
 			//Get the itemstacks in each hand
-			ItemStack leftStack = inventory.getStackInSlot(EnumMechaSlotType.leftTool);
-			ItemStack rightStack = inventory.getStackInSlot(EnumMechaSlotType.rightTool);
+			ItemStack leftStack = inventory.getItem(EnumMechaSlotType.leftTool);
+			ItemStack rightStack = inventory.getItem(EnumMechaSlotType.rightTool);
 			
 			//Work out if we are actually breaking blocks
 			boolean leftStackIsTool = leftStack != null && leftStack.getItem() instanceof ItemMechaAddon;
@@ -714,7 +704,7 @@ public class EntityMecha extends EntityDriveable
 			else
 			{
 				//Get the block hardness
-				float blockHardness = state.getBlockHardness(world, new BlockPos(breakingBlock.x, breakingBlock.y, breakingBlock.z));
+				float blockHardness = state.getDestroySpeed(world, new BlockPos(breakingBlock.x, breakingBlock.y, breakingBlock.z));
 				
 				//Calculate the mine speed
 				float mineSpeed = 1F;
@@ -722,7 +712,7 @@ public class EntityMecha extends EntityDriveable
 				if(leftStackIsTool)
 				{
 					MechaItemType leftType = ((ItemMechaAddon)leftStack.getItem()).type;
-					if(leftType.function.effectiveAgainst(material) && leftType.toolHardness > blockHardness)
+					if(leftType.function.effectiveAgainst(state) && leftType.toolHardness > blockHardness)
 					{
 						mineSpeed *= leftType.speed;
 						atLeastOneEffectiveTool = true;
@@ -731,7 +721,7 @@ public class EntityMecha extends EntityDriveable
 				if(rightStackIsTool)
 				{
 					MechaItemType rightType = ((ItemMechaAddon)rightStack.getItem()).type;
-					if(rightType.function.effectiveAgainst(material) && rightType.toolHardness > blockHardness)
+					if(rightType.function.effectiveAgainst(state) && rightType.toolHardness > blockHardness)
 					{
 						mineSpeed *= rightType.speed;
 						atLeastOneEffectiveTool = true;
@@ -746,7 +736,7 @@ public class EntityMecha extends EntityDriveable
 					mineSpeed = 9001F;
 				else
 				{
-					mineSpeed /= state.getBlockHardness(world, new BlockPos(breakingBlock.x, breakingBlock.y, breakingBlock.z));
+					mineSpeed /= state.getDestroySpeed(world, new BlockPos(breakingBlock.x, breakingBlock.y, breakingBlock.z));
 				}
 				
 				//Add block digging overlay
@@ -754,12 +744,6 @@ public class EntityMecha extends EntityDriveable
 				if(breakingProgress >= 1F)
 				{
 					boolean cancelled = false;
-					if(playerDriver instanceof EntityPlayerMP)
-					{
-						int eventOutcome = ForgeHooks
-								.onBlockBreakEvent(world, isCreative ? GameType.CREATIVE : playerDriver.capabilities.allowEdit ? GameType.SURVIVAL : GameType.ADVENTURE, (EntityPlayerMP)playerDriver, new BlockPos(breakingBlock.x, breakingBlock.y, breakingBlock.z));
-						cancelled = eventOutcome == -1;
-					}
 					if(!cancelled)
 					{
 						if(canVacuumItems())
@@ -767,9 +751,9 @@ public class EntityMecha extends EntityDriveable
 							vacuumItems(isCreative, type, data, state, blockHit);
 						}
 						//Destroy block
-						if(!world.isRemote)
+						if(!world.isClientSide())
 						{
-							WorldServer worldServer = (WorldServer)world;
+							ServerLevel worldServer = (ServerLevel)world;
 							BlockPos pos = new BlockPos(breakingBlock.x, breakingBlock.y, breakingBlock.z);
 							boolean dropBlocks = atLeastOneEffectiveTool && !canVacuumItems();
 							destroyBlock(worldServer, pos, driver, dropBlocks);
@@ -780,31 +764,34 @@ public class EntityMecha extends EntityDriveable
 		}
 	}
 	
-	private void vacuumItems(boolean isCreative, MechaType type, DriveableData data, IBlockState state, Block blockHit)
+	private void vacuumItems(boolean isCreative, MechaType type, DriveableData data, BlockState state, Block blockHit)
 	{
 		NonNullList<ItemStack> drops = NonNullList.create();
-		blockHit.getDrops(drops, world, new BlockPos(breakingBlock.x, breakingBlock.y,
-				breakingBlock.z), state, 0);
+		if(!world.isClientSide())
+		{
+			BlockPos pos = new BlockPos(breakingBlock.x, breakingBlock.y, breakingBlock.z);
+			drops.addAll(blockHit.getDrops(world.getBlockState(pos), (ServerLevel)world, pos, null));
+		}
 		for(ItemStack stack : drops)
 		{
 			//Check for iron regarding refining
 			boolean fuelCheck = (data.fuelInTank >= 5F || isCreative);
 			if(fuelCheck
 					&& refineIron()
-					&& stack.getItem() instanceof ItemBlock
-					&& ((ItemBlock)stack.getItem()).getBlock() == Blocks.IRON_ORE)
+					&& stack.getItem() instanceof BlockItem
+					&& ((BlockItem)stack.getItem()).getBlock() == Blocks.IRON_ORE)
 			{
-				stack = (new ItemStack(Items.IRON_INGOT, 1, 0));
+				stack = (new ItemStack(Items.IRON_INGOT, 1));
 				if(!isCreative)
 					data.fuelInTank -= 5F;
 			}
 			
 			//Check for waste to be compacted
 			fuelCheck = (data.fuelInTank >= 0.1F || isCreative);
-			if(fuelCheck && wasteCompact() && stack.getItem() instanceof ItemBlock &&
-					(((ItemBlock)stack.getItem()).getBlock() == Blocks.COBBLESTONE
-							|| ((ItemBlock)stack.getItem()).getBlock() == Blocks.DIRT
-							|| ((ItemBlock)stack.getItem()).getBlock() == Blocks.SAND))
+			if(fuelCheck && wasteCompact() && stack.getItem() instanceof BlockItem &&
+					(((BlockItem)stack.getItem()).getBlock() == Blocks.COBBLESTONE
+							|| ((BlockItem)stack.getItem()).getBlock() == Blocks.DIRT
+							|| ((BlockItem)stack.getItem()).getBlock() == Blocks.SAND))
 			{
 				stack.setCount(0);
 				if(!isCreative)
@@ -812,23 +799,23 @@ public class EntityMecha extends EntityDriveable
 			}
 			
 			//Check for item multipliers
-			List<Tuple3<Item, Float, Float>> itemsToFuelUsageAndMultiplier = List.of(
-					Tuple.of(Items.DIAMOND, 3F, diamondMultiplier()),
-					Tuple.of(Items.REDSTONE, 2F, redstoneMultiplier()),
-					Tuple.of(Items.COAL, 2F, coalMultiplier()),
-					Tuple.of(Items.EMERALD, 2F, emeraldMultiplier()),
-					Tuple.of(Items.IRON_INGOT, 2F, ironMultiplier()));
-			for(Tuple3<Item, Float, Float> itemToFuelUsageAndMultiplier : itemsToFuelUsageAndMultiplier)
+			List<MehaMultiplier> itemsToFuelUsageAndMultiplier = new ArrayList<>();
+			itemsToFuelUsageAndMultiplier.add(new MehaMultiplier(Items.DIAMOND, 3F, diamondMultiplier()));
+			itemsToFuelUsageAndMultiplier.add(new MehaMultiplier(Items.REDSTONE, 2F, redstoneMultiplier()));
+			itemsToFuelUsageAndMultiplier.add(new MehaMultiplier(Items.COAL, 2F, coalMultiplier()));
+			itemsToFuelUsageAndMultiplier.add(new MehaMultiplier(Items.EMERALD, 2F, emeraldMultiplier()));
+			itemsToFuelUsageAndMultiplier.add(new MehaMultiplier(Items.IRON_INGOT, 2F, ironMultiplier()));
+			for(MehaMultiplier itemToFuelUsageAndMultiplier : itemsToFuelUsageAndMultiplier)
 			{
-				Item item = itemToFuelUsageAndMultiplier._1;
-				float fuelUsage = itemToFuelUsageAndMultiplier._2;
-				float multiplier = itemToFuelUsageAndMultiplier._3;
+				Item item = itemToFuelUsageAndMultiplier.item;
+				float fuelUsage = itemToFuelUsageAndMultiplier.fuelUsage;
+				float multiplier = itemToFuelUsageAndMultiplier.multiplier;
 				
 				fuelCheck = (data.fuelInTank >= fuelUsage * multiplier || isCreative);
 				if(fuelCheck && stack.getItem() == item)
 				{
 					stack.setCount(stack.getCount() * (
-							MathHelper.floor(multiplier) + (rand.nextFloat() < tailFloat(multiplier) ? 1 : 0)));
+							Mth.floor(multiplier) + (random.nextFloat() < tailFloat(multiplier) ? 1 : 0)));
 					if(!isCreative)
 						data.fuelInTank -= fuelUsage * multiplier;
 				}
@@ -843,23 +830,37 @@ public class EntityMecha extends EntityDriveable
 			}
 			
 			//Add the itemstack to mecha inventory
-			if(!InventoryHelper.addItemStackToInventory(driveableData, stack, isCreative) && !world.isRemote && world.getGameRules().getBoolean("doTileDrops"))
+			if(!InventoryHelper.add(driveableData, stack, isCreative) && !world.isClientSide() && ((ServerLevel)world).getGameRules().get(GameRules.BLOCK_DROPS))
 			{
-				world.spawnEntity(new EntityItem(world, breakingBlock.x + 0.5F, breakingBlock.y + 0.5F, breakingBlock.z + 0.5F, stack));
+				world.addFreshEntity(new ItemEntity(world, breakingBlock.x + 0.5F, breakingBlock.y + 0.5F, breakingBlock.z + 0.5F, stack));
 			}
+		}
+	}
+	
+	private static class MehaMultiplier
+	{
+		public Item item;
+		public float fuelUsage;
+		public float multiplier;
+		
+		public MehaMultiplier(Item item, float fuelUsage, float multiplier)
+		{
+			this.item = item;
+			this.fuelUsage = fuelUsage;
+			this.multiplier = multiplier;
 		}
 	}
 	
 	private void updateHeadPosition(
 			EntitySeat driverSeat,
-			EntityLivingBase livingDriver,
-			EntityPlayer playerDriver,
+			LivingEntity livingDriver,
+			Player playerDriver,
 			MechaType type) {
 		if(driverSeat != null)
 		{
 			if(livingDriver != null && playerDriver == null)
 			{
-				axes.setAngles(livingDriver.renderYawOffset + 90F, 0F, 0F);
+				axes.setAngles(livingDriver.yBodyRot + 90F, 0F, 0F);
 			}
 			else
 			{
@@ -892,9 +893,9 @@ public class EntityMecha extends EntityDriveable
 
 	private void updateDespawn(Entity driver) {
 		ticksSinceUsed++;
-		if(!world.isRemote && driver != null)
+		if(!world.isClientSide() && driver != null)
 			ticksSinceUsed = 0;
-		if(!world.isRemote && TeamsManager.mechaLove > 0 && ticksSinceUsed > TeamsManager.mechaLove * 20)
+		if(!world.isClientSide() && TeamsManager.mechaLove > 0 && ticksSinceUsed > TeamsManager.mechaLove * 20)
 		{
 			setDead();
 		}
@@ -904,18 +905,18 @@ public class EntityMecha extends EntityDriveable
 		//TODO better implement this
 		if(isPartIntact(EnumDriveablePart.hips))
 		{
-			setSize(type.width, type.height);
+
 			yOffset = type.yOffset;
 		}
 		else
 		{
-			setSize(type.width, type.height - type.chassisHeight);
+
 			yOffset = type.yOffset - type.chassisHeight;
 		}
 	}
 
-	private void detectDiamonds(EntityPlayer playerDriver) {
-		if(canDetectDiamonds() && diamondTimer == 0 && world.isRemote && FlansMod.proxy.isThePlayer(playerDriver))
+	private void detectDiamonds(Player playerDriver) {
+		if(canDetectDiamonds() && diamondTimer == 0 && world.isClientSide() && FlansMod.proxy.isThePlayer(playerDriver))
 		{
 			float sqDistance = 901;
 			for(float i = -30; i <= 30; i++)
@@ -924,9 +925,9 @@ public class EntityMecha extends EntityDriveable
 				{
 					for(float k = -30; k <= 30; k++)
 					{
-						int x = MathHelper.floor(i + posX);
-						int y = MathHelper.floor(j + posY);
-						int z = MathHelper.floor(k + posZ);
+						int x = Mth.floor(i + getX());
+						int y = Mth.floor(j + getY());
+						int z = Mth.floor(k + getZ());
 						if(i * i + j * j + k * k < sqDistance && world.getBlockState(new BlockPos(x, y, z)).getBlock() == (Blocks.DIAMOND_ORE))
 						{
 							sqDistance = i * i + j * j + k * k;
@@ -936,14 +937,14 @@ public class EntityMecha extends EntityDriveable
 			}
 			if(sqDistance < 901)
 			{
-				MechaItemType detectionItem = getDiamondDetectingUpgrade().get();
-				PacketPlaySound.sendSoundPacket(posX, posY, posZ, FlansMod.soundRange, dimension, detectionItem.detectSound, false);
-				diamondTimer = 1 + 2 * MathHelper.floor(MathHelper.sqrt(sqDistance));
+				MechaItemType detectionItem = getDiamondDetectingUpgrade();
+				PacketPlaySound.sendSoundPacket(getX(), getY(), getZ(), FlansMod.soundRange, 0, detectionItem.detectSound, false);
+				diamondTimer = 1 + 2 * Mth.floor(Mth.sqrt(sqDistance));
 			}
 		}
 	}
 
-	private void autoRepair(EntityPlayer playerDriver, boolean isCreative, DriveableData data) {
+	private void autoRepair(Player playerDriver, boolean isCreative, DriveableData data) {
 		if(toggleTimer == 0 && canAutoRepair())
 		{
 			for(EnumDriveablePart part : EnumDriveablePart.values())
@@ -979,7 +980,7 @@ public class EntityMecha extends EntityDriveable
 	
 	private float tailFloat(float f)
 	{
-		return f - MathHelper.floor(f);
+		return f - Mth.floor(f);
 	}
 	
 	/** This is a series of iterators which check all upgrades
@@ -1050,14 +1051,14 @@ public class EntityMecha extends EntityDriveable
 		return false;
 	}
 	
-	public Option<MechaItemType> getDiamondDetectingUpgrade()
+	public MechaItemType getDiamondDetectingUpgrade()
 	{
 		for(MechaItemType type : getUpgradeTypes())
 		{
 			if(type.diamondDetect)
-				return Option.some(type);
+				return type;
 		}
-		return Option.none();
+		return null;
 	}
 	
 	/**
@@ -1286,7 +1287,6 @@ public class EntityMecha extends EntityDriveable
 		return types;
 	}
 	
-	@SideOnly(Side.CLIENT)
 	@Override
 	public boolean showInventory(int seat)
 	{
@@ -1298,10 +1298,10 @@ public class EntityMecha extends EntityDriveable
 	{
 		if(part.type == EnumDriveablePart.core)
 		{
-			for(int i = 0; i < inventory.getSizeInventory(); i++)
+			for(int i = 0; i < inventory.getContainerSize(); i++)
 			{
-				if(inventory.getStackInSlot(i) != null)
-					world.spawnEntity(new EntityItem(world, posX + midpoint.x, posY + midpoint.y, posZ + midpoint.z, inventory.getStackInSlot(i)));
+				if(inventory.getItem(i) != null)
+					world.addFreshEntity(new ItemEntity(world, getX() + midpoint.x, getY() + midpoint.y, getZ() + midpoint.z, inventory.getItem(i)));
 			}
 		}
 	}
@@ -1325,8 +1325,7 @@ public class EntityMecha extends EntityDriveable
 	}
 	
 	@Override
-	@SideOnly(Side.CLIENT)
-	public EntityLivingBase getCamera()
+	public LivingEntity getCamera()
 	{
 		return null;
 	}

@@ -1,10 +1,12 @@
 package com.flansmod.client.gui.teams;
 
-import net.minecraft.client.gui.GuiButton;
-import net.minecraft.client.gui.ScaledResolution;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.ResourceLocation;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.ItemStack;
 
 import com.flansmod.client.teams.ClientTeamsData;
 import com.flansmod.common.FlansMod;
@@ -17,7 +19,7 @@ public class GuiLandingPage extends GuiTeamsBase
 	/**
 	 * The background image
 	 */
-	private static final ResourceLocation texture = new ResourceLocation("flansmod", "gui/LandingPage.png");
+	private static final Identifier texture = Identifier.fromNamespaceAndPath("flansmod", "gui/landingpage.png");
 	
 	private static final int WIDTH = 256, HEIGHT = 215;
 	
@@ -27,15 +29,12 @@ public class GuiLandingPage extends GuiTeamsBase
 	}
 	
 	@Override
-	public void initGui()
+	public void init()
 	{
-		super.initGui();
+		super.init();
 		
-		ScaledResolution scaledresolution = new ScaledResolution(mc);
-		int w = scaledresolution.getScaledWidth();
-		int h = scaledresolution.getScaledHeight();
-		guiOriginX = w / 2 - WIDTH / 2;
-		guiOriginY = h / 2 - HEIGHT / 2;
+		guiOriginX = width / 2 - WIDTH / 2;
+		guiOriginY = height / 2 - HEIGHT / 2;
 		
 		PlayerRankData data = ClientTeamsData.theRankData;
 		LoadoutPool pool = ClientTeamsData.currentPool;
@@ -43,66 +42,39 @@ public class GuiLandingPage extends GuiTeamsBase
 		if(data == null || pool == null)
 		{
 			FlansMod.log.warn("Problem in landing page!");
-			mc.displayGuiScreen(null);
+			Minecraft.getInstance().setScreen(null);
 			return;
 		}
 		
 		for(int i = 0; i < 5; i++)
 		{
+			final int loadout = i;
 			if(data.currentLevel >= pool.slotUnlockLevels[i])
 			{
-				buttonList.add(
-						new GuiButton(i, width / 2 - WIDTH / 2 + 12 + 49 * i, height / 2 - HEIGHT / 2 + 117, 36, 20, "Edit"));
+				addRenderableWidget(
+						Button.builder(Component.literal("Edit"), b -> ClientTeamsData.OpenEditLoadoutPage(loadout)).bounds(width / 2 - WIDTH / 2 + 12 + 49 * i, height / 2 - HEIGHT / 2 + 117, 36, 20).build());
 			}
 		}
 		
-		buttonList.add(new GuiButton(5, width / 2 - WIDTH / 2 + 202, height / 2 - HEIGHT / 2 + 162, 47, 20, "Play >>"));
+		addRenderableWidget(Button.builder(Component.literal("Play >>"), b -> ClientTeamsData.OpenTeamSelectPage()).bounds(width / 2 - WIDTH / 2 + 202, height / 2 - HEIGHT / 2 + 162, 47, 20).build());
 		
 		for(int i = 0; i < 3; i++)
 		{
 			int numBoxes = data.GetNumOfUnopenedBoxes(pool.rewardBoxes[i]);
 			
-			GuiButton button = new GuiButton(6 + i, width / 2 - WIDTH / 2 + 9 + 65 * i, height / 2 - HEIGHT / 2 + 187, 59, 20, "Open");
-			button.enabled = numBoxes > 0;
-			buttonList.add(button);
+			final int box = i;
+			Button button = addRenderableWidget(Button.builder(Component.literal("Open"), b -> ClientTeamsData.OpenRewardBox(box)).bounds(width / 2 - WIDTH / 2 + 9 + 65 * i, height / 2 - HEIGHT / 2 + 187, 59, 20).build());
+			button.active = numBoxes > 0;
 		}
 	}
 	
 	@Override
-	protected void actionPerformed(GuiButton button)
+	public void extractRenderState(GuiGraphicsExtractor extractor, int mouseX, int mouseY, float partialTick)
 	{
-		if(button.id >= 0 && button.id < 5)
-		{
-			ClientTeamsData.OpenEditLoadoutPage(button.id);
-		}
+		extractMenuBackground(extractor);
 		
-		if(button.id == 5)
-		{
-			//Play - go to team select
-			ClientTeamsData.OpenTeamSelectPage();
-		}
-		
-		if(button.id >= 6 && button.id < 6 + 3)
-		{
-			ClientTeamsData.OpenRewardBox(button.id - 6);
-		}
-	}
-	
-	@Override
-	public void drawScreen(int i, int j, float f)
-	{
-		ScaledResolution scaledresolution = new ScaledResolution(mc);
-		int w = scaledresolution.getScaledWidth();
-		int h = scaledresolution.getScaledHeight();
-		drawDefaultBackground();
-		GlStateManager.enableBlend();
-		
-		GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
-		guiOriginX = w / 2 - WIDTH / 2;
-		guiOriginY = h / 2 - HEIGHT / 2;
-		
-		//Bind the background texture
-		mc.renderEngine.bindTexture(texture);
+		guiOriginX = width / 2 - WIDTH / 2;
+		guiOriginY = height / 2 - HEIGHT / 2;
 		
 		int textureX = 512;
 		int textureY = 256;
@@ -112,12 +84,12 @@ public class GuiLandingPage extends GuiTeamsBase
 		if(data == null || pool == null)
 		{
 			FlansMod.log.warn("Problem in landing page!");
-			mc.displayGuiScreen(null);
+			Minecraft.getInstance().setScreen(null);
 			return;
 		}
 		
 		//Draw the background
-		drawModalRectWithCustomSizedTexture(guiOriginX, guiOriginY, 0, 0, WIDTH, HEIGHT, textureX, textureY);
+		extractor.blit(RenderPipelines.GUI_TEXTURED, texture, guiOriginX, guiOriginY, 0F, 0F, WIDTH, HEIGHT, textureX, textureY);
 		
 		int XPForNextLevel = pool.GetXPForLevel(data.currentLevel + 1);
 		float XPProgress = 0.0f;
@@ -130,41 +102,39 @@ public class GuiLandingPage extends GuiTeamsBase
 			XPProgress = 1.0f;
 		}
 		
-		drawModalRectWithCustomSizedTexture(guiOriginX + 106, guiOriginY + 146, 259, 164, (int)(92.0f * XPProgress), 16, textureX, textureY);
+		extractor.blit(RenderPipelines.GUI_TEXTURED, texture, guiOriginX + 106, guiOriginY + 146, 259, 164, (int)(92.0f * XPProgress), 16, textureX, textureY);
 		
 		// Draw text
-		drawCenteredString(fontRenderer, ClientTeamsData.motd, guiOriginX + 128, guiOriginY + 12, 0xffffff);
+		extractor.centeredText(font, ClientTeamsData.motd, guiOriginX + 128, guiOriginY + 12, 0xffffff);
 		
-		drawString(fontRenderer, mc.player.getName(), guiOriginX + 30, guiOriginY + 150, 0xffffff);
-		drawCenteredString(fontRenderer, "Rank " + data.currentLevel, guiOriginX + 154, guiOriginY + 150, 0xffffff);
+		extractor.text(font, Minecraft.getInstance().player.getName().getString(), guiOriginX + 30, guiOriginY + 150, 0xffffff);
+		extractor.centeredText(font, "Rank " + data.currentLevel, guiOriginX + 154, guiOriginY + 150, 0xffffff);
 		
 		// Draw rank icon
-		DrawRankIcon(data.currentLevel, 0, 9, 146, false);
+		DrawRankIcon(extractor, data.currentLevel, 0, 9, 146, false);
 		
 		// Draw loadout panels
 		for(int n = 0; n < 5; n++)
 		{
-			DrawLoadoutPanel(pool, data, guiOriginX + 7 + 49 * n, guiOriginY + 28, n);
+			DrawLoadoutPanel(extractor, pool, data, guiOriginX + 7 + 49 * n, guiOriginY + 28, n);
 		}
 		
 		// Draw reward box panels
 		for(int n = 0; n < 3; n++)
 		{
-			DrawRewardBoxPanel(pool, data, guiOriginX + 7 + 65 * n, guiOriginY + 166, n);
+			DrawRewardBoxPanel(extractor, pool, data, guiOriginX + 7 + 65 * n, guiOriginY + 166, n);
 		}
-		
-		super.drawScreen(i, j, f);
 	}
 	
-	private void DrawRewardBoxPanel(LoadoutPool pool, PlayerRankData data, int x, int y, int index)
+	private void DrawRewardBoxPanel(GuiGraphicsExtractor extractor, LoadoutPool pool, PlayerRankData data, int x, int y, int index)
 	{
 		RewardBox box = pool.rewardBoxes[index];
-		drawSlotInventory(new ItemStack(box.getItem()), x + 3, y + 3);
-		drawCenteredString(fontRenderer, "x " + data.GetNumOfUnopenedBoxes(box), x + 33, y + 7, 0xffffff);
+		drawSlotInventory(extractor, new ItemStack(box.getItem()), x + 3, y + 3);
+		extractor.centeredText(font, "x " + data.GetNumOfUnopenedBoxes(box), x + 33, y + 7, 0xffffff);
 	}
 	
 	@Override
-	public boolean doesGuiPauseGame()
+	public boolean isPauseScreen()
 	{
 		return false;
 	}

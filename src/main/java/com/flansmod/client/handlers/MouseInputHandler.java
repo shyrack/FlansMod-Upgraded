@@ -1,38 +1,40 @@
 package com.flansmod.client.handlers;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraftforge.client.event.MouseEvent;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
 
 import com.flansmod.api.IControllable;
 
-@SideOnly(Side.CLIENT)
 public class MouseInputHandler
 {
 	private Minecraft mc;
-	
+
+	public static void init()
+	{
+	}
+
 	public MouseInputHandler()
 	{
-		mc = Minecraft.getMinecraft();
+		mc = Minecraft.getInstance();
 	}
-	
-	public void checkMouseInput(MouseEvent event)
+
+	public void checkMouseInput(double dx, double dy)
 	{
-		if(mc.currentScreen != null)
+		if(mc.screen != null)
 		{
 			return;
 		}
-		
+
 		//Handle driving controls
-		EntityPlayer player = mc.player;
-		Entity ridingEntity = player.getRidingEntity();
+		Player player = mc.player;
+		if(player == null)
+			return;
+		Entity ridingEntity = player.getVehicle();
 		if(ridingEntity instanceof IControllable)
 		{
 			IControllable riding = (IControllable)ridingEntity;
-			riding.onMouseMoved(event.getDx(), event.getDy());
+			riding.onMouseMoved((int)dx, (int)dy);
 		}
 	}
 }

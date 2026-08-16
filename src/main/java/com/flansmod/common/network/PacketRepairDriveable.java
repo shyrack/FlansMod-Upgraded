@@ -1,11 +1,8 @@
 package com.flansmod.common.network;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
 
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.driveables.EntitySeat;
@@ -25,28 +22,27 @@ public class PacketRepairDriveable extends PacketBase
 	}
 	
 	@Override
-	public void encodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void encodeInto(ByteBuf data)
 	{
 		writeUTF(data, shortName);
 	}
 	
 	@Override
-	public void decodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void decodeInto(ByteBuf data)
 	{
 		shortName = readUTF(data);
 	}
 	
 	@Override
-	public void handleServerSide(EntityPlayerMP playerEntity)
+	public void handleServerSide(ServerPlayer playerEntity)
 	{
 		EnumDriveablePart part = EnumDriveablePart.getPart(shortName);
 		//Try to repair the driveable
-		FlansMod.proxy.repairDriveable(playerEntity, ((EntitySeat)playerEntity.getRidingEntity()).driveable, ((EntitySeat)playerEntity.getRidingEntity()).driveable.getDriveableData().parts.get(part));
+		FlansMod.proxy.repairDriveable(playerEntity, ((EntitySeat)playerEntity.getVehicle()).driveable, ((EntitySeat)playerEntity.getVehicle()).driveable.getDriveableData().parts.get(part));
 	}
 	
 	@Override
-	@SideOnly(Side.CLIENT)
-	public void handleClientSide(EntityPlayer clientPlayer)
+	public void handleClientSide(Player clientPlayer)
 	{
 		FlansMod.log.warn("Received driveable repair packet on client side. Skipping.");
 	}

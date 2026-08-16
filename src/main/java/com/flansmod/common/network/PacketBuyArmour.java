@@ -1,11 +1,8 @@
 package com.flansmod.common.network;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
 
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.teams.ArmourBoxType;
@@ -28,7 +25,7 @@ public class PacketBuyArmour extends PacketBase
 	}
 	
 	@Override
-	public void encodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void encodeInto(ByteBuf data)
 	{
 		writeUTF(data, boxShortName);
 		writeUTF(data, armourShortName);
@@ -36,7 +33,7 @@ public class PacketBuyArmour extends PacketBase
 	}
 	
 	@Override
-	public void decodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void decodeInto(ByteBuf data)
 	{
 		boxShortName = readUTF(data);
 		armourShortName = readUTF(data);
@@ -44,15 +41,14 @@ public class PacketBuyArmour extends PacketBase
 	}
 	
 	@Override
-	public void handleServerSide(EntityPlayerMP playerEntity)
+	public void handleServerSide(ServerPlayer playerEntity)
 	{
 		ArmourBoxType box = ArmourBoxType.getBox(boxShortName);
-		box.block.buyArmour(armourShortName, piece, playerEntity.inventory);
+		box.block.buyArmour(armourShortName, piece, playerEntity.getInventory());
 	}
 	
 	@Override
-	@SideOnly(Side.CLIENT)
-	public void handleClientSide(EntityPlayer clientPlayer)
+	public void handleClientSide(Player clientPlayer)
 	{
 		FlansMod.log.warn("Received armour box purchase packet on client. Skipping.");
 	}

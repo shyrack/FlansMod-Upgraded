@@ -2,24 +2,24 @@ package com.flansmod.apocalypse.common.world.buildings;
 
 import java.util.Random;
 
-import net.minecraft.init.Blocks;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.core.Direction;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.Level;
 
 public class WorldGenDeadTree extends WorldGenFlan
 {
 	@Override
-	public boolean generate(World world, Random rand, BlockPos pos)
+	public boolean generate(Level world, Random rand, BlockPos pos)
 	{
-		for(; pos.getY() < 256; pos = pos.up())
+		for(; pos.getY() < 256; pos = pos.above())
 		{
-			if(world.isAirBlock(pos) && world.isSideSolid(pos.down(), EnumFacing.UP))
+			if(world.isEmptyBlock(pos) && world.getBlockState(pos.below()).isSolid())
 			{
 				int treeHeight = rand.nextInt(3) + 3;
 				for(int i = 0; i < treeHeight; i++)
 				{
-					world.setBlockState(pos.add(0, i, 0), Blocks.LOG.getDefaultState());
+					world.setBlockAndUpdate(pos.offset(0, i, 0), Blocks.OAK_LOG.defaultBlockState());
 				}
 				for(int j = 0; j < rand.nextInt(2) + 2; j++)
 				{
@@ -35,7 +35,7 @@ public class WorldGenDeadTree extends WorldGenFlan
 							dz += branchZDir;
 						}
 						dy++;
-						world.setBlockState(pos.add(dx, dy + treeHeight - 1, dz), Blocks.LOG.getDefaultState());
+						world.setBlockAndUpdate(pos.offset(dx, dy + treeHeight - 1, dz), Blocks.OAK_LOG.defaultBlockState());
 					}
 				}
 				break;

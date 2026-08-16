@@ -2,8 +2,8 @@ package com.flansmod.common.teams;
 
 import java.util.Optional;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.nbt.CompoundTag;
 
 /**
  * This represents a round in the teams mod
@@ -46,17 +46,17 @@ public class TeamsRound implements Comparable<TeamsRound>
 		popularity = 0.5F;
 	}
 	
-	public TeamsRound(NBTTagCompound tags)
+	public TeamsRound(CompoundTag tags)
 	{
-		map = TeamsManager.getInstance().maps.get(tags.getString("Map"));
-		gametype = Gametype.getGametype(tags.getString("Gametype"));
-		timeLimit = tags.getInteger("TimeLimit");
-		scoreLimit = tags.getInteger("ScoreLimit");
+		map = TeamsManager.getInstance().maps.get(tags.getStringOr("Map", ""));
+		gametype = Gametype.getGametype(tags.getStringOr("Gametype", ""));
+		timeLimit = tags.getIntOr("TimeLimit", 0);
+		scoreLimit = tags.getIntOr("ScoreLimit", 0);
 		
-		teams = new Team[tags.getInteger("NumTeams")];
+		teams = new Team[tags.getIntOr("NumTeams", 0)];
 		for(int i = 0; i < teams.length; i++)
 		{
-			teams[i] = Team.getTeam(tags.getString("Team_" + i));
+			teams[i] = Team.getTeam(tags.getStringOr("Team_" + i, ""));
 			if(teams[i] == null)
 			{
 				teams[i] = Team.teams.get(0);
@@ -64,23 +64,23 @@ public class TeamsRound implements Comparable<TeamsRound>
 			
 		}
 		
-		popularity = tags.getFloat("Pop");
+		popularity = tags.getFloatOr("Pop", 0F);
 	}
 	
-	public void writeToNBT(NBTTagCompound tags)
+	public void writeToNBT(CompoundTag tags)
 	{
-		tags.setString("Map", map.shortName);
-		tags.setString("Gametype", gametype.shortName);
-		tags.setInteger("TimeLimit", timeLimit);
-		tags.setInteger("ScoreLimit", scoreLimit);
+		tags.putString("Map", map.shortName);
+		tags.putString("Gametype", gametype.shortName);
+		tags.putInt("TimeLimit", timeLimit);
+		tags.putInt("ScoreLimit", scoreLimit);
 		
-		tags.setInteger("NumTeams", teams.length);
+		tags.putInt("NumTeams", teams.length);
 		for(int i = 0; i < teams.length; i++)
 		{
-			tags.setString("Team_" + i, teams[i].shortName);
+			tags.putString("Team_" + i, teams[i].shortName);
 		}
 		
-		tags.setFloat("Pop", popularity);
+		tags.putFloat("Pop", popularity);
 	}
 	
 	public int getTeamID(Team team)
@@ -116,9 +116,9 @@ public class TeamsRound implements Comparable<TeamsRound>
 		return teams[0];
 	}
 	
-	public Optional<Team> getTeam(EntityPlayer player)
+	public Optional<Team> getTeam(Player player)
 	{
-		String username = player.getName();
+		String username = player.getName().getString();
 		for(Team team : teams)
 		{
 			for (String name : team.members)

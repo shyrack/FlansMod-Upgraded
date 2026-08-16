@@ -29,3 +29,7 @@ upload.bat
 
 # Kilo AI
 .kilo/
+
+# Local dev
+logs/
+.vscode/

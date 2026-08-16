@@ -1,22 +1,23 @@
 package com.flansmod.common.driveables;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.InventoryPlayer;
-import net.minecraft.inventory.Container;
-import net.minecraft.inventory.Slot;
-import net.minecraft.item.ItemStack;
-import net.minecraft.world.World;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 
-public class ContainerDriveableMenu extends Container
+public class ContainerDriveableMenu extends AbstractContainerMenu
 {
-	//Fuel Container is combined with this because they are so similar
-	public ContainerDriveableMenu(InventoryPlayer inventoryplayer, World worldy)
+	//Fuel AbstractContainerMenu is combined with this because they are so similar
+	public ContainerDriveableMenu(Inventory inventoryplayer, Level worldy)
 	{
 		this(inventoryplayer, worldy, false, null);
 	}
 	
-	public ContainerDriveableMenu(InventoryPlayer inventoryplayer, World worldy, boolean fuel, EntityDriveable planey)
+	public ContainerDriveableMenu(Inventory inventoryplayer, Level worldy, boolean fuel, EntityDriveable planey)
 	{
+		super(null, 0);
 		inventory = inventoryplayer;
 		world = worldy;
 		plane = planey;
@@ -25,7 +26,7 @@ public class ContainerDriveableMenu extends Container
 		//Fuel slot
 		if(isFuel)
 		{
-			addSlotToContainer(new Slot(plane.driveableData, plane.driveableData.getFuelSlot(), 35, 44));
+			addSlot(new Slot(plane.driveableData, plane.driveableData.getFuelSlot(), 35, 44));
 		}
 		
 		//Main inventory slots
@@ -33,38 +34,38 @@ public class ContainerDriveableMenu extends Container
 		{
 			for(int col = 0; col < 9; col++)
 			{
-				addSlotToContainer(new Slot(inventoryplayer, col + row * 9 + 9, 8 + col * 18, 79 + (isFuel ? 0 : 19) + row * 18));
+				addSlot(new Slot(inventoryplayer, col + row * 9 + 9, 8 + col * 18, 79 + (isFuel ? 0 : 19) + row * 18));
 			}
 			
 		}
 		//Quickbar slots
 		for(int col = 0; col < 9; col++)
 		{
-			addSlotToContainer(new Slot(inventoryplayer, col, 8 + col * 18, 137 + (isFuel ? 0 : 19)));
+			addSlot(new Slot(inventoryplayer, col, 8 + col * 18, 137 + (isFuel ? 0 : 19)));
 		}
 	}
 	
 	@Override
-	public ItemStack transferStackInSlot(EntityPlayer player, int slotID)
+	public ItemStack quickMoveStack(Player player, int slotID)
 	{
 		ItemStack stack = ItemStack.EMPTY.copy();
-		Slot currentSlot = inventorySlots.get(slotID);
+		Slot currentSlot = slots.get(slotID);
 		
-		if(currentSlot != null && currentSlot.getHasStack())
+		if(currentSlot != null && currentSlot.hasItem())
 		{
-			ItemStack slotStack = currentSlot.getStack();
+			ItemStack slotStack = currentSlot.getItem();
 			stack = slotStack.copy();
 			
 			if(slotID != 0)
 			{
-				if(!mergeItemStack(slotStack, 0, 1, false))
+				if(!moveItemStackTo(slotStack, 0, 1, false))
 				{
 					return ItemStack.EMPTY.copy();
 				}
 			}
 			else
 			{
-				if(!mergeItemStack(slotStack, 1, inventorySlots.size(), true))
+				if(!moveItemStackTo(slotStack, 1, slots.size(), true))
 				{
 					return ItemStack.EMPTY.copy();
 				}
@@ -72,11 +73,11 @@ public class ContainerDriveableMenu extends Container
 			
 			if(slotStack.getCount() == 0)
 			{
-				currentSlot.putStack(ItemStack.EMPTY.copy());
+				currentSlot.set(ItemStack.EMPTY.copy());
 			}
 			else
 			{
-				currentSlot.onSlotChanged();
+				currentSlot.setChanged();
 			}
 			
 			if(slotStack.getCount() == stack.getCount())
@@ -91,13 +92,13 @@ public class ContainerDriveableMenu extends Container
 	}
 	
 	@Override
-	public boolean canInteractWith(EntityPlayer entityplayer)
+	public boolean stillValid(Player entityplayer)
 	{
 		return true;
 	}
 	
 	public EntityDriveable plane;
 	public boolean isFuel;
-	public InventoryPlayer inventory;
-	public World world;
+	public Inventory inventory;
+	public Level world;
 }

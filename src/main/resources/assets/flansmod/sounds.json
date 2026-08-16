@@ -8,13 +8,13 @@
       "flansmod:bullet4"
     ]
   },
-  "UnlockNotch": {
+  "unlocknotch": {
     "category": "player",
     "sounds": [
-      "flansmod:UnlockNotch"
+      "flansmod:unlocknotch"
     ]
   },
-  "bulletFlyby": {
+  "bulletflyby": {
     "category": "player",
     "sounds": [
       "flansmod:bulletair1",
@@ -26,13 +26,13 @@
       "flansmod:bulletair7"
     ]
   },
-    "skullboss_laugh": {
+  "skullboss_laugh": {
     "category": "player",
     "sounds": [
       "flansmod:skullboss_laugh"
     ]
   },
-   "skullboss_spawn": {
+  "skullboss_spawn": {
     "category": "player",
     "sounds": [
       "flansmod:skullboss_spawn"

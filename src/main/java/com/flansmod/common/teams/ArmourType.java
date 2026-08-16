@@ -2,10 +2,7 @@ package com.flansmod.common.teams;
 
 import java.util.ArrayList;
 
-import net.minecraft.client.model.ModelBase;
-import net.minecraftforge.fml.common.FMLCommonHandler;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import com.flansmod.client.model.ModelBase;
 
 import com.flansmod.client.model.ModelCustomArmour;
 import com.flansmod.common.FlansMod;
@@ -58,7 +55,6 @@ public class ArmourType extends InfoType
 	 */
 	public boolean negateFallDamage = false;
 	
-	@SideOnly(Side.CLIENT)
 	public ModelCustomArmour model;
 	
 	public ArmourType(TypeFile file)
@@ -73,7 +69,7 @@ public class ArmourType extends InfoType
 		super.read(split, file);
 		try
 		{
-			if(FMLCommonHandler.instance().getSide().isClient() && split[0].equals("Model"))
+			if(FlansMod.isClient() && split[0].equals("Model"))
 			{
 				model = FlansMod.proxy.loadModel(split[1], shortName, ModelCustomArmour.class);
 				model.type = this;
@@ -111,8 +107,7 @@ public class ArmourType extends InfoType
 		}
 		catch(Exception e)
 		{
-			FlansMod.log.error("Reading armour file failed.");
-			FlansMod.log.throwing(e);
+			FlansMod.log.error("Reading armour file failed.", e);
 		}
 	}
 	
@@ -146,9 +141,7 @@ public class ArmourType extends InfoType
 	{
 	}
 	
-	@Override
-	@SideOnly(Side.CLIENT)
-	public ModelBase GetModel()
+	public ModelCustomArmour GetModel()
 	{
 		return model;
 	}

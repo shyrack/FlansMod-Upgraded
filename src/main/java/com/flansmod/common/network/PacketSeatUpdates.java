@@ -1,16 +1,13 @@
 package com.flansmod.common.network;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
 
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.driveables.EntityDriveable;
 import com.flansmod.common.driveables.EntitySeat;
+import com.flansmod.common.guns.GunUtil;
 
 public class PacketSeatUpdates extends PacketBase
 {
@@ -23,14 +20,14 @@ public class PacketSeatUpdates extends PacketBase
 	
 	public PacketSeatUpdates(EntitySeat seat)
 	{
-		entityId = seat.driveable.getEntityId();
+		entityId = seat.driveable.getId();
 		seatId = seat.seatInfo.id;
 		yaw = seat.looking.getYaw();
 		pitch = seat.looking.getPitch();
 	}
 	
 	@Override
-	public void encodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void encodeInto(ByteBuf data)
 	{
 		data.writeInt(entityId);
 		data.writeInt(seatId);
@@ -39,56 +36,39 @@ public class PacketSeatUpdates extends PacketBase
 	}
 	
 	@Override
-	public void decodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void decodeInto(ByteBuf data)
 	{
 		entityId = data.readInt();
 		seatId = data.readInt();
 		yaw = data.readFloat();
 		pitch = data.readFloat();
 		
-		data.release();
 	}
 	
 	@Override
-	public void handleServerSide(EntityPlayerMP playerEntity)
+	public void handleServerSide(ServerPlayer playerEntity)
 	{
 		if(playerEntity == null)
 		{
 			FlansMod.log.warn("Received seat update packet from a null player, skipping!");
 			return ;
 		}
-		EntityDriveable driveable = null;
-		for(Object obj : playerEntity.world.loadedEntityList)
-		{
-			if(obj instanceof EntityDriveable && ((Entity)obj).getEntityId() == entityId)
-			{
-				driveable = (EntityDriveable)obj;
-				break;
-			}
-		}
+		EntityDriveable driveable = playerEntity.level().getEntity(entityId) instanceof EntityDriveable ?
+				(EntityDriveable)playerEntity.level().getEntity(entityId) : null;
 		if(driveable != null)
 		{
 			driveable.getSeat(seatId).prevLooking = driveable.getSeat(seatId).looking.clone();
 			driveable.getSeat(seatId).looking.setAngles(yaw, pitch, 0F);
 			//If on the server, update all surrounding players with these new angles
-			FlansMod.getPacketHandler().sendToAllAround(this, driveable.posX, driveable.posY, driveable.posZ, FlansMod.soundRange, driveable.dimension);
+			FlansMod.getPacketHandler().sendToAllAround(this, driveable.getX(), driveable.getY(), driveable.getZ(), FlansMod.soundRange, GunUtil.getDimensionId(driveable.level()));
 		}
 	}
 	
 	@Override
-	@SideOnly(Side.CLIENT)
-	public void handleClientSide(EntityPlayer clientPlayer)
+	public void handleClientSide(Player clientPlayer)
 	{
-		EntityDriveable driveable = null;
-		for(int i = 0; i < clientPlayer.world.loadedEntityList.size(); i++)
-		{
-			Entity obj = clientPlayer.world.loadedEntityList.get(i);
-			if(obj instanceof EntityDriveable && obj.getEntityId() == entityId)
-			{
-				driveable = (EntityDriveable)obj;
-				break;
-			}
-		}
+		EntityDriveable driveable = clientPlayer.level().getEntity(entityId) instanceof EntityDriveable ?
+				(EntityDriveable)clientPlayer.level().getEntity(entityId) : null;
 		if(driveable != null)
 		{
 			//If this is the player who sent the packet in the first place, don't read it

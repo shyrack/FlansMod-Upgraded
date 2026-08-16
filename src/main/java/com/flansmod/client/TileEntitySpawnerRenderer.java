@@ -1,52 +1,76 @@
 package com.flansmod.client;
 
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.world.phys.Vec3;
 
-import com.flansmod.client.util.WorldRenderer;
 import com.flansmod.common.FlansMod;
+import com.flansmod.common.teams.BlockSpawner;
 import com.flansmod.common.teams.Team;
 import com.flansmod.common.teams.TileEntitySpawner;
 
-public class TileEntitySpawnerRenderer extends TileEntitySpecialRenderer<TileEntitySpawner>
+public class TileEntitySpawnerRenderer implements BlockEntityRenderer<TileEntitySpawner, TileEntitySpawnerRenderer.State>
 {
-	@Override
-	public void render(TileEntitySpawner te, double x, double y, double z, float f, int i, float alpha)
+	public static class State extends BlockEntityRenderState
 	{
-		WorldRenderer worldrenderer = FlansModClient.getWorldRenderer();
-		
-		int spawnerTeamID = te.getTeamID();
+		public int teamID;
+		public String map = "";
+		public int type;
+	}
+
+	@Override
+	public State createRenderState()
+	{
+		return new State();
+	}
+
+	@Override
+	public void extractRenderState(TileEntitySpawner te, State state, float partialTick, Vec3 cameraPos, net.minecraft.client.renderer.feature.ModelFeatureRenderer.CrumblingOverlay crumblingOverlay)
+	{
+		state.teamID = te.getTeamID();
+		state.map = te.map;
+		state.type = te.getBlockState().getValue(BlockSpawner.TYPE);
+	}
+
+	@Override
+	public void submit(State state, PoseStack pose, SubmitNodeCollector collector, CameraRenderState camera)
+	{
+		int spawnerTeamID = state.teamID;
 		Team spawnerTeam = FlansModClient.getTeam(spawnerTeamID);
-		
-		boolean currentMap = FlansModClient.isCurrentMap(te.map);
-		
+
+		boolean currentMap = FlansModClient.isCurrentMap(state.map);
+
+		float red = 1F, green = 1F, blue = 1F;
+
 		//Use default colours
 		if(spawnerTeam == null || !currentMap)
 		{
 			switch(spawnerTeamID)
 			{
-				case 0: GlStateManager.color(0.5f, 0.5f, 0.5f);
+				case 0: red = 0.5f; green = 0.5f; blue = 0.5f;
 					break; //No team : light grey
-				case 1: GlStateManager.color(0.25f, 0.25f, 0.25f);
+				case 1: red = 0.25f; green = 0.25f; blue = 0.25f;
 					break; //Spectators : dark grey
-				case 2: GlStateManager.color(0.8f, 0.5f, 1.0f);
+				case 2: red = 0.8f; green = 0.5f; blue = 1.0f;
 					break; //Team 1 : purple
-				case 3: GlStateManager.color(1.0f, 0.5f, 0.8f);
+				case 3: red = 1.0f; green = 0.5f; blue = 0.8f;
 					break; //Team 2 : pink
 			}
 		}
 		else
 		{
-			float red = (float)((spawnerTeam.teamColour >> 16) & 0xff) / 255f;
-			float green = (float)((spawnerTeam.teamColour >> 8) & 0xff) / 255f;
-			float blue = (float)((spawnerTeam.teamColour >> 0) & 0xff) / 255f;
-			GlStateManager.color(red, green, blue);
+			red = (float)((spawnerTeam.teamColour >> 16) & 0xff) / 255f;
+			green = (float)((spawnerTeam.teamColour >> 8) & 0xff) / 255f;
+			blue = (float)((spawnerTeam.teamColour >> 0) & 0xff) / 255f;
 		}
-		
-		GlStateManager.disableTexture2D();
-		
+
 		double inset = 0.0d;
-		switch(te.getBlockMetadata())
+		switch(state.type)
 		{
 			case 0: inset = 0.375d;
 				break;
@@ -54,58 +78,39 @@ public class TileEntitySpawnerRenderer extends TileEntitySpecialRenderer<TileEnt
 				break;
 			case 2: inset = 0.0625d;
 				break;
-			default: FlansMod.log.warn("" + te.getBlockMetadata());
+			default: FlansMod.log.warn("" + state.type);
 		}
-		
-		RenderBox(worldrenderer, x + inset, x + 1.0d - inset, y + 0.0625d, y + 0.125d, z + inset, z + 1.0d - inset);
-		
-		GlStateManager.enableTexture2D();
-		GlStateManager.color(1.0f, 1.0f, 1.0f);
+
+		final float colR = red;
+		final float colG = green;
+		final float colB = blue;
+		final double inset0 = inset;
+
+		collector.submitCustomGeometry(pose, RenderTypes.lines(), (p, consumer) ->
+		{
+			RenderBox(p, consumer, (float)inset0, (float)(1.0d - inset0), 0.0625F, 0.125F, (float)inset0, (float)(1.0d - inset0), colR, colG, colB);
+		});
 	}
-	
-	private void RenderBox(WorldRenderer wr, double x0, double x1, double y0, double y1, double z0, double z1)
+
+	private void RenderBox(PoseStack.Pose p, VertexConsumer consumer, float x0, float x1, float y0, float y1, float z0, float z1, float red, float green, float blue)
 	{
-		// Top
-		wr.startDrawingQuads();
-		wr.addVertexWithUV(x0, y1, z0, 0d, 0d);
-		wr.addVertexWithUV(x0, y1, z1, 0d, 0d);
-		wr.addVertexWithUV(x1, y1, z1, 0d, 0d);
-		wr.addVertexWithUV(x1, y1, z0, 0d, 0d);
-		wr.draw();
-		// Bottom
-		wr.startDrawingQuads();
-		wr.addVertexWithUV(x0, y0, z0, 0d, 0d);
-		wr.addVertexWithUV(x1, y0, z0, 0d, 0d);
-		wr.addVertexWithUV(x1, y0, z1, 0d, 0d);
-		wr.addVertexWithUV(x0, y0, z1, 0d, 0d);
-		wr.draw();
-		// Left
-		wr.startDrawingQuads();
-		wr.addVertexWithUV(x0, y1, z1, 0d, 0d);
-		wr.addVertexWithUV(x0, y0, z1, 0d, 0d);
-		wr.addVertexWithUV(x1, y0, z1, 0d, 0d);
-		wr.addVertexWithUV(x1, y1, z1, 0d, 0d);
-		wr.draw();
-		// Right
-		wr.startDrawingQuads();
-		wr.addVertexWithUV(x0, y0, z0, 0d, 0d);
-		wr.addVertexWithUV(x0, y1, z0, 0d, 0d);
-		wr.addVertexWithUV(x1, y1, z0, 0d, 0d);
-		wr.addVertexWithUV(x1, y0, z0, 0d, 0d);
-		wr.draw();
-		// Front
-		wr.startDrawingQuads();
-		wr.addVertexWithUV(x1, y1, z0, 0d, 0d);
-		wr.addVertexWithUV(x1, y1, z1, 0d, 0d);
-		wr.addVertexWithUV(x1, y0, z1, 0d, 0d);
-		wr.addVertexWithUV(x1, y0, z0, 0d, 0d);
-		wr.draw();
-		// Front
-		wr.startDrawingQuads();
-		wr.addVertexWithUV(x0, y0, z0, 0d, 0d);
-		wr.addVertexWithUV(x0, y0, z1, 0d, 0d);
-		wr.addVertexWithUV(x0, y1, z1, 0d, 0d);
-		wr.addVertexWithUV(x0, y1, z0, 0d, 0d);
-		wr.draw();
+		line(p, consumer, x0, y0, z0, x0, y0, z1, red, green, blue);
+		line(p, consumer, x0, y0, z1, x1, y0, z1, red, green, blue);
+		line(p, consumer, x1, y0, z1, x1, y0, z0, red, green, blue);
+		line(p, consumer, x1, y0, z0, x0, y0, z0, red, green, blue);
+		line(p, consumer, x0, y1, z0, x0, y1, z1, red, green, blue);
+		line(p, consumer, x0, y1, z1, x1, y1, z1, red, green, blue);
+		line(p, consumer, x1, y1, z1, x1, y1, z0, red, green, blue);
+		line(p, consumer, x1, y1, z0, x0, y1, z0, red, green, blue);
+		line(p, consumer, x0, y0, z0, x0, y1, z0, red, green, blue);
+		line(p, consumer, x1, y0, z0, x1, y1, z0, red, green, blue);
+		line(p, consumer, x1, y0, z1, x1, y1, z1, red, green, blue);
+		line(p, consumer, x0, y0, z1, x0, y1, z1, red, green, blue);
+	}
+
+	private void line(PoseStack.Pose p, VertexConsumer consumer, float x0, float y0, float z0, float x1, float y1, float z1, float red, float green, float blue)
+	{
+		consumer.addVertex(p, x0, y0, z0).setColor(red, green, blue, 1.0F);
+		consumer.addVertex(p, x1, y1, z1).setColor(red, green, blue, 1.0F);
 	}
 }

@@ -3,8 +3,8 @@ package com.flansmod.common.driveables;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import net.minecraft.item.ItemStack;
-import net.minecraft.world.World;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 
 import com.flansmod.client.model.ModelPlane;
 import com.flansmod.common.FlansMod;
@@ -228,7 +228,7 @@ public class PlaneType extends DriveableType
 	}
 	
 	@Override
-	public EntityDriveable createDriveable(World world, double x, double y, double z, DriveableData data)
+	public EntityDriveable createDriveable(Level world, double x, double y, double z, DriveableData data)
 	{
 		return new EntityPlane(world, x, y, z, this, data);
 	}

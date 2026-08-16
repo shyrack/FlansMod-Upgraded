@@ -1,57 +1,52 @@
 package com.flansmod.common.guns;
 
-import javax.annotation.Nullable;
-import java.util.Collections;
-import java.util.List;
+import com.flansmod.common.ModItems;
 import java.util.UUID;
+import java.util.function.Consumer;
 
-import org.lwjgl.input.Mouse;
-
-import com.google.common.collect.Multimap;
-import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.audio.PositionedSoundRecord;
-import net.minecraft.client.util.ITooltipFlag;
-import net.minecraft.creativetab.CreativeTabs;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.SharedMonsterAttributes;
-import net.minecraft.entity.ai.attributes.AttributeModifier;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.init.Blocks;
-import net.minecraft.inventory.EntityEquipmentSlot;
-import net.minecraft.inventory.IInventory;
-import net.minecraft.item.EnumAction;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemShield;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.nbt.NBTTagList;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.EnumActionResult;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.EnumHand;
-import net.minecraft.util.NonNullList;
-import net.minecraft.util.SoundCategory;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.RayTraceResult;
-import net.minecraft.util.math.RayTraceResult.Type;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
-import net.minecraftforge.common.util.Constants;
-import net.minecraftforge.fml.client.FMLClientHandler;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
+import net.minecraft.world.Container;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemUseAnimation;
+import net.minecraft.world.item.ShieldItem;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.ItemAttributeModifiers;
+import net.minecraft.world.item.component.TooltipDisplay;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 
 import com.flansmod.client.FlansModClient;
-import com.flansmod.client.handlers.FlansModResourceHandler;
 import com.flansmod.client.debug.EntityDebugDot;
 import com.flansmod.client.model.GunAnimations;
-import com.flansmod.common.EntityItemCustomRender;
 import com.flansmod.common.FlansMod;
+import com.flansmod.common.guns.GunUtil;
+import com.flansmod.common.util.FlansModUtil;
 import com.flansmod.common.PlayerData;
 import com.flansmod.common.PlayerHandler;
 import com.flansmod.common.enchantments.EnchantmentModule;
@@ -97,30 +92,41 @@ public class ItemGun extends Item implements IPaintableItem
 	private static boolean leftMouseHeld;
 	private static boolean lastLeftMouseHeld;
 	
-	private static boolean GetMouseHeld(EnumHand hand)
+	private static boolean GetMouseHeld(InteractionHand hand)
 	{
 		if(FlansMod.shootOnRightClick)
-			return hand == EnumHand.MAIN_HAND ? rightMouseHeld : leftMouseHeld;
+			return hand == InteractionHand.MAIN_HAND ? rightMouseHeld : leftMouseHeld;
 		else
-			return hand == EnumHand.MAIN_HAND ? leftMouseHeld : rightMouseHeld;
+			return hand == InteractionHand.MAIN_HAND ? leftMouseHeld : rightMouseHeld;
 	}
 	
-	private static boolean GetLastMouseHeld(EnumHand hand)
+	private static boolean GetLastMouseHeld(InteractionHand hand)
 	{
 		if(FlansMod.shootOnRightClick)
-			return hand == EnumHand.MAIN_HAND ? lastRightMouseHeld : lastLeftMouseHeld;
+			return hand == InteractionHand.MAIN_HAND ? lastRightMouseHeld : lastLeftMouseHeld;
 		else
-			return hand == EnumHand.MAIN_HAND ? lastLeftMouseHeld : lastRightMouseHeld;
+			return hand == InteractionHand.MAIN_HAND ? lastLeftMouseHeld : lastRightMouseHeld;
+	}
+	
+	public ItemGun(Item.Properties properties)
+	{
+		super(properties);
 	}
 	
 	public ItemGun(GunType type)
 	{
-		maxStackSize = 1;
+		super(buildProperties(type));
 		this.type = type;
 		type.item = this;
-		setMaxDamage(0);
-		setRegistryName(type.shortName);
-		setCreativeTab(FlansMod.tabFlanGuns);
+	}
+
+	private static Item.Properties buildProperties(GunType type)
+	{
+		ItemAttributeModifiers.Builder builder = ItemAttributeModifiers.builder();
+		builder.add(Attributes.KNOCKBACK_RESISTANCE, new AttributeModifier(Identifier.fromNamespaceAndPath(FlansMod.MOD_ID, KNOCKBACK_RESIST_MODIFIER.toString()), type.knockbackModifier, AttributeModifier.Operation.ADD_VALUE), net.minecraft.world.entity.EquipmentSlotGroup.MAINHAND);
+		builder.add(Attributes.MOVEMENT_SPEED, new AttributeModifier(Identifier.fromNamespaceAndPath(FlansMod.MOD_ID, MOVEMENT_SPEED_MODIFIER.toString()), type.moveSpeedModifier - 1.0f, AttributeModifier.Operation.ADD_MULTIPLIED_BASE), net.minecraft.world.entity.EquipmentSlotGroup.MAINHAND);
+		builder.add(Attributes.ATTACK_DAMAGE, new AttributeModifier(Identifier.fromNamespaceAndPath(FlansMod.MOD_ID, ATTACK_DAMAGE_MODIFIER.toString()), type.meleeDamage, AttributeModifier.Operation.ADD_VALUE), net.minecraft.world.entity.EquipmentSlotGroup.MAINHAND);
+		return new Item.Properties().stacksTo(1).setId(ModItems.itemKey(type)).attributes(builder.build());
 	}
 	
 	/**
@@ -129,27 +135,27 @@ public class ItemGun extends Item implements IPaintableItem
 	public ItemStack getBulletItemStack(ItemStack gun, int id)
 	{
 		//If the gun has no tags, give it some
-		if(!gun.hasTagCompound())
+		if(!GunUtil.hasTag(gun))
 		{
-			gun.setTagCompound(new NBTTagCompound());
+			GunUtil.setTag(gun, new CompoundTag());
 			return ItemStack.EMPTY.copy();
 		}
 		//If the gun has no ammo tags, give it some
-		if(!gun.getTagCompound().hasKey("ammo"))
+		if(!GunUtil.getTag(gun).contains("ammo"))
 		{
-			NBTTagList ammoTagsList = new NBTTagList();
+			ListTag ammoTagsList = new ListTag();
 			for(int i = 0; i < type.numAmmoItemsInGun; i++)
 			{
-				ammoTagsList.appendTag(new NBTTagCompound());
+				ammoTagsList.add(new CompoundTag());
 			}
-			gun.getTagCompound().setTag("ammo", ammoTagsList);
+			GunUtil.getTag(gun).put("ammo", ammoTagsList);
 			return ItemStack.EMPTY.copy();
 		}
 		//Take the list of ammo tags
-		NBTTagList ammoTagsList = gun.getTagCompound().getTagList("ammo", Constants.NBT.TAG_COMPOUND);
+		ListTag ammoTagsList = GunUtil.getTag(gun).getListOrEmpty("ammo");
 		//Get the specific ammo tags required
-		NBTTagCompound ammoTags = ammoTagsList.getCompoundTagAt(id);
-		return new ItemStack(ammoTags);
+		CompoundTag ammoTags = ammoTagsList.getCompoundOrEmpty(id);
+		return GunUtil.stackFromTag(ammoTags);
 	}
 	
 	/**
@@ -158,42 +164,42 @@ public class ItemGun extends Item implements IPaintableItem
 	public void setBulletItemStack(ItemStack gun, ItemStack bullet, int id)
 	{
 		//If the gun has no tags, give it some
-		if(!gun.hasTagCompound())
+		if(!GunUtil.hasTag(gun))
 		{
-			gun.setTagCompound(new NBTTagCompound());
+			GunUtil.setTag(gun, new CompoundTag());
 		}
 		//If the gun has no ammo tags, give it some
-		if(!gun.getTagCompound().hasKey("ammo"))
+		if(!GunUtil.getTag(gun).contains("ammo"))
 		{
-			NBTTagList ammoTagsList = new NBTTagList();
+			ListTag ammoTagsList = new ListTag();
 			for(int i = 0; i < type.numAmmoItemsInGun; i++)
 			{
-				ammoTagsList.appendTag(new NBTTagCompound());
+				ammoTagsList.add(new CompoundTag());
 			}
-			gun.getTagCompound().setTag("ammo", ammoTagsList);
+			GunUtil.getTag(gun).put("ammo", ammoTagsList);
 		}
 		//Take the list of ammo tags
-		NBTTagList ammoTagsList = gun.getTagCompound().getTagList("ammo", Constants.NBT.TAG_COMPOUND);
+		ListTag ammoTagsList = GunUtil.getTag(gun).getListOrEmpty("ammo");
 		//Get the specific ammo tags required
-		NBTTagCompound ammoTags = ammoTagsList.getCompoundTagAt(id);
+		CompoundTag ammoTags = ammoTagsList.getCompoundOrEmpty(id);
 		//Represent empty slots by nulltypes
 		if(bullet == null)
 		{
-			ammoTags = new NBTTagCompound();
+			ammoTags = new CompoundTag();
 		}
 		//Set the tags to match the bullet stack
-		bullet.writeToNBT(ammoTags);
+		GunUtil.stackToTag(ammoTags, bullet);
 	}
 	
 	/**
 	 * Method for dropping items on reload and on shoot
 	 */
-	public static void dropItem(World world, Entity entity, String itemName)
+	public static void dropItem(Level world, Entity entity, String itemName)
 	{
-		if(itemName != null && !world.isRemote)
+		if(itemName != null && !world.isClientSide())
 		{
 			ItemStack dropStack = InfoType.getRecipeElement(itemName);
-			entity.entityDropItem(dropStack, 0.5F);
+			entity.spawnAtLocation((ServerLevel)world, dropStack, 0.5F);
 		}
 	}
 	
@@ -201,32 +207,33 @@ public class ItemGun extends Item implements IPaintableItem
 	 * Deployable guns only
 	 */
 	@Override
-	public ActionResult<ItemStack> onItemRightClick(World world, EntityPlayer entityplayer, EnumHand hand)
+	public InteractionResult use(Level world, Player entityplayer, InteractionHand hand)
 	{
-		ItemStack itemstack = entityplayer.getHeldItem(hand);
+		ItemStack itemstack = entityplayer.getItemInHand(hand);
 		
 		if(type.deployable)
 		{
 			//Raytracing
-			float cosYaw = MathHelper.cos(-entityplayer.rotationYaw * 0.01745329F - 3.141593F);
-			float sinYaw = MathHelper.sin(-entityplayer.rotationYaw * 0.01745329F - 3.141593F);
-			float cosPitch = -MathHelper.cos(-entityplayer.rotationPitch * 0.01745329F);
-			float sinPitch = MathHelper.sin(-entityplayer.rotationPitch * 0.01745329F);
+			float cosYaw = Mth.cos(-entityplayer.getYRot() * 0.01745329F - 3.141593F);
+			float sinYaw = Mth.sin(-entityplayer.getYRot() * 0.01745329F - 3.141593F);
+			float cosPitch = -Mth.cos(-entityplayer.getXRot() * 0.01745329F);
+			float sinPitch = Mth.sin(-entityplayer.getXRot() * 0.01745329F);
 			double length = 5D;
-			Vec3d posVec = new Vec3d(entityplayer.posX, entityplayer.posY + 1.62D - entityplayer.getYOffset(), entityplayer.posZ);
-			Vec3d lookVec = posVec.add(sinYaw * cosPitch * length, sinPitch * length, cosYaw * cosPitch * length);
-			RayTraceResult look = world.rayTraceBlocks(posVec, lookVec, true);
+			Vec3 posVec = new Vec3(entityplayer.getX(), entityplayer.getEyeY(), entityplayer.getZ());
+			Vec3 lookVec = posVec.add(sinYaw * cosPitch * length, sinPitch * length, cosYaw * cosPitch * length);
+			HitResult look = world.clip(new ClipContext(posVec, lookVec, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, entityplayer));
 			
 			//Result check
-			if(look != null && look.typeOfHit == Type.BLOCK)
+			if(look != null && look.getType() == HitResult.Type.BLOCK)
 			{
-				if(look.sideHit == EnumFacing.UP)
+				BlockHitResult blockLook = (BlockHitResult)look;
+				if(blockLook.getDirection() == Direction.UP)
 				{
-					int playerDir = MathHelper.floor(((entityplayer.rotationYaw * 4F) / 360F) + 0.5D) & 3;
-					int i = look.getBlockPos().getX();
-					int j = look.getBlockPos().getY();
-					int k = look.getBlockPos().getZ();
-					if(!world.isRemote)
+					int playerDir = Mth.floor(((entityplayer.getYRot() * 4F) / 360F) + 0.5D) & 3;
+					int i = blockLook.getBlockPos().getX();
+					int j = blockLook.getBlockPos().getY();
+					int k = blockLook.getBlockPos().getZ();
+					if(!world.isClientSide())
 					{
 						if(world.getBlockState(new BlockPos(i, j, k)).getBlock() == Blocks.SNOW)
 						{
@@ -242,31 +249,25 @@ public class ItemGun extends Item implements IPaintableItem
 						{
 							for(EntityMG mg : EntityMG.mgs)
 							{
-								if(mg.blockX == i && mg.blockY == j + 1 && mg.blockZ == k && !mg.isDead)
-									return new ActionResult<>(EnumActionResult.SUCCESS, itemstack);
+								if(mg.blockX == i && mg.blockY == j + 1 && mg.blockZ == k && !mg.isRemoved())
+									return InteractionResult.SUCCESS;
 							}
 							EntityMG mg = new EntityMG(world, i, j + 1, k, playerDir, type);
 							
-							if(getBulletItemStack(itemstack, 0) != null)
+							if(getBulletItemStack(itemstack, 0) != null && !getBulletItemStack(itemstack, 0).isEmpty())
 							{
 								mg.ammo = getBulletItemStack(itemstack, 0);
 							}
-							world.spawnEntity(mg);
+							((ServerLevel)world).addFreshEntity(mg);
 							
-							if(!entityplayer.capabilities.isCreativeMode)
+							if(!entityplayer.getAbilities().instabuild)
 								itemstack.setCount(0);
 						}
 					}
 				}
 			}
 		}
-		//Stop the gun bobbing up and down when holding shoot and looking at a block
-		if(world.isRemote)
-		{
-			for(int i = 0; i < 3; i++)
-				Minecraft.getMinecraft().entityRenderer.itemRenderer.updateEquippedItem();
-		}
-		return new ActionResult<>(EnumActionResult.PASS, itemstack);
+		return InteractionResult.PASS;
 	}
 	
 	// _____________________________________________________________________________
@@ -274,10 +275,9 @@ public class ItemGun extends Item implements IPaintableItem
 	// Shooting code
 	// _____________________________________________________________________________
 	
-	@SideOnly(Side.CLIENT)
-	public void onUpdateClient(ItemStack gunstack, int gunSlot, World world, Entity entity, EnumHand hand, boolean hasOffHand)
+	public void onUpdateClient(ItemStack gunstack, int gunSlot, Level world, Entity entity, InteractionHand hand, boolean hasOffHand)
 	{
-		if(!(entity instanceof EntityPlayer))
+		if(!(entity instanceof Player))
 		{
 			//This code is for players only
 			return;
@@ -295,7 +295,7 @@ public class ItemGun extends Item implements IPaintableItem
 			{
 				case MAIN_HAND:
 				{
-					if(GetMouseHeld(EnumHand.OFF_HAND) && !GetLastMouseHeld(EnumHand.OFF_HAND)
+					if(GetMouseHeld(InteractionHand.OFF_HAND) && !GetLastMouseHeld(InteractionHand.OFF_HAND)
 							&& (type.secondaryFunction == EnumSecondaryFunction.ADS_ZOOM || type.secondaryFunction == EnumSecondaryFunction.ZOOM))
 					{
 						FlansModClient.setScope(currentScope);
@@ -304,7 +304,7 @@ public class ItemGun extends Item implements IPaintableItem
 				}
 				case OFF_HAND:
 				{
-					if(GetMouseHeld(EnumHand.MAIN_HAND) && !GetLastMouseHeld(EnumHand.MAIN_HAND)
+					if(GetMouseHeld(InteractionHand.MAIN_HAND) && !GetLastMouseHeld(InteractionHand.MAIN_HAND)
 							&& (type.secondaryFunction == EnumSecondaryFunction.ADS_ZOOM || type.secondaryFunction == EnumSecondaryFunction.ZOOM))
 					{
 						FlansModClient.setScope(currentScope);
@@ -315,8 +315,8 @@ public class ItemGun extends Item implements IPaintableItem
 		}
 		
 		// Get useful objects
-		Minecraft mc = Minecraft.getMinecraft();
-		EntityPlayer player = (EntityPlayer) entity;
+		Minecraft mc = Minecraft.getInstance();
+		Player player = (Player) entity;
 		PlayerData data = PlayerHandler.getPlayerData(player);
 		//Slow down minigun
 		data.minigunSpeed *= 0.9f;
@@ -324,14 +324,14 @@ public class ItemGun extends Item implements IPaintableItem
 		Boolean held = GetLastMouseHeld(hand);
 		
 		// Do not shoot ammo bags, flags or dropped gun items
-		if(mc.objectMouseOver != null && (mc.objectMouseOver.entityHit instanceof EntityFlagpole || mc.objectMouseOver.entityHit instanceof EntityFlag || mc.objectMouseOver.entityHit instanceof EntityGunItem || (mc.objectMouseOver.entityHit instanceof EntityGrenade && ((EntityGrenade)mc.objectMouseOver.entityHit).type.isDeployableBag)))
+		if(mc.hitResult != null && mc.hitResult instanceof EntityHitResult entityHitResult && (entityHitResult.getEntity() instanceof EntityFlagpole || entityHitResult.getEntity() instanceof EntityFlag || entityHitResult.getEntity() instanceof EntityGunItem || (entityHitResult.getEntity() instanceof EntityGrenade && ((EntityGrenade)entityHitResult.getEntity()).type.isDeployableBag)))
 			hold = false;
 		
 		//TODO idle sound should be done on the server side
 		// Play idle sounds
 		if(soundDelay <= 0 && type.idleSound != null)
 		{
-			PacketPlaySound.sendSoundPacket(player.posX, player.posY, player.posZ, FlansMod.soundRange, player.dimension, type.idleSound, false);
+			PacketPlaySound.sendSoundPacket(player.getX(), player.getY(), player.getZ(), FlansMod.soundRange, GunUtil.getDimensionId(world), type.idleSound, false);
 			soundDelay = type.idleSoundLength;
 		}
 		
@@ -385,7 +385,7 @@ public class ItemGun extends Item implements IPaintableItem
 							if(type.useLoopingSounds && data.loopedSoundDelay <= 0 && data.minigunSpeed > 0.1F && !data.reloadingRight && !data.isSpinning)
 							{
 								data.loopedSoundDelay = type.warmupSoundLength;
-								PacketPlaySound.sendSoundPacket(player.posX, player.posY, player.posZ, FlansMod.soundRange, player.dimension, type.warmupSound, false);
+								PacketPlaySound.sendSoundPacket(player.getX(), player.getY(), player.getZ(), FlansMod.soundRange, GunUtil.getDimensionId(world), type.warmupSound, false);
 								data.isSpinning = true;
 							}
 							break;
@@ -406,12 +406,12 @@ public class ItemGun extends Item implements IPaintableItem
 					if(type.useLoopingSounds && data.loopedSoundDelay <= 0 && data.minigunSpeed > type.minigunStartSpeed)
 					{
 						data.loopedSoundDelay = type.loopedSoundLength;
-						PacketPlaySound.sendSoundPacket(player.posX, player.posY, player.posZ, FlansMod.soundRange, player.dimension, type.loopedSound, false);
+						PacketPlaySound.sendSoundPacket(player.getX(), player.getY(), player.getZ(), FlansMod.soundRange, GunUtil.getDimensionId(world), type.loopedSound, false);
 						data.isSpinning = true; // isSpinning = true
 					}
 					if(type.useLoopingSounds && data.isSpinning && data.minigunSpeed < type.minigunStartSpeed)
 					{
-						PacketPlaySound.sendSoundPacket(player.posX, player.posY, player.posZ, FlansMod.soundRange, player.dimension, type.cooldownSound, false);
+						PacketPlaySound.sendSoundPacket(player.getX(), player.getY(), player.getZ(), FlansMod.soundRange, GunUtil.getDimensionId(world), type.cooldownSound, false);
 						data.isSpinning = false;
 					}
 					
@@ -443,14 +443,14 @@ public class ItemGun extends Item implements IPaintableItem
 	 * @param player The player who is handling the gun
 	 * @return if the player can handle the gun based on the contents of the main and off hand and the GunType
 	 */
-	public boolean gunCanBeHandled(GunType type, EntityPlayer player)
+	public boolean gunCanBeHandled(GunType type, Player player)
 	{
 		// We can always use a 1H gun
 		if(type.oneHanded)
 			return true;
 		
-		ItemStack main = player.getHeldItemMainhand();
-		ItemStack off = player.getHeldItemOffhand();
+		ItemStack main = player.getMainHandItem();
+		ItemStack off = player.getOffhandItem();
 		Boolean hasItemInBothHands = !main.isEmpty() && !off.isEmpty();
 		if(hasItemInBothHands) 
 		{
@@ -464,18 +464,18 @@ public class ItemGun extends Item implements IPaintableItem
 		return true;
 	}
 	
-	public void shoot(EnumHand hand, EntityPlayer player, ItemStack gunstack, PlayerData data, World world, @Nullable GunAnimations animations)
+	public void shoot(InteractionHand hand, Player player, ItemStack gunstack, PlayerData data, Level world, GunAnimations animations)
 	{
 		if(type.usableByPlayers)
 		{
 			float shootTime = data.GetShootTime(hand);
 			
 			ItemStack otherHand = null;
-			if(hand == EnumHand.MAIN_HAND)
-				otherHand = player.getHeldItemOffhand();
-			else otherHand = player.getHeldItemMainhand();
+			if(hand == InteractionHand.MAIN_HAND)
+				otherHand = player.getOffhandItem();
+			else otherHand = player.getMainHandItem();
 			
-			if (!world.isRemote && shootTime > 0f)
+			if (!world.isClientSide() && shootTime > 0f)
 			{
 				//data.addToQueue(hand);
 				//Hacky code
@@ -489,7 +489,7 @@ public class ItemGun extends Item implements IPaintableItem
 				}
 			}
 			
-			if (world.isRemote && shootTime <= 0)
+			if (world.isClientSide() && shootTime <= 0)
 				//Send the server the instruction to shoot
 				FlansMod.getPacketHandler().sendToServer(new PacketGunFire(hand));
 			
@@ -505,7 +505,7 @@ public class ItemGun extends Item implements IPaintableItem
 				for(; bulletID < type.numAmmoItemsInGun; bulletID++)
 				{
 					ItemStack checkingStack = getBulletItemStack(gunstack, bulletID);
-					if(checkingStack != null && checkingStack.getItemDamage() < checkingStack.getMaxDamage())
+					if(checkingStack != null && checkingStack.getDamageValue() < checkingStack.getMaxDamage())
 					{
 						bulletStack = checkingStack;
 						break;
@@ -522,17 +522,17 @@ public class ItemGun extends Item implements IPaintableItem
 				
 				ItemShootable shootableItem = (ItemShootable)bulletStack.getItem();
 				ShootableType shootableType = shootableItem.type;
-				Vector3f rayTraceOrigin = new Vector3f(player.getPositionEyes(0.0f));
+				Vector3f rayTraceOrigin = new Vector3f(player.getEyePosition(0.0f));
 				
 					ShootBulletHandler handler = isExtraBullet ->
 					{
 						if(!isExtraBullet)
 						{
 							// Drop item on shooting if bullet requires it
-							if(shootableType.dropItemOnShoot != null && !player.capabilities.isCreativeMode)
+							if(shootableType.dropItemOnShoot != null && !player.getAbilities().instabuild)
 								dropItem(world, player, shootableType.dropItemOnShoot);
 							// Drop item on shooting if gun requires it
-							if(type.dropItemOnShoot != null)// && !entityplayer.capabilities.isCreativeMode)
+							if(type.dropItemOnShoot != null)// && !entityplayer.getAbilities().instabuild)
 								dropItem(world, player, type.dropItemOnShoot);
 							
 							if(type.knockback > 0)
@@ -541,19 +541,19 @@ public class ItemGun extends Item implements IPaintableItem
 							}
 							
 							//Damage the bullet item
-							bullet.setItemDamage(bullet.getItemDamage() + 1);
+							bullet.setDamageValue(bullet.getDamageValue() + 1);
 							
 							//Update the stack in the gun
 							setBulletItemStack(gunstack, bullet, bulletid);
 							
 							if(type.consumeGunUponUse)
 							{
-								player.setHeldItem(hand, ItemStack.EMPTY.copy());
+								player.setItemInHand(hand, ItemStack.EMPTY.copy());
 							}
 						}
 					};
 					
-					if (world.isRemote)
+					if (world.isClientSide())
 					{	
 						
 						Integer bulletAmount = type.numBullets*shootableType.numBullets;
@@ -570,7 +570,7 @@ public class ItemGun extends Item implements IPaintableItem
 						
 					} else
 					{
-						Vector3f rayTraceDirection = new Vector3f(player.getLookVec());
+						Vector3f rayTraceDirection = new Vector3f(player.getViewVector(1.0F));
 						
 						if (shootableType instanceof BulletType)
 						{
@@ -582,12 +582,12 @@ public class ItemGun extends Item implements IPaintableItem
 											type.bulletSpeed, 
 											type.getSpreadPattern(gunstack));
 							
-							if(otherHand.getItem() instanceof ItemShield || otherHand.getItem() instanceof ItemGlove)
+							if(otherHand.getItem() instanceof ShieldItem || otherHand.getItem() instanceof ItemGlove)
 							{
 								EnchantmentModule.ModifyGun(fireableGun, player, otherHand);
 							}
 							
-							FiredShot shot = new FiredShot(fireableGun, (BulletType)shootableType, (EntityPlayerMP)player);
+							FiredShot shot = new FiredShot(fireableGun, (BulletType)shootableType, (ServerPlayer)player);
 							//TODO gunOrigin? & animation origin
 							ShotHandler.fireGun(world, shot, type.numBullets*shootableType.numBullets, rayTraceOrigin, rayTraceDirection, handler);
 						}
@@ -602,20 +602,20 @@ public class ItemGun extends Item implements IPaintableItem
 						boolean silenced = type.getBarrel(gunstack) != null && type.getBarrel(gunstack).silencer;
 						playShotSound(world, rayTraceOrigin, silenced);
 					}
-				int gunSlot = player.inventory.currentItem;
+				int gunSlot = player.getInventory().getSelectedSlot();
 				if(type.consumeGunUponUse)
-					player.inventory.setInventorySlotContents(gunSlot, ItemStack.EMPTY.copy());
+					player.getInventory().setItem(gunSlot, ItemStack.EMPTY.copy());
 			}
 			data.SetShootTime(hand, shootTime);
 		}
 	}
 	
-	public void shootServer(EnumHand hand, EntityPlayerMP player, ItemStack gunstack)
+	public void shootServer(InteractionHand hand, ServerPlayer player, ItemStack gunstack)
 		{
 
 			// Get useful objects
-			PlayerData data = PlayerHandler.getPlayerData(player, Side.SERVER);
-			World world = player.getServerWorld();
+			PlayerData data = PlayerHandler.getPlayerData(player);
+			Level world = player.level();
 			
 			// This code is not for deployables
 			if(type.deployable)
@@ -629,43 +629,32 @@ public class ItemGun extends Item implements IPaintableItem
 			if(FlansMod.DEBUG)
 			{
 				Vector3f gunOrigin = FlansModRaytracer.GetPlayerMuzzlePosition(player, hand);
-				world.spawnEntity(new EntityDebugDot(world, gunOrigin, 100, 1.0f, 1.0f, 1.0f));
+				((ServerLevel)world).addFreshEntity(new EntityDebugDot(world, gunOrigin, 100, 1.0f, 1.0f, 1.0f));
 			}
 	}
 	
-	public void playShotSound(World world, Vector3f position, Boolean silenced) {
+	public void playShotSound(Level world, Vector3f position, Boolean silenced) {
 		// Play shot sounds
 		if(soundDelay <= 0 && type.shootSound != null)
 		{
-			PacketPlaySound.sendSoundPacket(position.x, position.y, position.z, FlansMod.soundRange, world.provider.getDimension(), type.shootSound, silenced);
+			PacketPlaySound.sendSoundPacket(position.x, position.y, position.z, FlansMod.soundRange, GunUtil.getDimensionId(world), type.shootSound, silenced);
 			soundDelay = type.idleSoundLength;
 		}
 	}
 
-	@SideOnly(Side.CLIENT)
-	private void PlayShotSound(World world, boolean silenced, float x, float y, float z)
+	public void onUpdateServer(ItemStack itemstack, int gunSlot, Level world, Entity entity, InteractionHand hand, boolean hasOffHand)
 	{
-		FMLClientHandler.instance().getClient().getSoundHandler().playSound(
-				new PositionedSoundRecord(FlansModResourceHandler.getSoundEvent(type.shootSound),
-						SoundCategory.PLAYERS,
-						silenced ? 5F : 10F,
-						(type.distortSound ? 1.0F / (world.rand.nextFloat() * 0.4F + 0.8F) : 1.0F) * (silenced ? 2F : 1F),
-						x, y, z));
-	}
-	
-	public void onUpdateServer(ItemStack itemstack, int gunSlot, World world, Entity entity, EnumHand hand, boolean hasOffHand)
-	{
-		if(!(entity instanceof EntityPlayerMP))
+		if(!(entity instanceof ServerPlayer))
 		{
 			return;
 		}
-		EntityPlayerMP player = (EntityPlayerMP)entity;
+		ServerPlayer player = (ServerPlayer)entity;
 		PlayerData data = PlayerHandler.getPlayerData(player);
 		
-		if(player.inventory.getCurrentItem() != itemstack)
+		if(player.getInventory().getSelectedItem() != itemstack)
 		{
 			//If the player is no longer holding a gun, emulate a release of the shoot button
-			if(player.inventory.getCurrentItem().isEmpty() || !(player.inventory.getCurrentItem().getItem() instanceof ItemGun))
+			if(player.getInventory().getSelectedItem().isEmpty() || !(player.getInventory().getSelectedItem().getItem() instanceof ItemGun))
 			{
 				data.isShootingRight = data.isShootingLeft = false;
 			}
@@ -684,53 +673,44 @@ public class ItemGun extends Item implements IPaintableItem
 	 * Passes on to onUpdateEach
 	 */
 	@Override
-	public void onUpdate(ItemStack itemstack, World world, Entity entity, int i, boolean flag)
+	public void inventoryTick(ItemStack itemstack, ServerLevel world, Entity entity, EquipmentSlot slot)
 	{
-		if(entity instanceof EntityPlayer)
+		if(entity instanceof Player)
 		{
-			EntityPlayer player = (EntityPlayer)entity;
-			EnumHand hand;
-			if(itemstack == player.getHeldItemMainhand())
+			Player player = (Player)entity;
+			InteractionHand hand;
+			if(itemstack == player.getMainHandItem())
 			{
-				hand = EnumHand.MAIN_HAND;
+				hand = InteractionHand.MAIN_HAND;
 			}
-			else if(itemstack == player.getHeldItemOffhand())
+			else if(itemstack == player.getOffhandItem())
 			{
-				hand = EnumHand.OFF_HAND;
+				hand = InteractionHand.OFF_HAND;
 			}
 			else
 			{
 				return;
 			}
 			
-			if(world.isRemote && Minecraft.getMinecraft().currentScreen == null)
-			{
-				// Get button presses. Do this before splitting into each hand. Prevents second pass wiping the data
-				lastRightMouseHeld = rightMouseHeld;
-				lastLeftMouseHeld = leftMouseHeld;
-				rightMouseHeld = Mouse.isButtonDown(1);
-				leftMouseHeld = Mouse.isButtonDown(0);
-			}
-			
-			ItemStack main = player.getHeldItemMainhand();
-			ItemStack off = player.getHeldItemOffhand();
+			ItemStack main = player.getMainHandItem();
+			ItemStack off = player.getOffhandItem();
 			boolean hasOffHand = !main.isEmpty() && !off.isEmpty();
 			
-			onUpdateEach(itemstack, i, world, entity, hand, hasOffHand);
+			onUpdateEach(itemstack, 0, world, entity, hand, hasOffHand);
 		}
 	}
 	
 	/**
 	 * Called once for each weapon we are weilding
 	 */
-	private void onUpdateEach(ItemStack itemstack, int gunSlot, World world, Entity entity, EnumHand hand, boolean hasOffHand)
+	private void onUpdateEach(ItemStack itemstack, int gunSlot, Level world, Entity entity, InteractionHand hand, boolean hasOffHand)
 	{
-		if(world.isRemote)
+		if(world.isClientSide())
 			onUpdateClient(itemstack, gunSlot, world, entity, hand, hasOffHand);
 		else onUpdateServer(itemstack, gunSlot, world, entity, hand, hasOffHand);
 	}
 	
-	public boolean Reload(ItemStack gunstack, World world, Entity entity, IInventory inventory, EnumHand hand, boolean hasOffHand, boolean forceReload, boolean isCreative)
+	public boolean Reload(ItemStack gunstack, Level world, Entity entity, Container inventory, InteractionHand hand, boolean hasOffHand, boolean forceReload, boolean isCreative)
 	{
 		//Deployable guns cannot be reloaded in the inventory
 		
@@ -751,17 +731,17 @@ public class ItemGun extends Item implements IPaintableItem
 			ItemStack bulletStack = getBulletItemStack(gunstack, i);
 			
 			//If there is no magazine, if the magazine is empty or if this is a forced reload
-			if(bulletStack == null || bulletStack.isEmpty() || bulletStack.getItemDamage() == bulletStack.getMaxDamage() || forceReload)
+			if(bulletStack == null || bulletStack.isEmpty() || bulletStack.getDamageValue() == bulletStack.getMaxDamage() || forceReload)
 			{
 				//Iterate over all inventory slots and find the magazine / bullet item with the most bullets
 				int bestSlot = -1;
 				int bulletsInBestSlot = 0;
-				for(int j = 0; j < inventory.getSizeInventory(); j++)
+				for(int j = 0; j < inventory.getContainerSize(); j++)
 				{
-					ItemStack item = inventory.getStackInSlot(j);
+					ItemStack item = inventory.getItem(j);
 					if(item.getItem() instanceof ItemShootable && type.isCorrectAmmo(((ItemShootable)(item.getItem())).type))
 					{
-						int bulletsInThisSlot = item.getMaxDamage() - item.getItemDamage();
+						int bulletsInThisSlot = item.getMaxDamage() - item.getDamageValue();
 						if(bulletsInThisSlot > bulletsInBestSlot)
 						{
 							bestSlot = j;
@@ -772,23 +752,23 @@ public class ItemGun extends Item implements IPaintableItem
 				//If there was a valid non-empty magazine / bullet item somewhere in the inventory, load it
 				if(bestSlot != -1)
 				{
-					ItemStack newBulletStack = inventory.getStackInSlot(bestSlot);
+					ItemStack newBulletStack = inventory.getItem(bestSlot);
 					ShootableType newBulletType = ((ItemShootable)newBulletStack.getItem()).type;
 					
 					//Unload the old magazine (Drop an item if it is required and the player is not in creative mode)
-					if(bulletStack != null && bulletStack.getItem() instanceof ItemShootable && ((ItemShootable)bulletStack.getItem()).type.dropItemOnReload != null && !isCreative && bulletStack.getItemDamage() == bulletStack.getMaxDamage())
+					if(bulletStack != null && bulletStack.getItem() instanceof ItemShootable && ((ItemShootable)bulletStack.getItem()).type.dropItemOnReload != null && !isCreative && bulletStack.getDamageValue() == bulletStack.getMaxDamage())
 					{
-						if(!world.isRemote)
+						if(!world.isClientSide())
 							dropItem(world, entity, ((ItemShootable)bulletStack.getItem()).type.dropItemOnReload);
 					}
 					
 					//The magazine was not finished, pull it out and give it back to the player or, failing that, drop it
-					if(bulletStack != null && !bulletStack.isEmpty() && bulletStack.getItemDamage() < bulletStack.getMaxDamage())
+					if(bulletStack != null && !bulletStack.isEmpty() && bulletStack.getDamageValue() < bulletStack.getMaxDamage())
 					{
-						if(!InventoryHelper.addItemStackToInventory(inventory, bulletStack, isCreative))
+						if(!InventoryHelper.add(inventory, bulletStack, isCreative))
 						{
-							if(!world.isRemote)
-								entity.entityDropItem(bulletStack, 0.5F);
+							if(!world.isClientSide())
+								entity.spawnAtLocation((ServerLevel)world, bulletStack, 0.5F);
 						}
 					}
 					
@@ -802,7 +782,7 @@ public class ItemGun extends Item implements IPaintableItem
 						newBulletStack.setCount(newBulletStack.getCount() - 1);
 					if(newBulletStack.getCount() <= 0)
 						newBulletStack = ItemStack.EMPTY.copy();
-					inventory.setInventorySlotContents(bestSlot, newBulletStack);
+					inventory.setItem(bestSlot, newBulletStack);
 					
 					
 					//Tell the sound player that we reloaded something
@@ -813,222 +793,12 @@ public class ItemGun extends Item implements IPaintableItem
 		return reloadedSomething;
 	}
 	
-	// TODO : All this bunk
-		
-	/* Melee MESS
-	 * 	@Override
-	public void onUpdate(ItemStack itemstack, World world, Entity pEnt, int i, boolean flag)
-	{
-		if(world.isRemote)
-			onUpdateClient(itemstack, world, pEnt, i, flag);
-		else onUpdateServer(itemstack, world, pEnt, i, flag);
-		
-		if(pEnt instanceof EntityPlayer)
-		{
-			EntityPlayer player = (EntityPlayer)pEnt;
-			PlayerData data = PlayerHandler.getPlayerData(player);
-			if(data == null)
-				return;
-			//if(data.lastMeleePositions == null || data.lastMeleePositions.length != type.meleeDamagePoints.size())
-			//{
-			//	data.lastMeleePositions = new Vector3f[type.meleeDamagePoints.size()];
-			//	for(int j = 0; j < type.meleeDamagePoints.size(); j++)
-			//		data.lastMeleePositions[j] = new Vector3f(player.posX, player.posY, player.posZ);
-			//}
-			//Melee weapon
-			if(data.meleeLength > 0 && type.meleePath.size() > 0 && player.inventory.getCurrentItem() == itemstack)
-			{
-				for(int k = 0; k < type.meleeDamagePoints.size(); k++)
-				{
-					Vector3f meleeDamagePoint = type.meleeDamagePoints.get(k);
-					//Do a raytrace from the prev pos to the current pos and attack anything in the way
-					Vector3f nextPos = type.meleePath.get((data.meleeProgress + 1) % type.meleePath.size());
-					Vector3f nextAngles = type.meleePathAngles.get((data.meleeProgress + 1) % type.meleePathAngles.size());
-					RotatedAxes nextAxes = new RotatedAxes().rotateGlobalRoll(-nextAngles.x).rotateGlobalPitch(-nextAngles.z).rotateGlobalYaw(-nextAngles.y);
-					
-					Vector3f nextPosInGunCoords = nextAxes.findLocalVectorGlobally(meleeDamagePoint);
-					Vector3f.add(nextPos, nextPosInGunCoords, nextPosInGunCoords);
-					Vector3f.add(new Vector3f(0F, 0F, 0F), nextPosInGunCoords, nextPosInGunCoords);
-					Vector3f nextPosInPlayerCoords = new RotatedAxes(player.rotationYaw + 90F, player.rotationPitch, 0F).findLocalVectorGlobally(nextPosInGunCoords);
-					
-					
-					if(!FlansMod.proxy.isThePlayer(player))
-						nextPosInPlayerCoords.y += 1.6F;
-					
-					Vector3f nextPosInWorldCoords = new Vector3f(player.posX + nextPosInPlayerCoords.x, player.posY + nextPosInPlayerCoords.y, player.posZ + nextPosInPlayerCoords.z);
-					
-					Vector3f dPos = data.lastMeleePositions[k] == null ? new Vector3f() : Vector3f.sub(nextPosInWorldCoords, data.lastMeleePositions[k], null);
-					
-					if(player.world.isRemote && FlansMod.DEBUG)
-						player.world.spawnEntity(new EntityDebugVector(player.world, data.lastMeleePositions[k], dPos, 200, 1F, 0F, 0F));
-					
-					//Do the raytrace
-					{
-						//Create a list for all bullet hits
-						ArrayList<BulletHit> hits = new ArrayList<BulletHit>();
-										
-						//Iterate over all entities
-						for(int j = 0; j < world.loadedEntityList.size(); j++)
-						{
-							Object obj = world.loadedEntityList.get(j);
-							//Get players
-							if(obj instanceof EntityPlayer)
-							{
-								EntityPlayer otherPlayer = (EntityPlayer)obj;
-								PlayerData otherData = PlayerHandler.getPlayerData(otherPlayer);
-								boolean shouldDoNormalHitDetect = false;
-								if(otherPlayer == player)
-									continue;
-								if(otherData != null)
-								{
-									if(otherPlayer.isDead || otherData.team == Team.spectators)
-									{
-										continue;
-									}
-									int snapshotToTry = player instanceof EntityPlayerMP ? ((EntityPlayerMP)player).ping / 50 : 0;
-									if(snapshotToTry >= otherData.snapshots.length)
-										snapshotToTry = otherData.snapshots.length - 1;
-									
-									PlayerSnapshot snapshot = otherData.snapshots[snapshotToTry];
-									if(snapshot == null)
-										snapshot = otherData.snapshots[0];
-									
-									//DEBUG
-									//snapshot = new PlayerSnapshot(player);
-									
-									//Check one last time for a null snapshot. If this is the case, fall back to normal hit detection
-									if(snapshot == null)
-										shouldDoNormalHitDetect = true;
-									else
-									{
-										//Raytrace
-										ArrayList<BulletHit> playerHits = snapshot.raytrace(data.lastMeleePositions[k] == null ? nextPosInWorldCoords : data.lastMeleePositions[k], dPos);
-										hits.addAll(playerHits);
-									}
-								}
-								
-								//If we couldn't get a snapshot, use normal entity hitbox calculations
-								if(otherData == null || shouldDoNormalHitDetect)
-								{
-									RayTraceResult mop = data.lastMeleePositions[k] == null ? player.getEntityBoundingBox().calculateIntercept(nextPosInWorldCoords.toVec3(), new Vec3d(0F, 0F, 0F)) : player.getBoundingBox().calculateIntercept(data.lastMeleePositions[k].toVec3(), nextPosInWorldCoords.toVec3());
-									if(mop != null)
-									{
-										Vector3f hitPoint = new Vector3f(mop.hitVec.x - data.lastMeleePositions[k].x, mop.hitVec.y - data.lastMeleePositions[k].y, mop.hitVec.z - data.lastMeleePositions[k].z);
-										float hitLambda = 1F;
-										if(dPos.x != 0F)
-											hitLambda = hitPoint.x / dPos.x;
-										else if(dPos.y != 0F)
-											hitLambda = hitPoint.y / dPos.y;
-										else if(dPos.z != 0F)
-											hitLambda = hitPoint.z / dPos.z;
-										if(hitLambda < 0)
-											hitLambda = -hitLambda;
-										
-										hits.add(new PlayerBulletHit(new PlayerHitbox(otherPlayer, new RotatedAxes(), new Vector3f(), new Vector3f(), new Vector3f(), EnumHitboxType.BODY), hitLambda));
-									}
-								}
-							}
-							else
-							{
-								Entity entity = (Entity)obj;
-								if(entity != player && !entity.isDead && (entity instanceof EntityLivingBase || entity instanceof EntityAAGun))
-								{
-									RayTraceResult mop = entity.getEntityBoundingBox().calculateIntercept(data.lastMeleePositions[k].toVec3(), nextPosInWorldCoords.toVec3());
-									if(mop != null)
-									{
-										Vector3f hitPoint = new Vector3f(mop.hitVec.x - data.lastMeleePositions[k].x, mop.hitVec.y - data.lastMeleePositions[k].y, mop.hitVec.z - data.lastMeleePositions[k].z);
-										float hitLambda = 1F;
-										if(dPos.x != 0F)
-											hitLambda = hitPoint.x / dPos.x;
-										else if(dPos.y != 0F)
-											hitLambda = hitPoint.y / dPos.y;
-										else if(dPos.z != 0F)
-											hitLambda = hitPoint.z / dPos.z;
-										if(hitLambda < 0)
-											hitLambda = -hitLambda;
-										
-										hits.add(new EntityHit(entity, hitLambda));
-									}
-								}
-							}
-						}
-						
-						//We hit something
-						if(!hits.isEmpty())
-						{
-							//Sort the hits according to the intercept position
-							Collections.sort(hits);
-							
-							float swingDistance = dPos.length();
-							
-							for(BulletHit bulletHit : hits)
-							{
-								if(bulletHit instanceof PlayerBulletHit)
-								{
-									PlayerBulletHit playerHit = (PlayerBulletHit)bulletHit;
-									float damageMultiplier = 1F;
-									switch(playerHit.hitbox.type)
-									{
-									case LEFTITEM : case RIGHTITEM : //Hit a shield. Stop the swing. 
-									{
-										data.meleeProgress = data.meleeLength = 0;
-										return;
-									}
-									case HEAD : damageMultiplier = 2F; break;
-									case RIGHTARM : case LEFTARM : damageMultiplier = 0.6F; break;
-									default :
-									}
-									
-									if(playerHit.hitbox.player.attackEntityFrom(getMeleeDamage(player), swingDistance * type.meleeDamage))
-									{
-										//If the attack was allowed, we should remove their immortality cooldown so we can shoot them again. Without this, any rapid fire gun become useless
-										playerHit.hitbox.player.arrowHitTimer++;
-										playerHit.hitbox.player.hurtResistantTime = playerHit.hitbox.player.maxHurtResistantTime / 2;
-									}
-									
-									if(FlansMod.DEBUG)
-										world.spawnEntity(new EntityDebugDot(world, new Vector3f(data.lastMeleePositions[k].x + dPos.x * playerHit.intersectTime, data.lastMeleePositions[k].y + dPos.y * playerHit.intersectTime, data.lastMeleePositions[k].z + dPos.z * playerHit.intersectTime), 1000, 1F, 0F, 0F));
-								}
-								else if(bulletHit instanceof EntityHit)
-								{
-									EntityHit entityHit = (EntityHit)bulletHit;
-									if(entityHit.entity.attackEntityFrom(DamageSource.causePlayerDamage(player), swingDistance * type.meleeDamage) && entityHit.entity instanceof EntityLivingBase)
-									{
-										EntityLivingBase living = (EntityLivingBase)entityHit.entity;
-										//If the attack was allowed, we should remove their immortality cooldown so we can shoot them again. Without this, any rapid fire gun become useless
-										living.arrowHitTimer++;
-										living.hurtResistantTime = living.maxHurtResistantTime / 2;
-									}
-									
-									if(FlansMod.DEBUG)
-										world.spawnEntity(new EntityDebugDot(world, new Vector3f(data.lastMeleePositions[k].x + dPos.x * entityHit.intersectTime, data.lastMeleePositions[k].y + dPos.y * entityHit.intersectTime, data.lastMeleePositions[k].z + dPos.z * entityHit.intersectTime), 1000, 1F, 0F, 0F));
-								}
-							}	
-						}
-					}
-					//End raytrace
-					
-					data.lastMeleePositions[k] = nextPosInWorldCoords;
-				}
-				
-				//Increment the progress meter
-				data.meleeProgress++;
-				//If we are done, reset the counters
-				if(data.meleeProgress == data.meleeLength)
-					data.meleeProgress = data.meleeLength = 0;
-			}
-		}
-	}
-	 
-	 * 
-	 */
-	
 	private boolean needsToReload(ItemStack stack)
 	{
 		for(int i = 0; i < type.numAmmoItemsInGun; i++)
 		{
 			ItemStack bulletStack = getBulletItemStack(stack, i);
-			if(bulletStack != null && !bulletStack.isEmpty() && bulletStack.getItemDamage() < bulletStack.getMaxDamage())
+			if(bulletStack != null && !bulletStack.isEmpty() && bulletStack.getDamageValue() < bulletStack.getMaxDamage())
 			{
 				return false;
 			}
@@ -1036,11 +806,11 @@ public class ItemGun extends Item implements IPaintableItem
 		return true;
 	}
 	
-	public boolean CanReload(ItemStack gunstack, IInventory inventory)
+	public boolean CanReload(ItemStack gunstack, Container inventory)
 	{
-		for(int i = 0; i < inventory.getSizeInventory(); i++)
+		for(int i = 0; i < inventory.getContainerSize(); i++)
 		{
-			ItemStack stack = inventory.getStackInSlot(i);
+			ItemStack stack = inventory.getItem(i);
 			if(type.isCorrectAmmo(stack))
 			{
 				return true;
@@ -1054,7 +824,7 @@ public class ItemGun extends Item implements IPaintableItem
 		for(int i = 0; i < type.numAmmoItemsInGun; i++)
 		{
 			ItemStack shootableStack = getBulletItemStack(stack, i);
-			if(shootableStack != null && !shootableStack.isEmpty() && shootableStack.getItemDamage() < shootableStack.getMaxDamage())
+			if(shootableStack != null && !shootableStack.isEmpty() && shootableStack.getDamageValue() < shootableStack.getMaxDamage())
 			{
 				return shootableStack;
 			}
@@ -1069,32 +839,32 @@ public class ItemGun extends Item implements IPaintableItem
 	// _____________________________________________________________________________
 	
 	@Override
-	public void addInformation(ItemStack stack, World world, List<String> lines, ITooltipFlag b)
+	public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay display, Consumer<Component> tooltip, TooltipFlag flag)
 	{
-		if(stack.hasTagCompound() && stack.getTagCompound().hasKey("LegendaryCrafter"))
+		if(GunUtil.hasTag(stack) && GunUtil.getTag(stack).contains("LegendaryCrafter"))
 		{
-			String crafter = stack.getTagCompound().getString("LegendaryCrafter");
-			lines.add("Legendary Skin Crafted by " + crafter);
+			String crafter = GunUtil.getTag(stack).getStringOr("LegendaryCrafter", "");
+			tooltip.accept(Component.literal("Legendary Skin Crafted by " + crafter));
 		}
 		
 		if(type.description != null)
 		{
-			Collections.addAll(lines, type.description.split("_"));
+			for(String line : type.description.split("_"))
+				tooltip.accept(Component.literal(line));
 		}
 		if(type.showDamage)
-			lines.add("\u00a79Damage" + "\u00a77: " + type.getDamage(stack));
+			tooltip.accept(Component.literal("\u00a79Damage" + "\u00a77: " + type.getDamage(stack)));
 		if(type.showRecoil)
-			lines.add("\u00a79Recoil" + "\u00a77: " + type.getRecoil(stack));
+			tooltip.accept(Component.literal("\u00a79Recoil" + "\u00a77: " + type.getRecoil(stack)));
 		if(type.showSpread)
-			lines.add("\u00a79Accuracy" + "\u00a77: " + type.getSpread(stack));
+			tooltip.accept(Component.literal("\u00a79Accuracy" + "\u00a77: " + type.getSpread(stack)));
 		if(type.showReloadTime)
-			lines.add("\u00a79Reload Time" + "\u00a77: " + type.getReloadTime(stack) / 20 + "s");
+			tooltip.accept(Component.literal("\u00a79Reload Time" + "\u00a77: " + type.getReloadTime(stack) / 20 + "s"));
 		for(AttachmentType attachment : type.getCurrentAttachments(stack))
 		{
 			if(type.showAttachments)
 			{
-				String line = attachment.name;
-				lines.add(line);
+				tooltip.accept(Component.literal(attachment.name));
 			}
 		}
 		for(int i = 0; i < type.numAmmoItemsInGun; i++)
@@ -1103,177 +873,48 @@ public class ItemGun extends Item implements IPaintableItem
 			if(bulletStack != null && bulletStack.getItem() instanceof ItemBullet)
 			{
 				BulletType bulletType = ((ItemBullet)bulletStack.getItem()).type;
-				//String line = bulletType.name + (bulletStack.getMaxDamage() == 1 ? "" : " " + (bulletStack.getMaxDamage() - bulletStack.getItemDamage()) + "/" + bulletStack.getMaxDamage());
-				String line = bulletType.name + " " + (bulletStack.getMaxDamage() - bulletStack.getItemDamage()) + "/" + bulletStack.getMaxDamage();
-				lines.add(line);
+				//String line = bulletType.name + (bulletStack.getMaxDamage() == 1 ? "" : " " + (bulletStack.getMaxDamage() - bulletStack.getDamageValue()) + "/" + bulletStack.getMaxDamage());
+				String line = bulletType.name + " " + (bulletStack.getMaxDamage() - bulletStack.getDamageValue()) + "/" + bulletStack.getMaxDamage();
+				tooltip.accept(Component.literal(line));
 			}
 		}
 	}
 	
-	@Override
-	/** Make sure client and server side NBTtags update */
-	public boolean getShareTag()
-	{
-		return true;
-	}
-	
-	public DamageSource getMeleeDamage(EntityPlayer attacker)
+	public DamageSource getMeleeDamage(Player attacker)
 	{
 		return new EntityDamageSourceFlan(type.shortName, attacker, attacker, type);
 	}
 	
-	private boolean isSolid(World world, int i, int j, int k)
+	private boolean isSolid(Level world, int i, int j, int k)
 	{
-		IBlockState state = world.getBlockState(new BlockPos(i, j, k));
-		return state.getMaterial().isSolid() && state.isOpaqueCube();
-	}
-	
-	//Stop damage being done to entities when scoping etc.
-	@Override
-	public boolean onLeftClickEntity(ItemStack stack, EntityPlayer player, Entity entity)
-	{
-		return type.secondaryFunction != EnumSecondaryFunction.MELEE;
+		BlockState state = world.getBlockState(new BlockPos(i, j, k));
+		return state.isSolid();
 	}
 	
 	@Override
-	public boolean hasCustomEntity(ItemStack stack)
-	{
-		return true;
-	}
-	
-	@Nullable
-	@Override
-	public Entity createEntity(World world, Entity location, ItemStack itemstack)
-	{
-		return new EntityItemCustomRender(location, itemstack);
-	}
-	
-	@Override
-	public boolean isFull3D()
-	{
-		return true;
-	}
-	
-	@Override
-	public boolean onEntitySwing(EntityLivingBase entityLiving, ItemStack stack)
-	{
-		if(type.meleeSound != null)
-			PacketPlaySound.sendSoundPacket(entityLiving.posX, entityLiving.posY, entityLiving.posZ, FlansMod.soundRange, entityLiving.dimension, type.meleeSound, true);
-		//Do custom melee code here
-		if(type.secondaryFunction == EnumSecondaryFunction.CUSTOM_MELEE)
-		{
-			//Do animation
-			if(entityLiving.world.isRemote)
-			{
-				GunAnimations animations = FlansModClient.getGunAnimations(entityLiving, EnumHand.MAIN_HAND);
-				animations.doMelee(type.meleeTime);
-			}
-			//Do custom melee hit detection
-			if(entityLiving instanceof EntityPlayer)
-			{
-				PlayerData data = PlayerHandler.getPlayerData((EntityPlayer)entityLiving);
-				data.doMelee((EntityPlayer)entityLiving, type.meleeTime, type);
-			}
-		}
-		return type.secondaryFunction != EnumSecondaryFunction.MELEE;
-	}
-	
-	@Override
-	public boolean onBlockStartBreak(ItemStack itemstack, BlockPos pos, EntityPlayer player)
-	{
-		World world = player.world;
-		if(!world.isRemote)
-		{
-			// Client will still render block break if player is in creative so update block state
-			IBlockState state = world.getBlockState(pos);
-			world.notifyBlockUpdate(pos, state, state, 3);
-		}
-		return true;
-	}
-	
-	@Override
-	public boolean canHarvestBlock(IBlockState state, ItemStack stack)
+	public boolean isCorrectToolForDrops(ItemStack stack, BlockState state)
 	{
 		return false;
 	}
 	
-	public boolean isItemStackDamageable()
-	{
-		return true;
-	}
-	
-	// ----------------- Paintjobs -----------------
-	
 	@Override
-	public void getSubItems(CreativeTabs tab, NonNullList<ItemStack> items)
-	{
-		if(tab != FlansMod.tabFlanGuns && tab != CreativeTabs.SEARCH)
-			return;
-		
-		PaintableType type = ((IPaintableItem)this).GetPaintableType();
-		if(FlansMod.addAllPaintjobsToCreative)
-		{
-			for(Paintjob paintjob : type.paintjobs)
-				addPaintjobToList(this, type, paintjob, items);
-		}
-		else addPaintjobToList(this, type, type.defaultPaintjob, items);
-	}
-	
-	private void addPaintjobToList(Item item, PaintableType type, Paintjob paintjob, List<ItemStack> list)
-	{
-		ItemStack paintableStack = new ItemStack(item, 1, paintjob.ID);
-		NBTTagCompound tags = new NBTTagCompound();
-		paintableStack.setTagCompound(tags);
-		list.add(paintableStack);
-	}
-	
-	// ---------------------------------------------
-	
-	@Override
-	public int getMaxItemUseDuration(ItemStack par1ItemStack)
+	public int getUseDuration(ItemStack stack, LivingEntity entity)
 	{
 		return 100;
 	}
 	
 	@Override
-	public EnumAction getItemUseAction(ItemStack par1ItemStack)
+	public ItemUseAnimation getUseAnimation(ItemStack stack)
 	{
-		return EnumAction.BOW;
+		return ItemUseAnimation.BOW;
 	}
 	
 	protected static final UUID KNOCKBACK_RESIST_MODIFIER = UUID.fromString("77777777-645C-4F38-A497-9C13A33DB5CF");
 	protected static final UUID MOVEMENT_SPEED_MODIFIER = UUID.fromString("99999999-4180-4865-B01B-BCCE9785ACA3");
+	protected static final UUID ATTACK_DAMAGE_MODIFIER = UUID.fromString("88888888-4180-4865-B01B-BCCE9785ACA3");
 	
 	@Override
-	public Multimap<String, AttributeModifier> getAttributeModifiers(EntityEquipmentSlot slot, ItemStack stack)
-	{
-		Multimap<String, AttributeModifier> multimap = super.getAttributeModifiers(slot, stack);
-		if(slot == EntityEquipmentSlot.MAINHAND)
-		{
-			multimap.put(SharedMonsterAttributes.KNOCKBACK_RESISTANCE.getName(), new AttributeModifier(KNOCKBACK_RESIST_MODIFIER, "KnockbackResist", type.knockbackModifier, 0));
-			multimap.put(SharedMonsterAttributes.MOVEMENT_SPEED.getName(), new AttributeModifier(MOVEMENT_SPEED_MODIFIER, "MovementSpeed", type.moveSpeedModifier - 1.0f, 2));
-			multimap.put(SharedMonsterAttributes.ATTACK_DAMAGE.getName(), new AttributeModifier(ATTACK_DAMAGE_MODIFIER, "Weapon modifier", type.meleeDamage, 0));
-		}
-		return multimap;
-	}
-	
-	@Override
-	public boolean shouldCauseReequipAnimation(ItemStack oldStack, ItemStack newStack, boolean slotChanged)
-	{
-		return slotChanged;
-	}
-	
-	// For when we have custom paintjob names
-	@Override
-	public String getTranslationKey(ItemStack stack)
-	{
-	    return getTranslationKey();
-	    
-	    //stack.getTagCompound().getString("Paint");
-	}
-	
-	@Override
-	public boolean canItemEditBlocks()
+	public boolean isFoil(ItemStack stack)
 	{
 		return false;
 	}

@@ -221,7 +221,7 @@ public class ModelVehicle extends ModelDriveable
 			}
 		}
 		
-		//Render guns
+		//EntityRenderer guns
 		for(EntitySeat seat : vehicle.getSeats())
 		{
 			//If the seat has a gun model attached
@@ -262,7 +262,7 @@ public class ModelVehicle extends ModelDriveable
 	}
 	
 	/**
-	 * Render the tank turret
+	 * EntityRenderer the tank turret
 	 *
 	 * @param dt
 	 */
@@ -270,7 +270,7 @@ public class ModelVehicle extends ModelDriveable
 	{
 		VehicleType type = vehicle.getVehicleType();
 		
-		//Render main turret barrel
+		//EntityRenderer main turret barrel
 		{
 			float yaw = vehicle.getSeat(0).looking.getYaw();
 			float pitch = vehicle.getSeat(0).looking.getPitch();
@@ -297,7 +297,7 @@ public class ModelVehicle extends ModelDriveable
 			}
 		}
 		
-		//Render turret guns
+		//EntityRenderer turret guns
 		for(EntitySeat seat : vehicle.getSeats())
 		{
 			//If the seat has a gun model attached

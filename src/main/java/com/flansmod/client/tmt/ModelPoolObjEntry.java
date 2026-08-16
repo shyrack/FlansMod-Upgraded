@@ -5,8 +5,8 @@ import java.io.File;
 import java.io.FileReader;
 import java.util.ArrayList;
 
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.Mth;
+import net.minecraft.world.phys.Vec3;
 
 public class ModelPoolObjEntry extends ModelPoolEntry
 {
@@ -112,7 +112,7 @@ public class ModelPoolObjEntry extends ModelPoolEntry
 					String s1;
 					int finalPhase = 0;
 					float[] normal = new float[]{0F, 0F, 0F};
-					ArrayList<Vec3d> iNormal = new ArrayList<>();
+					ArrayList<Vec3> iNormal = new ArrayList<>();
 					do
 					{
 						int vInt;
@@ -160,7 +160,7 @@ public class ModelPoolObjEntry extends ModelPoolEntry
 								curNormals = new float[]{0, 0, 0};
 						}
 						
-						iNormal.add(new Vec3d(curNormals[0], curNormals[1], curNormals[2]));
+						iNormal.add(new Vec3(curNormals[0], curNormals[1], curNormals[2]));
 						
 						normal[0] += curNormals[0];
 						normal[1] += curNormals[1];
@@ -180,7 +180,7 @@ public class ModelPoolObjEntry extends ModelPoolEntry
 							finalPhase++;
 					} while(finalPhase < 1);
 					
-					float d = MathHelper.sqrt(normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]);
+					float d = Mth.sqrt(normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]);
 					
 					normal[0] /= d;
 					normal[1] /= d;

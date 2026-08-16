@@ -1,6 +1,6 @@
 package com.flansmod.apocalypse.client.model;
 
-import net.minecraft.client.model.ModelBase;
+import com.flansmod.client.model.ModelBase;
 
 import com.flansmod.client.tmt.ModelRendererTurbo;
 

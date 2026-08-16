@@ -2,13 +2,13 @@ package com.flansmod.client.model;
 
 import com.flansmod.client.tmt.ModelRendererTurbo;
 
-import net.minecraft.client.model.ModelBase;
-import net.minecraft.entity.Entity;
-import net.minecraft.util.ResourceLocation;
+import com.flansmod.client.model.ModelBase;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.resources.Identifier;
 
 public class ModelDefaultMuzzleFlash extends ModelMuzzleFlash
 {
-	private static final ResourceLocation texture = new ResourceLocation("flansmod", "skins/muzzleflash.png");
+	private static final Identifier texture = Identifier.fromNamespaceAndPath("flansmod", "skins/muzzleflash.png");
 	
 	public ModelDefaultMuzzleFlash()
 	{
@@ -34,7 +34,7 @@ public class ModelDefaultMuzzleFlash extends ModelMuzzleFlash
 	}
 	
 	@Override
-	public ResourceLocation GetTexture()
+	public Identifier GetTexture()
 	{
 		return texture;
 	}

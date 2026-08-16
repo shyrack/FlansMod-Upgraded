@@ -1,14 +1,12 @@
 package com.flansmod.common.guns.raytracing;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.item.ItemStack;
-import net.minecraft.potion.PotionEffect;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.text.TextComponentString;
-import net.minecraft.world.World;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 
 import com.flansmod.client.debug.EntityDebugDot;
 import com.flansmod.common.FlansMod;
@@ -24,7 +22,7 @@ import com.flansmod.common.vector.Vector3f;
 public class PlayerHitbox
 {
 	/** */
-	public EntityPlayer player;
+	public Player player;
 	/**
 	 * The angles of this box
 	 */
@@ -46,7 +44,7 @@ public class PlayerHitbox
 	 */
 	public EnumHitboxType type;
 	
-	public PlayerHitbox(EntityPlayer player, RotatedAxes axes, Vector3f rotationPoint, Vector3f origin, Vector3f dimensions, EnumHitboxType type)
+	public PlayerHitbox(Player player, RotatedAxes axes, Vector3f rotationPoint, Vector3f origin, Vector3f dimensions, EnumHitboxType type)
 	{
 		this.player = player;
 		this.axes = axes;
@@ -56,12 +54,11 @@ public class PlayerHitbox
 		this.rP = rotationPoint;
 	}
 	
-	@SideOnly(Side.CLIENT)
-	public void renderHitbox(World world, Vector3f pos)
+	public void renderHitbox(Level world, Vector3f pos)
 	{
 		
 		//Vector3f boxOrigin = new Vector3f(pos.x + rP.x, pos.y + rP.y, pos.z + rP.z);
-		//world.spawnEntity(new EntityDebugAABB(world, boxOrigin, d, 2, 1F, 1F, 0F, axes.getYaw(), axes.getPitch(), axes.getRoll(), o));
+		//world.addFreshEntity(new EntityDebugAABB(world, boxOrigin, d, 2, 1F, 1F, 0F, axes.getYaw(), axes.getPitch(), axes.getRoll(), o));
 		if(type != EnumHitboxType.RIGHTARM)
 			return;
 		for(int i = 0; i < 3; i++)
@@ -70,8 +67,8 @@ public class PlayerHitbox
 				{
 					Vector3f point = new Vector3f(o.x + d.x * i / 2, o.y + d.y * j / 2, o.z + d.z * k / 2);
 					point = axes.findLocalVectorGlobally(point);
-					if(FlansMod.DEBUG && world.isRemote)
-						world.spawnEntity(new EntityDebugDot(world, new Vector3f(pos.x + rP.x + point.x, pos.y + rP.y + point.y, pos.z + rP.z + point.z), 1, 0F, 1F, 0F));
+					if(FlansMod.DEBUG && world.isClientSide())
+						((net.minecraft.client.multiplayer.ClientLevel)world).addEntity(new EntityDebugDot(world, new Vector3f(pos.x + rP.x + point.x, pos.y + rP.y + point.y, pos.z + rP.z + point.z), 1, 0F, 1F, 0F));
 				}
 		
 	}
@@ -156,10 +153,10 @@ public class PlayerHitbox
 	{
 		BulletType bulletType = shot.getBulletType();
 		if(bulletType.setEntitiesOnFire)
-			player.setFire(20);
-		for(PotionEffect effect : bulletType.hitEffects)
+			player.igniteForTicks(20);
+		for(MobEffectInstance effect : bulletType.hitEffects)
 		{
-			player.addPotionEffect(new PotionEffect(effect));
+			player.addEffect(effect);
 		}
 		float damageModifier = bulletType.penetratingPower < 0.1F ? penetratingPower / bulletType.penetratingPower : 1;
 		
@@ -186,25 +183,16 @@ public class PlayerHitbox
 			DamageSource damagesource = shot.getDamageSource(type.equals(EnumHitboxType.HEAD));
 			
 			//When the damage is 0 (such as with Nerf guns) the entityHurt Forge hook is not called, so this hacky thing is here
-			if(!player.world.isRemote && hitDamage == 0 && TeamsManager.getInstance().currentRound != null)
-				TeamsManager.getInstance().currentRound.gametype.playerAttacked((EntityPlayerMP)player, damagesource);
-			
-			//if(damagesource.)
+			if(!player.level().isClientSide() && hitDamage == 0 && TeamsManager.getInstance().currentRound != null)
+				TeamsManager.getInstance().currentRound.gametype.playerAttacked((ServerPlayer)player, damagesource);
 			
 			//Attack the entity!
-			if(player.attackEntityFrom(damagesource, hitDamage))
-			{
-				//If the attack was allowed, we should remove their immortality cooldown so we can shoot them again. Without this, any rapid fire gun become useless
-				player.arrowHitTimer++;
-				player.hurtResistantTime = player.maxHurtResistantTime / 2;
-				//Yuck.
-				//PacketDispatcher.sendPacketToAllAround(posX, posY, posZ, 50, dimension, PacketPlaySound.buildSoundPacket(posX, posY, posZ, type.hitSound, true));
-			}
+			player.hurtServer((ServerLevel)player.level(), damagesource, hitDamage);
 			return penetratingPower - 1;
 		}
 			case RIGHTITEM:
 			{
-				ItemStack currentStack = player.getHeldItemMainhand();
+				ItemStack currentStack = player.getMainHandItem();
 				if(currentStack != null && currentStack.getItem() instanceof ItemGun)
 				{
 					GunType gunType = ((ItemGun)currentStack.getItem()).GetType();
@@ -215,7 +203,7 @@ public class PlayerHitbox
 			}
 			case LEFTITEM:
 			{
-				ItemStack currentStack = player.getHeldItemOffhand();
+				ItemStack currentStack = player.getOffhandItem();
 				if(currentStack != null && currentStack.getItem() instanceof ItemGun)
 				{
 					GunType gunType = ((ItemGun)currentStack.getItem()).GetType();

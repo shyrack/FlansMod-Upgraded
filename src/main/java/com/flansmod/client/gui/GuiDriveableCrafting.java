@@ -1,37 +1,36 @@
 package com.flansmod.client.gui;
 
 import java.awt.*;
-import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
-import org.apache.commons.lang3.NotImplementedException;
-
-import io.vavr.collection.List;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiButton;
-import net.minecraft.client.gui.GuiScreen;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.RenderHelper;
-import net.minecraft.entity.player.InventoryPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.fml.client.FMLClientHandler;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.ItemStack;
+import org.lwjgl.glfw.GLFW;
 
-import com.flansmod.client.handlers.FlansModResourceHandler;
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.driveables.DriveableType;
-import com.flansmod.common.driveables.mechas.MechaType;
 import com.flansmod.common.parts.EnumPartCategory;
 import com.flansmod.common.parts.ItemPart;
 import com.flansmod.common.parts.PartType;
 import com.flansmod.common.types.EnumType;
 
-public class GuiDriveableCrafting extends GuiScreen
+public class GuiDriveableCrafting extends Screen
 {
 	/**
 	 * The background image
 	 */
-	private static final ResourceLocation texture = new ResourceLocation("flansmod", "gui/driveableCrafting.png");
+	private static final Identifier texture = Identifier.fromNamespaceAndPath("flansmod", "gui/driveablecrafting.png");
 	private static final int CRAFT_BUTTON_ID = 0;
 	private static final int BLUEPRINTS_UP_BUTTON_ID = 1;
 	private static final int BLUEPRINTS_DOWN_BUTTON_ID = 2;
@@ -41,11 +40,7 @@ public class GuiDriveableCrafting extends GuiScreen
 	/**
 	 * The inventory of the player using this crafting table
 	 */
-	private InventoryPlayer inventory;
-	/**
-	 * The Minecraft instance
-	 */
-	private Minecraft mc;
+	private Inventory inventory;
 	/**
 	 * Gui origin
 	 */
@@ -62,10 +57,6 @@ public class GuiDriveableCrafting extends GuiScreen
 	 * The blueprint that is currently selected
 	 */
 	private static int selectedBlueprint = 0;
-	/**
-	 * Spins the driveable model
-	 */
-	private float spinner = 0;
 	/**
 	 * Whether or not the currently selected driveable can be crafted
 	 */
@@ -91,9 +82,7 @@ public class GuiDriveableCrafting extends GuiScreen
 	private int recipeOriginY;
 	private int engineOriginX;
 	private int engineOriginY;
-	private int modelCenterX;
-	private int modelCenterY;
-	private GuiButton craftButton;
+	private Button craftButton;
 	public static final int RECIPE_ROW_COUNT = 3;
 	public static final int RECIPE_COLUMN_COUNT = 4;
 	private ArrowButton blueprintsDownButton;
@@ -101,16 +90,16 @@ public class GuiDriveableCrafting extends GuiScreen
 	private ArrowButton recipeUpButton;
 	private ArrowButton blueprintsUpButton;
 
-	public GuiDriveableCrafting(InventoryPlayer playerInventory)
+	public GuiDriveableCrafting(Inventory playerInventory)
 	{
+		super(Component.literal(""));
 		inventory = playerInventory;
-		mc = FMLClientHandler.instance().getClient();
 	}
 
 	@Override
-	public void initGui()
+	public void init()
 	{
-		super.initGui();
+		super.init();
 
 		guiOriginX = width / 2 - GUI_WIDTH / 2;
 		guiOriginY = height / 2 - GUI_HEIGHT / 2;
@@ -128,44 +117,20 @@ public class GuiDriveableCrafting extends GuiScreen
 		recipeOriginY = guiOriginY + 138 + 36;
 		engineOriginX = guiOriginX + 152;
 		engineOriginY = guiOriginY + 138 + 36;
-		modelCenterX = guiOriginX + 42;
-		modelCenterY = guiOriginY + 89 + 36;
 
-		buttonList.add(craftButton = new GuiButton(
-				CRAFT_BUTTON_ID,
-				guiOriginX + 110,
-				guiOriginY + 162 + 36,
-				40,
-				20,
-				"Craft"));
-		buttonList.add(blueprintsUpButton = new ArrowButton(
-				BLUEPRINTS_UP_BUTTON_ID,
-				guiOriginX + 157,
-				guiOriginY + 21,
-				Direction.UP));
-		buttonList.add(blueprintsDownButton = new ArrowButton(
-				BLUEPRINTS_DOWN_BUTTON_ID,
-				guiOriginX + 157,
-				guiOriginY + 39 + 36,
-				Direction.DOWN));
-		buttonList.add(recipeUpButton = new ArrowButton(
-				RECIPE_UP_BUTTON_ID,
-				guiOriginX + 83,
-				guiOriginY + 141 + 36,
-				Direction.UP));
-		buttonList.add(recipeDownButton = new ArrowButton(
-				RECIPE_DOWN_BUTTON_ID,
-				guiOriginX + 83,
-				guiOriginY + 177 + 36,
-				Direction.DOWN));
+		craftButton = addRenderableWidget(Button.builder(Component.literal("Craft"), b -> actionPerformed(CRAFT_BUTTON_ID))
+				.bounds(guiOriginX + 110, guiOriginY + 162 + 36, 40, 20).build());
+		blueprintsUpButton = new ArrowButton(BLUEPRINTS_UP_BUTTON_ID, guiOriginX + 157, guiOriginY + 21, Direction.UP);
+		blueprintsDownButton = new ArrowButton(BLUEPRINTS_DOWN_BUTTON_ID, guiOriginX + 157, guiOriginY + 39 + 36, Direction.DOWN);
+		recipeUpButton = new ArrowButton(RECIPE_UP_BUTTON_ID, guiOriginX + 83, guiOriginY + 141 + 36, Direction.UP);
+		recipeDownButton = new ArrowButton(RECIPE_DOWN_BUTTON_ID, guiOriginX + 83, guiOriginY + 177 + 36, Direction.DOWN);
 
 		updateButtons();
 	}
 
-	@Override
-	protected void actionPerformed(GuiButton button)
+	private void actionPerformed(int buttonId)
 	{
-		switch(button.id)
+		switch(buttonId)
 		{
 			case CRAFT_BUTTON_ID:
 				FlansMod.proxy.craftDriveable(inventory.player, DriveableType.types.get(selectedBlueprint));
@@ -195,62 +160,70 @@ public class GuiDriveableCrafting extends GuiScreen
 
 
 	@Override
-	public void drawScreen(int mouseX, int mouseY, float partialTicks)
+	public void extractRenderState(GuiGraphicsExtractor extractor, int mouseX, int mouseY, float partialTick)
 	{
-		drawDefaultBackground();
+		extractMenuBackground(extractor);
 
 		// GUI background
-		mc.renderEngine.bindTexture(texture);
-		drawTexturedModalRect(guiOriginX, guiOriginY, 0, 0, GUI_WIDTH, GUI_HEIGHT);
-		drawString(fontRenderer, "Vehicle Crafting", vehicleCraftingTextX, vehicleCraftingTextY, WHITE);
+		extractor.blit(RenderPipelines.GUI_TEXTURED, texture, guiOriginX, guiOriginY, 0F, 0F, GUI_WIDTH, GUI_HEIGHT, 256, 256);
+		extractor.text(font, "Vehicle Crafting", vehicleCraftingTextX, vehicleCraftingTextY, WHITE);
 
 		// Blueprints selector
-		List<ItemToRender> itemsToRender = getBlueprintItemsToRender();
+		List<ItemToRender> itemsToRender = getBlueprintItemsToRender(extractor);
 
 		// Preview
 		DriveableType selectedType = DriveableType.types.get(selectedBlueprint);
-		drawPreview(selectedType);
 
 		// Stats
-		drawStats(selectedType);
+		drawStats(extractor, selectedType);
 
 		// Engine requirements
-		drawString(fontRenderer, "Engine", engineTextX, engineTextY, WHITE);
-		drawString(fontRenderer, selectedType.numEngines() + "x", engineTextX - 14, engineTextY, WHITE);
+		extractor.text(font, "Engine", engineTextX, engineTextY, WHITE);
+		extractor.text(font, selectedType.numEngines() + "x", engineTextX - 14, engineTextY, WHITE);
 
 		canCraft = true;
 
 		// Recipe items
-		itemsToRender = itemsToRender.pushAll(getRecipeItemsToRender(selectedType));
+		itemsToRender.addAll(getRecipeItemsToRender(extractor, selectedType));
 
 		// Collect up all the engines into neat and tidy stacks so we can find if any of them are big enough
 		// and which of those stacks are best
 		ItemStack bestEngineStack = getBestEngineStackForType(selectedType);
 
 		// Draw engine slot
-		itemsToRender = itemsToRender.pushAll(getEngineItemToRender(bestEngineStack));
+		itemsToRender.addAll(getEngineItemToRender(extractor, bestEngineStack));
 
-		craftButton.enabled = canCraft;
-		
-		GlStateManager.disableLighting();
+		craftButton.active = canCraft;
 
-		super.drawScreen(mouseX, mouseY, partialTicks);
+		// Draw the arrows
+		drawArrowButton(extractor, blueprintsUpButton);
+		drawArrowButton(extractor, blueprintsDownButton);
+		drawArrowButton(extractor, recipeUpButton);
+		drawArrowButton(extractor, recipeDownButton);
 
-		itemsToRender.forEach(item -> drawSlotInventory(item.itemStack, item.x, item.y, mouseX, mouseY));
+		itemsToRender.forEach(item -> drawSlotInventory(extractor, item.itemStack, item.x, item.y, mouseX, mouseY));
 	}
 
-	private List<ItemToRender> getEngineItemToRender(ItemStack engineStack)
+	private void drawArrowButton(GuiGraphicsExtractor extractor, ArrowButton button)
 	{
-		List<ItemToRender> itemsToRender = List.empty();
-		mc.renderEngine.bindTexture(texture);
+		if(button.visible)
+		{
+			extractor.blit(RenderPipelines.GUI_TEXTURED, texture, button.x, button.y,
+					button.enabled ? button.enabledTextureX : button.disabledTextureX, 0, button.WIDTH, button.HEIGHT, 256, 256);
+		}
+	}
+
+	private List<ItemToRender> getEngineItemToRender(GuiGraphicsExtractor extractor, ItemStack engineStack)
+	{
+		List<ItemToRender> itemsToRender = new ArrayList<>();
 		if(engineStack.isEmpty())
 		{
-			drawTexturedModalRect(engineOriginX, engineOriginY, 195, 11, 16, 16);
+			extractor.blit(RenderPipelines.GUI_TEXTURED, texture, engineOriginX, engineOriginY, 195F, 11F, 16, 16, 256, 256);
 			canCraft = false;
 		}
 		else
 		{
-			itemsToRender = itemsToRender.push(new ItemToRender(engineStack, engineOriginX, engineOriginY));
+			itemsToRender.add(new ItemToRender(engineStack, engineOriginX, engineOriginY));
 		}
 		return itemsToRender;
 	}
@@ -279,7 +252,7 @@ public class GuiDriveableCrafting extends GuiScreen
 		HashMap<PartType, ItemStack> engines = new HashMap<>();
 
 		//Find some suitable engines
-		for(ItemStack itemStack : inventory.mainInventory)
+		for(ItemStack itemStack : inventory.getNonEquipmentItems())
 		{
 			if(itemStack.getItem() instanceof ItemPart)
 			{
@@ -301,10 +274,10 @@ public class GuiDriveableCrafting extends GuiScreen
 		return engines;
 	}
 
-	private List<ItemToRender> getRecipeItemsToRender(DriveableType selectedType)
+	private List<ItemToRender> getRecipeItemsToRender(GuiGraphicsExtractor extractor, DriveableType selectedType)
 	{
-		List<ItemToRender> itemsToRender = List.empty();
-		drawString(fontRenderer, "Requires", requiresTextX, requiresTextY, WHITE);
+		List<ItemToRender> itemsToRender = new ArrayList<>();
+		extractor.text(font, "Requires", requiresTextX, requiresTextY, WHITE);
 		for(int row = 0; row < RECIPE_ROW_COUNT; row++)
 		{
 			for(int column = RECIPE_COLUMN_COUNT - 1; column >= 0; column--)
@@ -316,10 +289,10 @@ public class GuiDriveableCrafting extends GuiScreen
 				{
 					ItemStack recipeStack = selectedType.driveableRecipe.get(recipeItemNumber);
 					int totalAmountFound = 0;
-					for(ItemStack itemStack : inventory.mainInventory)
+					for(ItemStack itemStack : inventory.getNonEquipmentItems())
 					{
 						if(itemStack.getItem() == recipeStack.getItem()
-								&& itemStack.getItemDamage() == recipeStack.getItemDamage())
+								&& itemStack.getDamageValue() == recipeStack.getDamageValue())
 						{
 							totalAmountFound += itemStack.getCount();
 							if(totalAmountFound == recipeStack.getCount())
@@ -329,18 +302,17 @@ public class GuiDriveableCrafting extends GuiScreen
 					//If we didn't find enough, give the stack a red outline
 					if(totalAmountFound < recipeStack.getCount())
 					{
-						mc.renderEngine.bindTexture(texture);
-						drawTexturedModalRect(
+						extractor.blit(RenderPipelines.GUI_TEXTURED, texture,
 								recipeOriginX + column * BLUEPRINT_WIDTH,
 								recipeOriginY + row * BLUEPRINT_HEIGHT,
-								195,
-								11,
+								195F,
+								11F,
 								16,
-								16);
+								16, 256, 256);
 						canCraft = false;
 					}
 					//Draw the actual item we want
-					itemsToRender = itemsToRender.push(new ItemToRender(
+					itemsToRender.add(new ItemToRender(
 							recipeStack,
 							recipeOriginX + column * BLUEPRINT_WIDTH,
 							recipeOriginY + row * BLUEPRINT_HEIGHT));
@@ -350,78 +322,38 @@ public class GuiDriveableCrafting extends GuiScreen
 		return itemsToRender;
 	}
 
-	private void drawStats(DriveableType selectedType)
+	private void drawStats(GuiGraphicsExtractor extractor, DriveableType selectedType)
 	{
-		GlStateManager.disableLighting();
 		String recipeName = selectedType.name;
 		if(recipeName.length() > 16)
 			recipeName = recipeName.substring(0, 15) + "...";
 
 		// Driveable stats
-		drawString(fontRenderer, recipeName, statsOriginX, statsOriginY, WHITE);
-		drawString(
-				fontRenderer,
+		extractor.text(font, recipeName, statsOriginX, statsOriginY, WHITE);
+		extractor.text(
+				font,
 				"Cargo Slots : " + selectedType.numCargoSlots,
 				statsOriginX,
 				statsOriginY + 10,
 				WHITE);
-		drawString(
-				fontRenderer,
+		extractor.text(
+				font,
 				"Bomb Slots : " + selectedType.numBombSlots,
 				statsOriginX,
 				statsOriginY + 20,
 				WHITE);
-		drawString(
-				fontRenderer,
+		extractor.text(
+				font,
 				"Passengers : " + selectedType.numPassengers,
 				statsOriginX,
 				statsOriginY + 30,
 				WHITE);
-		drawString(fontRenderer, "Guns : " + (selectedType.ammoSlots()), statsOriginX, statsOriginY + 40, WHITE);
+		extractor.text(font, "Guns : " + (selectedType.ammoSlots()), statsOriginX, statsOriginY + 40, WHITE);
 	}
 
-	private void drawPreview(DriveableType selectedType)
+	private List<ItemToRender> getBlueprintItemsToRender(GuiGraphicsExtractor extractor)
 	{
-		//Increment the spinner to spin the driveable. Wheeee!
-		spinner++;
-
-		//Render rotating driveable model
-		GlStateManager.pushMatrix();
-		if(selectedType.model != null)
-		{
-			GlStateManager.translate(modelCenterX, modelCenterY, 100);
-			GlStateManager.disableLighting();
-
-			//Do lights
-			GlStateManager.pushMatrix();
-			{
-				GlStateManager.rotate(180F, 1.0F, 0.0F, 0.0F);
-				GlStateManager.rotate(0F, 0.0F, 1.0F, 0.0F);
-				RenderHelper.enableStandardItemLighting();
-
-			}
-			GlStateManager.popMatrix();
-			GlStateManager.enableRescaleNormal();
-
-			if(selectedType instanceof MechaType)
-				GlStateManager.translate(0, 15, 0);
-			GlStateManager.scale(
-					-50F * selectedType.modelScale / selectedType.cameraDistance,
-					50F * selectedType.modelScale / selectedType.cameraDistance,
-					50F * selectedType.modelScale / selectedType.cameraDistance);
-			GlStateManager.rotate(180F, 0F, 0F, 1F);
-			GlStateManager.rotate(30F, 1F, 0F, 0F);
-			GlStateManager.rotate(spinner / 5F, 0F, 1F, 0F);
-			mc.renderEngine.bindTexture(FlansModResourceHandler.getTexture(selectedType));
-
-			selectedType.model.render(selectedType);
-		}
-		GlStateManager.popMatrix();
-	}
-
-	private List<ItemToRender> getBlueprintItemsToRender()
-	{
-		List<ItemToRender> itemsToRender = List.empty();
+		List<ItemToRender> itemsToRender = new ArrayList<>();
 		for(int row = BLUEPRINT_ROW_COUNT - 1; row >= 0; row--)
 		{
 			for(int column = 0; column < BLUEPRINT_COLUMN_COUNT; column++)
@@ -433,21 +365,20 @@ public class GuiDriveableCrafting extends GuiScreen
 				// Draw outline for selected blueprint
 				if(blueprintNumber == selectedBlueprint)
 				{
-					mc.renderEngine.bindTexture(texture);
-					drawTexturedModalRect(
+					extractor.blit(RenderPipelines.GUI_TEXTURED, texture,
 							blueprintsOriginX + column * BLUEPRINT_WIDTH,
 							blueprintsOriginY + row * BLUEPRINT_HEIGHT,
-							213,
-							11,
+							213F,
+							11F,
 							BLUEPRINT_WIDTH - 2,
-							BLUEPRINT_HEIGHT - 2);
+							BLUEPRINT_HEIGHT - 2, 256, 256);
 				}
 
 				// Draw blueprint
 				if(blueprintNumber < DriveableType.types.size())
 				{
 					DriveableType type = DriveableType.types.get(blueprintNumber);
-					itemsToRender = itemsToRender.push(new ItemToRender(
+					itemsToRender.add(new ItemToRender(
 							new ItemStack(type.item),
 							blueprintsOriginX + column * BLUEPRINT_WIDTH,
 							blueprintsOriginY + row * BLUEPRINT_HEIGHT));
@@ -460,38 +391,52 @@ public class GuiDriveableCrafting extends GuiScreen
 	/**
 	 * Item stack rendering method
 	 */
-	private void drawSlotInventory(ItemStack itemstack, int x, int y, int mouseX, int mouseY)
+	private void drawSlotInventory(GuiGraphicsExtractor extractor, ItemStack itemstack, int x, int y, int mouseX, int mouseY)
 	{
 		if(itemstack == null)
 			return;
-		itemRender.renderItemIntoGUI(itemstack, x, y);
-		itemRender.renderItemOverlayIntoGUI(fontRenderer, itemstack, x, y, null);
-		drawTooltip(itemstack.getDisplayName(), x, y, mouseX, mouseY, 16, 16);
+		extractor.item(itemstack, x, y);
+		extractor.itemDecorations(font, itemstack, x, y);
+		drawTooltip(extractor, itemstack.getHoverName().getString(), x, y, mouseX, mouseY, 16, 16);
 	}
 
-	private void drawTooltip(String text, int x, int y, int mouseX, int mouseY, int iconWidth, int iconHeight)
+	private void drawTooltip(GuiGraphicsExtractor extractor, String text, int x, int y, int mouseX, int mouseY, int iconWidth, int iconHeight)
 	{
 		if(mouseX >= x && mouseY >= y && mouseX < x + iconWidth && mouseY < y + iconHeight)
 		{
-			drawHoveringText(text, mouseX, mouseY);
+			extractor.setTooltipForNextFrame(font, Component.literal(text), mouseX, mouseY);
 		}
 	}
 
 	@Override
-	protected void keyTyped(char c, int i)
+	public boolean keyPressed(KeyEvent event)
 	{
-		if(i == 1 || i == mc.gameSettings.keyBindInventory.getKeyCode())
+		if(event.key() == GLFW.GLFW_KEY_ESCAPE || Minecraft.getInstance().options.keyInventory.matches(event))
 		{
-			mc.player.closeScreen();
+			Minecraft.getInstance().setScreen(null);
 		}
+		return true;
 	}
 
 	@Override
-	protected void mouseClicked(int mouseX, int mouseY, int mouseButton) throws IOException
+	public boolean mouseClicked(MouseButtonEvent event, boolean bl)
 	{
-		super.mouseClicked(mouseX, mouseY, mouseButton);
+		super.mouseClicked(event, bl);
+		int mouseX = (int)event.x();
+		int mouseY = (int)event.y();
+		int mouseButton = event.button();
 		if(mouseButton == 0 || mouseButton == 1)
 		{
+			//Arrow buttons
+			if(isArrowClicked(blueprintsUpButton, mouseX, mouseY))
+				actionPerformed(BLUEPRINTS_UP_BUTTON_ID);
+			if(isArrowClicked(blueprintsDownButton, mouseX, mouseY))
+				actionPerformed(BLUEPRINTS_DOWN_BUTTON_ID);
+			if(isArrowClicked(recipeUpButton, mouseX, mouseY))
+				actionPerformed(RECIPE_UP_BUTTON_ID);
+			if(isArrowClicked(recipeDownButton, mouseX, mouseY))
+				actionPerformed(RECIPE_DOWN_BUTTON_ID);
+
 			//Driveable buttons
 			for(int row = 0; row < BLUEPRINT_ROW_COUNT; row++)
 			{
@@ -509,16 +454,24 @@ public class GuiDriveableCrafting extends GuiScreen
 						{
 							recipeScrollPos = 0;
 							selectedBlueprint = result;
-							return;
+							return true;
 						}
 					}
 				}
 			}
 		}
+		return true;
+	}
+
+	private boolean isArrowClicked(ArrowButton button, int mouseX, int mouseY)
+	{
+		return button.visible && button.enabled
+				&& mouseX >= button.x && mouseX < button.x + button.WIDTH
+				&& mouseY >= button.y && mouseY < button.y + button.HEIGHT;
 	}
 
 	@Override
-	public boolean doesGuiPauseGame()
+	public boolean isPauseScreen()
 	{
 		return false;
 	}
@@ -541,20 +494,24 @@ public class GuiDriveableCrafting extends GuiScreen
 				recipeScrollPos * RECIPE_COLUMN_COUNT + totalRecipeItems < selectedType.driveableRecipe.size() - 1;
 	}
 
-	private static class ArrowButton extends GuiButton
+	private static class ArrowButton
 	{
-
 		public static final int WIDTH = 10;
 		public static final int HEIGHT = 10;
+		public final int x;
+		public final int y;
 		public final int enabledTextureX;
 		public final int enabledTextureY = 0;
 		public final int disabledTextureX;
 		public final int disabledTextureY = 0;
 		public final Direction direction;
+		public boolean enabled = true;
+		public boolean visible = true;
 
 		public ArrowButton(int buttonId, int x, int y, Direction direction)
 		{
-			super(buttonId, x, y, WIDTH, HEIGHT, "");
+			this.x = x;
+			this.y = y;
 			this.direction = direction;
 
 			switch(direction)
@@ -568,27 +525,9 @@ public class GuiDriveableCrafting extends GuiScreen
 					disabledTextureX = 206;
 					break;
 				default:
-					throw new NotImplementedException("Texture location not set for direction");
+					throw new IllegalStateException("Texture location not set for direction");
 			}
 		}
-
-		@Override
-		public void drawButton(Minecraft mc, int mouseX, int mouseY, float partialTicks)
-		{
-			if(visible)
-			{
-				mc.renderEngine.bindTexture(texture);
-				if(enabled)
-				{
-					drawTexturedModalRect(x, y, enabledTextureX, enabledTextureY, WIDTH, HEIGHT);
-				}
-				else
-				{
-					drawTexturedModalRect(x, y, disabledTextureX, disabledTextureY, WIDTH, HEIGHT);
-				}
-			}
-		}
-
 	}
 
 	private static class ItemToRender

@@ -1,92 +1,120 @@
 package com.flansmod.apocalypse.client.model;
 
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
-import net.minecraft.util.ResourceLocation;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.resources.Identifier;
 
 import com.flansmod.apocalypse.common.blocks.TileEntityPowerCube;
+import com.flansmod.client.model.ModelRenderer;
 
-public class RenderPowerCube extends TileEntitySpecialRenderer<TileEntityPowerCube>
+public class RenderPowerCube implements BlockEntityRenderer<TileEntityPowerCube, RenderPowerCube.State>
 {
-	private ResourceLocation TEXTURE = new ResourceLocation("flansmodapocalypse", "textures/blocks/PowerCube.png");
-	private ModelPowerCube model;
-	
-	public RenderPowerCube()
+	public static class State extends BlockEntityRenderState
 	{
-		model = new ModelPowerCube();
+		public float age;
+		public float partialTick;
+	}
+	
+	private final Identifier TEXTURE = Identifier.fromNamespaceAndPath("flansmodapocalypse", "textures/blocks/powercube.png");
+	private final ModelPowerCube model = new ModelPowerCube();
+	private final PoseStack poseStack = new PoseStack();
+	
+	public RenderPowerCube(BlockEntityRendererProvider.Context context)
+	{
 	}
 	
 	@Override
-	public void render(TileEntityPowerCube holder, double posX, double posY, double posZ, float partialTicks, int destroyStage, float alpha)
+	public State createRenderState()
 	{
-		if(model != null)
+		return new State();
+	}
+	
+	@Override
+	public void extractRenderState(TileEntityPowerCube holder, State state, float partialTick, net.minecraft.world.phys.Vec3 cameraPos, net.minecraft.client.renderer.feature.ModelFeatureRenderer.CrumblingOverlay crumblingOverlay)
+	{
+		state.age = holder.age;
+		state.partialTick = partialTick;
+	}
+	
+	@Override
+	public void submit(State state, PoseStack pose, SubmitNodeCollector collector, CameraRenderState camera)
+	{
+		pose.pushPose();
+		pose.translate(0.5F, 0.5F, 0.5F);
+		pose.mulPose(Axis.XP.rotationDegrees(180F));
+		
+		collector.submitCustomGeometry(pose, RenderTypes.entityCutout(TEXTURE), (p, consumer) ->
 		{
-			bindTexture(TEXTURE);
-			GlStateManager.pushMatrix();
-			GlStateManager.translate((float)posX, (float)posY, (float)posZ);
-			GlStateManager.rotate(180F, 0F, 0F, 1F);
-	        
-	        /*
-	        switch(EnumFacing.HORIZONTALS[holder.getBlockMetadata()])
-	        {
-			case NORTH:
-				GlStateManager.translate(-1F, 0F, 0F);
-				GlStateManager.rotate(0F, 0F, 1F, 0F);
-				break;
-			case EAST:
-				GlStateManager.translate(-1F, 0F, 1F);
-				GlStateManager.rotate(90F, 0F, 1F, 0F);
-				break;
-			case SOUTH:
-				GlStateManager.translate(0F, 0F, 1F);
-				GlStateManager.rotate(180F, 0F, 1F, 0F);
-				break;
-			case WEST:
-				GlStateManager.rotate(270F, 0F, 1F, 0F);
-				break;  
-	        }
-	        */
-			GlStateManager.translate(-1F, 0F, 0F);
+			poseStack.pushPose();
+			poseStack.last().set(p);
+			ModelRenderer.beginRender(poseStack, consumer, state.lightCoords, OverlayTexture.NO_OVERLAY);
 			model.render();
+			ModelRenderer.endRender();
+			poseStack.popPose();
+		});
 
-			float angle = (holder.age + partialTicks) * 10F;
-			float scale = (float)Math.sin(angle * 0.01F);
+		float angle = (state.age + state.partialTick) * 10F;
+		float scale = (float)Math.sin(angle * 0.01F);
 
-			GlStateManager.pushMatrix();
-			GlStateManager.translate(0.5F, -0.5F, 0.5F);
-			GlStateManager.rotate(angle * 1.345F, 1F, 0F, 0F);
-			GlStateManager.rotate(angle * 0.8925F, 0F, 1F, 0F);
-			GlStateManager.rotate(angle * 0.245F, 0F, 0F, 1F);
-			GlStateManager.scale(scale, scale, scale);
-			GlStateManager.translate(-0.5F, 0.5F, -0.5F);
+		pose.pushPose();
+		pose.mulPose(Axis.XP.rotationDegrees(angle * 1.345F));
+		pose.mulPose(Axis.YP.rotationDegrees(angle * 0.8925F));
+		pose.mulPose(Axis.ZP.rotationDegrees(angle * 0.245F));
+		pose.scale(scale, scale, scale);
+		collector.submitCustomGeometry(pose, RenderTypes.entityCutout(TEXTURE), (p, consumer) ->
+		{
+			poseStack.pushPose();
+			poseStack.last().set(p);
+			ModelRenderer.beginRender(poseStack, consumer, state.lightCoords, OverlayTexture.NO_OVERLAY);
 			model.renderPower();
-			GlStateManager.popMatrix();
+			ModelRenderer.endRender();
+			poseStack.popPose();
+		});
+		pose.popPose();
 
-			scale = (float)Math.cos(angle * 0.0134F);
+		scale = (float)Math.cos(angle * 0.0134F);
 
-			GlStateManager.pushMatrix();
-			GlStateManager.translate(0.5F, -0.5F, 0.5F);
-			GlStateManager.rotate(angle * 1.783F, 1F, 0F, 0F);
-			GlStateManager.rotate(angle * 1.145F, 0F, 1F, 0F);
-			GlStateManager.rotate(angle * 0.3567F, 0F, 0F, 1F);
-			GlStateManager.scale(scale, scale, scale);
-			GlStateManager.translate(-0.5F, 0.5F, -0.5F);
+		pose.pushPose();
+		pose.mulPose(Axis.XP.rotationDegrees(angle * 1.783F));
+		pose.mulPose(Axis.YP.rotationDegrees(angle * 1.145F));
+		pose.mulPose(Axis.ZP.rotationDegrees(angle * 0.3567F));
+		pose.scale(scale, scale, scale);
+		collector.submitCustomGeometry(pose, RenderTypes.entityCutout(TEXTURE), (p, consumer) ->
+		{
+			poseStack.pushPose();
+			poseStack.last().set(p);
+			ModelRenderer.beginRender(poseStack, consumer, state.lightCoords, OverlayTexture.NO_OVERLAY);
 			model.renderPower();
-			GlStateManager.popMatrix();
+			ModelRenderer.endRender();
+			poseStack.popPose();
+		});
+		pose.popPose();
 
-			scale = (float)Math.sin(angle * 0.0254F);
+		scale = (float)Math.sin(angle * 0.0254F);
 
-			GlStateManager.pushMatrix();
-			GlStateManager.translate(0.5F, -0.5F, 0.5F);
-			GlStateManager.rotate(angle * 1.9993F, 1F, 0F, 0F);
-			GlStateManager.rotate(angle * 1.111F, 0F, 1F, 0F);
-			GlStateManager.rotate(angle * 0.578F, 0F, 0F, 1F);
-			GlStateManager.scale(scale, scale, scale);
-			GlStateManager.translate(-0.5F, 0.5F, -0.5F);
+		pose.pushPose();
+		pose.mulPose(Axis.XP.rotationDegrees(angle * 1.9993F));
+		pose.mulPose(Axis.YP.rotationDegrees(angle * 1.111F));
+		pose.mulPose(Axis.ZP.rotationDegrees(angle * 0.578F));
+		pose.scale(scale, scale, scale);
+		collector.submitCustomGeometry(pose, RenderTypes.entityCutout(TEXTURE), (p, consumer) ->
+		{
+			poseStack.pushPose();
+			poseStack.last().set(p);
+			ModelRenderer.beginRender(poseStack, consumer, state.lightCoords, OverlayTexture.NO_OVERLAY);
 			model.renderPower();
-			GlStateManager.popMatrix();
+			ModelRenderer.endRender();
+			poseStack.popPose();
+		});
+		pose.popPose();
 
-			GlStateManager.popMatrix();
-		}
+		pose.popPose();
 	}
 }

@@ -6,9 +6,8 @@ import com.flansmod.common.FlansMod;
 import com.flansmod.common.vector.Vector3f;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
 
 public class PacketBulletTrail extends PacketBase
 {
@@ -35,7 +34,7 @@ public class PacketBulletTrail extends PacketBase
 	}
 	
 	@Override
-	public void encodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void encodeInto(ByteBuf data)
 	{
 		//origin Vector
 		data.writeFloat(origin.x);
@@ -54,7 +53,7 @@ public class PacketBulletTrail extends PacketBase
 	}
 
 	@Override
-	public void decodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void decodeInto(ByteBuf data)
 	{
 		//origin Vector
 		origin = new Vector3f(data.readFloat(), data.readFloat(), data.readFloat());
@@ -69,13 +68,13 @@ public class PacketBulletTrail extends PacketBase
 	}
 
 	@Override
-	public void handleServerSide(EntityPlayerMP playerEntity)
+	public void handleServerSide(ServerPlayer playerEntity)
 	{
 		FlansMod.log.warn("Received PacketBulletTrail on Server. This packet should only be send to clients");
 	}
 
 	@Override
-	public void handleClientSide(EntityPlayer clientPlayer)
+	public void handleClientSide(Player clientPlayer)
 	{
 		//TODO trails not visible when trail origin position and player camera position are to close. the can only be seen with an slight angle
 		InstantBulletRenderer.AddTrail(new InstantShotTrail(origin, hitPos, width, length, bulletSpeed, trailTexture));

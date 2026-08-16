@@ -2,18 +2,18 @@ package com.flansmod.common.driveables;
 
 import java.util.HashMap;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.inventory.IInventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.text.ITextComponent;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.Container;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.nbt.CompoundTag;
 
 import com.flansmod.common.guns.ItemBullet;
 import com.flansmod.common.parts.EnumPartCategory;
 import com.flansmod.common.parts.ItemPart;
 import com.flansmod.common.parts.PartType;
+import com.flansmod.common.util.ItemStackUtil;
 
-public class DriveableData implements IInventory
+public class DriveableData implements Container
 {
 	/**
 	 * The name of this driveable's type
@@ -48,51 +48,72 @@ public class DriveableData implements IInventory
 	 */
 	public int paintjobID;
 	
-	public DriveableData(NBTTagCompound tags, int paintjobID)
+	public DriveableData()
+	{
+		parts = new HashMap<>();
+		type = "";
+		numGuns = numBombs = numMissiles = numCargo = 0;
+		ammo = new ItemStack[0];
+		bombs = new ItemStack[0];
+		missiles = new ItemStack[0];
+		cargo = new ItemStack[0];
+		fuel = ItemStack.EMPTY.copy();
+	}
+	
+	public DriveableData(CompoundTag tags, int paintjobID)
 	{
 		this(tags);
 		this.paintjobID = paintjobID;
 	}
 	
-	public DriveableData(NBTTagCompound tags)
+	public DriveableData(CompoundTag tags)
 	{
 		parts = new HashMap<>();
 		readFromNBT(tags);
 	}
 	
-	public void readFromNBT(NBTTagCompound tag)
+	public void readFromNBT(CompoundTag tag)
 	{
 		if(tag == null)
 			return;
-		if(!tag.hasKey("Type"))
+		if(!tag.contains("Type"))
 			return;
 		
-		type = tag.getString("Type");
+		type = tag.getStringOr("Type", "");
 		DriveableType dType = DriveableType.getDriveable(type);
+		if(dType == null)
+		{
+			ammo = new ItemStack[0];
+			bombs = new ItemStack[0];
+			missiles = new ItemStack[0];
+			cargo = new ItemStack[0];
+			fuel = ItemStack.EMPTY.copy();
+			return;
+		}
 		numBombs = dType.numBombSlots;
 		numCargo = dType.numCargoSlots;
 		numMissiles = dType.numMissileSlots;
 		numGuns = dType.ammoSlots();
-		engine = PartType.getPart(tag.getString("Engine"));
-		paintjobID = tag.getInteger("Paint");
+		engine = PartType.getPart(tag.getStringOr("Engine", ""));
+		paintjobID = tag.getIntOr("Paint", 0);
 		ammo = new ItemStack[numGuns];
 		bombs = new ItemStack[numBombs];
 		missiles = new ItemStack[numMissiles];
 		cargo = new ItemStack[numCargo];
 		for(int i = 0; i < numGuns; i++)
-			ammo[i] = new ItemStack(tag.getCompoundTag("Ammo " + i));
+			ammo[i] = ItemStackUtil.readItemStack(tag, "Ammo " + i);
 		
 		for(int i = 0; i < numBombs; i++)
-			bombs[i] = new ItemStack(tag.getCompoundTag("Bombs " + i));
+			bombs[i] = ItemStackUtil.readItemStack(tag, "Bombs " + i);
 		
 		for(int i = 0; i < numMissiles; i++)
-			missiles[i] = new ItemStack(tag.getCompoundTag("Missiles " + i));
+			missiles[i] = ItemStackUtil.readItemStack(tag, "Missiles " + i);
 		
 		for(int i = 0; i < numCargo; i++)
-			cargo[i] = new ItemStack(tag.getCompoundTag("Cargo " + i));
+			cargo[i] = ItemStackUtil.readItemStack(tag, "Cargo " + i);
 		
-		fuel = new ItemStack(tag.getCompoundTag("Fuel"));
-		fuelInTank = tag.getInteger("FuelInTank");
+		fuel = ItemStackUtil.readItemStack(tag, "Fuel");
+		fuelInTank = tag.getIntOr("FuelInTank", 0);
 		for(EnumDriveablePart part : EnumDriveablePart.values())
 		{
 			parts.put(part, new DriveablePart(part, dType.health.get(part)));
@@ -103,34 +124,30 @@ public class DriveableData implements IInventory
 		}
 	}
 	
-	public void writeToNBT(NBTTagCompound tag)
+	public void writeToNBT(CompoundTag tag)
 	{
-		tag.setString("Type", type);
-		tag.setString("Engine", engine.shortName);
-		tag.setInteger("Paint", paintjobID);
+		tag.putString("Type", type);
+		if(engine != null)
+			tag.putString("Engine", engine.shortName);
+		tag.putInt("Paint", paintjobID);
 		for(int i = 0; i < ammo.length; i++)
 		{
-			if(ammo[i] != null)
-				tag.setTag("Ammo " + i, ammo[i].writeToNBT(new NBTTagCompound()));
+			ItemStackUtil.writeItemStack(tag, "Ammo " + i, ammo[i]);
 		}
 		for(int i = 0; i < bombs.length; i++)
 		{
-			if(bombs[i] != null)
-				tag.setTag("Bombs " + i, bombs[i].writeToNBT(new NBTTagCompound()));
+			ItemStackUtil.writeItemStack(tag, "Bombs " + i, bombs[i]);
 		}
 		for(int i = 0; i < missiles.length; i++)
 		{
-			if(missiles[i] != null)
-				tag.setTag("Missiles " + i, missiles[i].writeToNBT(new NBTTagCompound()));
+			ItemStackUtil.writeItemStack(tag, "Missiles " + i, missiles[i]);
 		}
 		for(int i = 0; i < cargo.length; i++)
 		{
-			if(cargo[i] != null)
-				tag.setTag("Cargo " + i, cargo[i].writeToNBT(new NBTTagCompound()));
+			ItemStackUtil.writeItemStack(tag, "Cargo " + i, cargo[i]);
 		}
-		if(fuel != null)
-			tag.setTag("Fuel", fuel.writeToNBT(new NBTTagCompound()));
-		tag.setInteger("FuelInTank", (int)fuelInTank);
+		ItemStackUtil.writeItemStack(tag, "Fuel", fuel);
+		tag.putInt("FuelInTank", (int)fuelInTank);
 		for(DriveablePart part : parts.values())
 		{
 			part.writeToNBT(tag);
@@ -138,13 +155,13 @@ public class DriveableData implements IInventory
 	}
 	
 	@Override
-	public int getSizeInventory()
+	public int getContainerSize()
 	{
 		return getFuelSlot() + 1;
 	}
 	
 	@Override
-	public ItemStack getStackInSlot(int i)
+	public ItemStack getItem(int i)
 	{
 		//Find the correct inventory
 		ItemStack[] inv = ammo;
@@ -172,7 +189,7 @@ public class DriveableData implements IInventory
 	}
 	
 	@Override
-	public ItemStack decrStackSize(int i, int j)
+	public ItemStack removeItem(int i, int j)
 	{
 		//Find the correct inventory
 		ItemStack[] inv = ammo;
@@ -195,7 +212,7 @@ public class DriveableData implements IInventory
 						inv = new ItemStack[1];
 						inv[0] = fuel;
 						
-						setInventorySlotContents(getFuelSlot(), ItemStack.EMPTY.copy());
+						setItem(getFuelSlot(), ItemStack.EMPTY.copy());
 					}
 				}
 			}
@@ -209,7 +226,7 @@ public class DriveableData implements IInventory
 				inv[i] = ItemStack.EMPTY.copy();
 				return itemstack;
 			}
-			ItemStack itemstack1 = inv[i].splitStack(j);
+			ItemStack itemstack1 = inv[i].split(j);
 			if(inv[i].getCount() <= 0)
 			{
 				inv[i] = ItemStack.EMPTY.copy();
@@ -224,7 +241,15 @@ public class DriveableData implements IInventory
 	}
 	
 	@Override
-	public void setInventorySlotContents(int i, ItemStack stack)
+	public ItemStack removeItemNoUpdate(int i)
+	{
+		ItemStack stack = getItem(i);
+		setItem(i, ItemStack.EMPTY.copy());
+		return stack;
+	}
+	
+	@Override
+	public void setItem(int i, ItemStack stack)
 	{
 		//Find the correct inventory
 		ItemStack[] inv = ammo;
@@ -253,18 +278,18 @@ public class DriveableData implements IInventory
 	}
 	
 	@Override
-	public int getInventoryStackLimit()
+	public int getMaxStackSize()
 	{
 		return 64;
 	}
 	
 	@Override
-	public void markDirty()
+	public void setChanged()
 	{
 	}
 	
 	@Override
-	public boolean isUsableByPlayer(EntityPlayer player)
+	public boolean stillValid(Player player)
 	{
 		return true;
 	}
@@ -295,7 +320,7 @@ public class DriveableData implements IInventory
 	}
 	
 	@Override
-	public boolean isItemValidForSlot(int i, ItemStack itemstack)
+	public boolean canPlaceItem(int i, ItemStack itemstack)
 	{
 		if(i < getBombInventoryStart() && itemstack != null && itemstack.getItem() instanceof ItemBullet) //Ammo
 		{
@@ -322,67 +347,14 @@ public class DriveableData implements IInventory
 	}
 	
 	@Override
-	public String getName()
-	{
-		return "Flan's Secret Data";
-	}
-	
-	@Override
-	public boolean hasCustomName()
-	{
-		return false;
-	}
-	
-	@Override
-	public ITextComponent getDisplayName()
-	{
-		return null;
-	}
-	
-	@Override
-	public void openInventory(EntityPlayer player)
-	{
-	}
-	
-	@Override
-	public void closeInventory(EntityPlayer player)
-	{
-	}
-	
-	@Override
-	public int getField(int id)
-	{
-		return 0;
-	}
-	
-	@Override
-	public void setField(int id, int value)
-	{
-		
-	}
-	
-	@Override
-	public int getFieldCount()
-	{
-		return 0;
-	}
-	
-	@Override
-	public void clear()
-	{
-		
-	}
-	
-	@Override
 	public boolean isEmpty()
 	{
 		return false;
 	}
 	
 	@Override
-	public ItemStack removeStackFromSlot(int index)
+	public void clearContent()
 	{
-		return ItemStack.EMPTY.copy();
 	}
 	
 }

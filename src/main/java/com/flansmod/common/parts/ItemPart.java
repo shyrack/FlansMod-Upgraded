@@ -1,13 +1,14 @@
 package com.flansmod.common.parts;
 
+import com.flansmod.common.ModItems;
 import java.util.List;
 
-import net.minecraft.client.util.ITooltipFlag;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.world.World;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
 
-import com.flansmod.common.FlansMod;
 import com.flansmod.common.types.IFlanItem;
 import com.flansmod.common.types.InfoType;
 
@@ -15,28 +16,24 @@ public class ItemPart extends Item implements IFlanItem
 {
 	public PartType type;
 	
+	public ItemPart(Item.Properties properties)
+	{
+		super(properties);
+	}
+	
 	public ItemPart(PartType type1)
 	{
-		super();
+		this(new Item.Properties().stacksTo(type1.stackSize).setId(ModItems.itemKey(type1)));
 		type = type1;
-		setMaxStackSize(type.stackSize);
-		if(type.category == EnumPartCategory.FUEL)
-		{
-			setMaxDamage(type.fuel);
-			setHasSubtypes(true);
-		}
 		type.item = this;
-		setTranslationKey("FlansMod:" + type.iconPath);
-		setRegistryName(type.shortName);
-		setCreativeTab(FlansMod.tabFlanParts);
 	}
 	
 	@Override
-	public void addInformation(ItemStack stack, World world, List<String> lines, ITooltipFlag b)
+	public void appendHoverText(ItemStack stack, TooltipContext context, TooltipDisplay display, java.util.function.Consumer<Component> tooltip, TooltipFlag flag)
 	{
-		if(type.category == EnumPartCategory.FUEL)
+		if(type != null && type.category == EnumPartCategory.FUEL)
 		{
-			lines.add("Fuel Stored: " + (type.fuel - stack.getItemDamage()) + " / " + type.fuel);
+			tooltip.accept(Component.literal("Fuel Stored: " + (type.fuel - stack.getDamageValue()) + " / " + type.fuel));
 		}
 	}
 	
@@ -44,5 +41,10 @@ public class ItemPart extends Item implements IFlanItem
 	public InfoType getInfoType()
 	{
 		return type;
+	}
+	
+	public Item setTranslationKey(String key)
+	{
+		return this;
 	}
 }

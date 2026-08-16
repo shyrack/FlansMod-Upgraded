@@ -1,13 +1,13 @@
 package com.flansmod.apocalypse.common.blocks;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.material.Material;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockBehaviour;
 
 public class BlockStatic extends Block
 {
-	public BlockStatic(Material material)
+	public BlockStatic(BlockBehaviour.Properties properties)
 	{
-		super(material);
+		super(properties);
 	}
 	
 }

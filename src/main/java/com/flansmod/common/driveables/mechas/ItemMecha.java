@@ -1,24 +1,26 @@
 package com.flansmod.common.driveables.mechas;
 
+import com.flansmod.common.ModItems;
 import java.util.Collections;
 import java.util.List;
 
-import net.minecraft.client.util.ITooltipFlag;
-import net.minecraft.creativetab.CreativeTabs;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.EnumActionResult;
-import net.minecraft.util.EnumHand;
-import net.minecraft.util.NonNullList;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.RayTraceResult;
-import net.minecraft.util.math.RayTraceResult.Type;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.item.component.TooltipDisplay;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.core.BlockPos;
+import net.minecraft.util.Mth;
+import net.minecraft.nbt.CompoundTag;
 
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.driveables.DriveableData;
@@ -33,110 +35,92 @@ public class ItemMecha extends Item implements IPaintableItem
 {
 	public MechaType type;
 
+	public ItemMecha(Item.Properties properties)
+	{
+		super(properties.stacksTo(1));
+	}
+
 	public ItemMecha(MechaType type1)
 	{
-		maxStackSize = 1;
+		this(new Item.Properties().stacksTo(1).setId(ModItems.itemKey(type1)));
 		type = type1;
 		type.item = this;
-		setRegistryName(type.shortName);
-		setCreativeTab(FlansMod.tabFlanMechas);
 	}
 	
 	@Override
-	public void addInformation(ItemStack stack, World world, List<String> lines, ITooltipFlag b)
+	public void appendHoverText(ItemStack stack, TooltipContext context, TooltipDisplay display, java.util.function.Consumer<Component> tooltip, TooltipFlag flag)
 	{
-		if(type.description != null)
+		if(type != null && type.description != null)
 		{
-			Collections.addAll(lines, type.description.split("_"));
+			for(String line : type.description.split("_"))
+			{
+				tooltip.accept(Component.literal(line));
+			}
 		}
-		NBTTagCompound tags = getTagCompound(stack, world);
-		String engineName = tags.getString("Engine");
+		CompoundTag tags = getTagCompound(stack, null);
+		String engineName = tags.getStringOr("Engine", "");
 		PartType part = PartType.getPart(engineName);
 		if(part != null)
-			lines.add(part.name);
+			tooltip.accept(Component.literal(part.name));
 	}
 	
-	@Override
-	/** Make sure client and server side NBTtags update */
-	public boolean getShareTag()
+	private CompoundTag getTagCompound(ItemStack stack, Level world)
 	{
-		return true;
-	}
-	
-	private NBTTagCompound getTagCompound(ItemStack stack, World world)
-	{
-		if(stack.getTagCompound() == null)
+		CompoundTag tags = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+		if(tags.isEmpty())
 		{
-			if(stack.getTagCompound() == null)
-			{
-				NBTTagCompound tags = new NBTTagCompound();
-				stack.setTagCompound(tags);
-				tags.setString("Type", type.shortName);
-				tags.setString("Engine", PartType.defaultEngines.get(EnumType.mecha).shortName);
-			}
+			tags.putString("Type", type.shortName);
+			if(PartType.defaultEngines.containsKey(EnumType.mecha))
+				tags.putString("Engine", PartType.defaultEngines.get(EnumType.mecha).shortName);
+			stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tags));
 		}
-		return stack.getTagCompound();
+		return tags;
 	}
 	
 	@Override
-	public ActionResult<ItemStack> onItemRightClick(World world, EntityPlayer entityplayer, EnumHand hand)
+	public InteractionResult use(Level world, Player entityplayer, InteractionHand hand)
 	{
-		ItemStack itemstack = entityplayer.getHeldItem(hand);
+		ItemStack itemstack = entityplayer.getItemInHand(hand);
 		
 		//Raytracing
-		float cosYaw = MathHelper.cos(-entityplayer.rotationYaw * 0.01745329F - 3.141593F);
-		float sinYaw = MathHelper.sin(-entityplayer.rotationYaw * 0.01745329F - 3.141593F);
-		float cosPitch = -MathHelper.cos(-entityplayer.rotationPitch * 0.01745329F);
-		float sinPitch = MathHelper.sin(-entityplayer.rotationPitch * 0.01745329F);
+		float cosYaw = Mth.cos(-entityplayer.getYRot() * 0.01745329F - 3.141593F);
+		float sinYaw = Mth.sin(-entityplayer.getYRot() * 0.01745329F - 3.141593F);
+		float cosPitch = -Mth.cos(-entityplayer.getXRot() * 0.01745329F);
+		float sinPitch = Mth.sin(-entityplayer.getXRot() * 0.01745329F);
 		double length = 5D;
-		Vec3d posVec = new Vec3d(entityplayer.posX, entityplayer.posY + 1.62D - entityplayer.getYOffset(), entityplayer.posZ);
-		Vec3d lookVec = posVec.add(sinYaw * cosPitch * length, sinPitch * length, cosYaw * cosPitch * length);
-		RayTraceResult RayTraceResult = world.rayTraceBlocks(posVec, lookVec, true);
+		Vec3 posVec = new Vec3(entityplayer.getX(), entityplayer.getY() + entityplayer.getEyeHeight(), entityplayer.getZ());
+		Vec3 lookVec = posVec.add(sinYaw * cosPitch * length, sinPitch * length, cosYaw * cosPitch * length);
+		HitResult hit = world.clip(new ClipContext(posVec, lookVec, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, entityplayer));
 
 		//Result check
-		if(RayTraceResult == null)
+		if(hit == null)
 		{
-			return new ActionResult<>(EnumActionResult.PASS, itemstack);
+			return InteractionResult.PASS;
 		}
-		if(RayTraceResult.typeOfHit == Type.BLOCK)
+		if(hit.getType() == HitResult.Type.BLOCK)
 		{
-			BlockPos pos = RayTraceResult.getBlockPos();
-			if(!world.isRemote)
+			BlockPos pos = ((net.minecraft.world.phys.BlockHitResult)hit).getBlockPos();
+			if(!world.isClientSide())
 			{
-				world.spawnEntity(new EntityMecha(world, (double)pos.getX() + 0.5F, (double)pos.getY() + 1.5F + type.yOffset, (double)pos.getZ() + 0.5F, entityplayer, type, getData(itemstack, world), getTagCompound(itemstack, world)));
+				world.addFreshEntity(new EntityMecha(world, (double)pos.getX() + 0.5F, (double)pos.getY() + 1.5F + type.yOffset, (double)pos.getZ() + 0.5F, entityplayer, type, getData(itemstack, world), getTagCompound(itemstack, world)));
 			}
-			if(!entityplayer.capabilities.isCreativeMode)
+			if(!entityplayer.getAbilities().instabuild)
 			{
 				itemstack.setCount(itemstack.getCount() - 1);
 			}
-			return new ActionResult<>(EnumActionResult.SUCCESS, itemstack);
+			return InteractionResult.SUCCESS;
 		}
-		return new ActionResult<>(EnumActionResult.PASS, itemstack);
+		return InteractionResult.PASS;
 	}
 	
-	public DriveableData getData(ItemStack itemstack, World world)
+	public DriveableData getData(ItemStack itemstack, Level world)
 	{
-		return new DriveableData(getTagCompound(itemstack, world), itemstack.getItemDamage());
+		return new DriveableData(getTagCompound(itemstack, world), itemstack.getDamageValue());
 	}
 	
-	@Override
-	public void getSubItems(CreativeTabs tab, NonNullList<ItemStack> items)
+	public Item setTranslationKey(String key)
 	{
-		if(tab != FlansMod.tabFlanMechas && tab != CreativeTabs.SEARCH)
-			return;
-
-		ItemStack mechaStack = new ItemStack(this, 1, 0);
-		NBTTagCompound tags = new NBTTagCompound();
-		tags.setString("Type", type.shortName);
-		if(PartType.defaultEngines.containsKey(EnumType.mecha))
-			tags.setString("Engine", PartType.defaultEngines.get(EnumType.mecha).shortName);
-		for(EnumDriveablePart part : EnumDriveablePart.values())
-		{
-			tags.setInteger(part.getShortName() + "_Health", type.health.get(part) == null ? 0 : type.health.get(part).health);
-			tags.setBoolean(part.getShortName() + "_Fire", false);
-		}
-		mechaStack.setTagCompound(tags);
-		items.add(mechaStack);
+		return this;
 	}
 
 	@Override

@@ -4,14 +4,14 @@ import java.util.Random;
 
 import com.flansmod.common.ModuloHelper;
 
-import net.minecraft.block.BlockColored;
-import net.minecraft.init.Blocks;
-import net.minecraft.item.EnumDyeColor;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
-import net.minecraft.world.gen.feature.WorldGenerator;
 
-public class WorldGenBossPillar extends WorldGenerator
+import net.minecraft.world.level.block.Blocks;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.Level;
+
+
+public class WorldGenBossPillar extends WorldGenFlan
 {
 	public static final double kPillarInnerEdge = 12d;
 	public static final double kPillarInnerRadius = kPillarInnerEdge * Math.sqrt(2);
@@ -24,37 +24,37 @@ public class WorldGenBossPillar extends WorldGenerator
 	private static final double kA = Math.exp(-kB * kPillarOuterEdge);
 	
 	@Override
-	public boolean generate(World world, Random rand, BlockPos pos) 
+	public boolean generate(Level world, Random rand, BlockPos pos) 
 	{
 		for(int i = 8; i < 24; i++)
 		{
 			for(int k = 8; k < 24; k++)
 			{
-				BlockPos p = pos.add(i, 0, k);
+				BlockPos p = pos.offset(i, 0, k);
 				
 				if(Math.abs(p.getX()) > kPillarInnerEdge && Math.abs(p.getZ()) > kPillarInnerEdge)
 				{
-					double dist = p.getDistance(0, 0, 0);
+					double dist = Math.sqrt(p.getX() * p.getX() + p.getY() * p.getY() + p.getZ() * p.getZ());
 					double theta = Math.atan2(p.getZ(), p.getX());
 
 					double pillarBaseHeight = kA * Math.exp(kB * dist);
 					
 					if(pillarBaseHeight > 1d)
 					{
-						BlockPos downIterate = p.add(0,pillarBaseHeight,0);
-						//world.setBlockState(p.add(0,pillarBaseHeight,0), Blocks.BEDROCK.getDefaultState());
+						BlockPos downIterate = p.offset(0, (int)pillarBaseHeight, 0);
+						//world.setBlockAndUpdate(p.add(0,pillarBaseHeight,0), Blocks.BEDROCK.defaultBlockState());
 
-						while(world.isAirBlock(downIterate) && downIterate.getY() > 1d)
+						while(world.isEmptyBlock(downIterate) && downIterate.getY() > 1d)
 						{
 							if((Math.abs(p.getX()) == kPillarInnerEdge + 1 || Math.abs(p.getZ()) == kPillarInnerEdge + 1) && rand.nextInt(500) == 0)
 							{
-								world.setBlockState(downIterate, Blocks.MAGMA.getDefaultState());
+								world.setBlockAndUpdate(downIterate, Blocks.MAGMA_BLOCK.defaultBlockState());
 							}
 							else
 							{
-								world.setBlockState(downIterate, Blocks.BEDROCK.getDefaultState());
+								world.setBlockAndUpdate(downIterate, Blocks.BEDROCK.defaultBlockState());
 							}
-							downIterate = downIterate.down();
+							downIterate = downIterate.below();
 						}
 					}
 				}

@@ -13,8 +13,6 @@ import com.flansmod.common.types.InfoType;
 import com.flansmod.common.types.TypeFile;
 import com.flansmod.common.types.InfoType.ParseFunc;
 
-import net.minecraftforge.fml.common.FMLCommonHandler;
-
 public class GloveType extends InfoType
 {
 	public static ArrayList<GloveType> gloves = new ArrayList<>();
@@ -58,8 +56,7 @@ public class GloveType extends InfoType
 		}
 		catch(Exception e)
 		{
-			FlansMod.log.error("Errored reading " + file.name);
-			FlansMod.log.throwing(e);
+			FlansMod.log.error("Errored reading " + file.name, e);
 		}
 	}
 	

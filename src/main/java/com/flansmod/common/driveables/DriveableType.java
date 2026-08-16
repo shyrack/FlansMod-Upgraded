@@ -4,17 +4,15 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-import net.minecraft.block.material.Material;
-import net.minecraft.client.model.ModelBase;
-import net.minecraft.init.Items;
-import net.minecraft.item.EnumDyeColor;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.EnumParticleTypes;
-import net.minecraft.world.World;
-import net.minecraftforge.event.LootTableLoadEvent;
-import net.minecraftforge.fml.common.FMLCommonHandler;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import com.flansmod.client.model.ModelBase;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.DyeColor;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.core.particles.ParticleOptions;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 
 import com.flansmod.client.model.ModelDriveable;
 import com.flansmod.common.FlansMod;
@@ -28,7 +26,6 @@ import com.flansmod.common.vector.Vector3f;
 
 public abstract class DriveableType extends PaintableType
 {
-	@SideOnly(value = Side.CLIENT)
 	/** The plane model */
 	public ModelDriveable model;
 	
@@ -49,8 +46,8 @@ public abstract class DriveableType extends PaintableType
 	//Harvesting variables
 	/** If true, then this vehicle harvests blocks from the harvester hitbox and places them in the inventory */
 	public boolean harvestBlocks = false;
-	/** What materials this harvester eats */
-	public ArrayList<Material> materialsHarvested = new ArrayList<>();
+	/** What blocks this harvester eats */
+	public ArrayList<Block> materialsHarvested = new ArrayList<>();
 	public boolean collectHarvest = false;
 	public boolean dropHarvest = false;
 	public Vector3f harvestBoxSize = new Vector3f(0, 0, 0);
@@ -140,7 +137,7 @@ public abstract class DriveableType extends PaintableType
 	public DriveablePosition[] wheelPositions = new DriveablePosition[0];
 	/** Strength of springs connecting car to wheels */
 	public float wheelSpringStrength = 0.5F;
-	/** The wheel radius for onGround checks */
+	/** The wheel radius for onGround() checks */
 	public float wheelStepHeight = 1.0F;
 	/** Whether or not the vehicle rolls */
 	public boolean canRoll = true;
@@ -290,38 +287,38 @@ public abstract class DriveableType extends PaintableType
 		
 		// HARVESTERS //////////////////////////////////////////////////////////////////////////////
 		parsers.put("Harvester", (split, d) -> d.harvestBlocks = Boolean.parseBoolean(split[1]));
-		parsers.put("HarvestMaterial", (split, d) -> d.materialsHarvested.add(getMaterial(split[1])));
+		parsers.put("HarvestMaterial", (split, d) -> d.materialsHarvested.add(getHarvestBlock(split[1])));
 		parsers.put("HarvestToolType", (split, d) ->
 		{
 			switch(split[1])
 			{
 				case "Axe":
-					d.materialsHarvested.add(Material.WOOD);
-					d.materialsHarvested.add(Material.PLANTS);
-					d.materialsHarvested.add(Material.VINE);
+					d.materialsHarvested.add(Blocks.OAK_LOG);
+					d.materialsHarvested.add(Blocks.WHEAT);
+					d.materialsHarvested.add(Blocks.VINE);
 					break;
 				case "Pickaxe":
 				case "Drill":
-					d.materialsHarvested.add(Material.IRON);
-					d.materialsHarvested.add(Material.ANVIL);
-					d.materialsHarvested.add(Material.ROCK);
+					d.materialsHarvested.add(Blocks.IRON_BLOCK);
+					d.materialsHarvested.add(Blocks.ANVIL);
+					d.materialsHarvested.add(Blocks.STONE);
 					break;
 				case "Spade":
 				case "Shovel":
 				case "Excavator":
-					d.materialsHarvested.add(Material.GROUND);
-					d.materialsHarvested.add(Material.GRASS);
-					d.materialsHarvested.add(Material.SAND);
-					d.materialsHarvested.add(Material.SNOW);
-					d.materialsHarvested.add(Material.CLAY);
+					d.materialsHarvested.add(Blocks.DIRT);
+					d.materialsHarvested.add(Blocks.GRASS_BLOCK);
+					d.materialsHarvested.add(Blocks.SAND);
+					d.materialsHarvested.add(Blocks.SNOW_BLOCK);
+					d.materialsHarvested.add(Blocks.CLAY);
 					break;
 				case "Hoe":
 				case "Combine":
-					d.materialsHarvested.add(Material.PLANTS);
-					d.materialsHarvested.add(Material.LEAVES);
-					d.materialsHarvested.add(Material.VINE);
-					d.materialsHarvested.add(Material.CACTUS);
-					d.materialsHarvested.add(Material.GOURD);
+					d.materialsHarvested.add(Blocks.WHEAT);
+					d.materialsHarvested.add(Blocks.OAK_LEAVES);
+					d.materialsHarvested.add(Blocks.VINE);
+					d.materialsHarvested.add(Blocks.CACTUS);
+					d.materialsHarvested.add(Blocks.PUMPKIN);
 					break;
 			}
 		});
@@ -464,9 +461,9 @@ public abstract class DriveableType extends PaintableType
 		{
 			int amount = Integer.parseInt(split[1]);
 			int damage = -1;
-			for(int i = 0; i < EnumDyeColor.values().length; i++)
+			for(int i = 0; i < DyeColor.values().length; i++)
 			{
-				if(EnumDyeColor.byDyeDamage(i).getTranslationKey().equals(split[2]))
+				if(DyeColor.byId(i).getName().equals(split[2]))
 					damage = i;
 			}
 			if(damage == -1)
@@ -474,7 +471,7 @@ public abstract class DriveableType extends PaintableType
 				FlansMod.log.warn("Failed to find dye colour : " + split[2] + " while adding " + d.shortName);
 				return;
 			}
-			d.driveableRecipe.add(new ItemStack(Items.DYE, amount, damage));
+			d.driveableRecipe.add(new ItemStack(getDyeItem(damage), amount));
 		});
 		
 		// HEALTH & COLLISION //////////////////////////////////////////////////////
@@ -644,7 +641,7 @@ public abstract class DriveableType extends PaintableType
 		});
 		parsers.put("Model", (split, d) ->
 		{
-			if(FMLCommonHandler.instance().getSide().isClient())
+			if(FlansMod.isClient())
 				d.model = FlansMod.proxy.loadModel(split[1], d.shortName, ModelDriveable.class);
 		});
 		
@@ -935,7 +932,7 @@ public abstract class DriveableType extends PaintableType
 		try
 		{
 			// Special case for anything that reads multiple lines
-			if(FMLCommonHandler.instance().getSide().isClient() && split[0].equals("Model"))
+			if(FlansMod.isClient() && split[0].equals("Model"))
 				model = FlansMod.proxy.loadModel(split[1], shortName, ModelDriveable.class);
 			
 			else
@@ -953,12 +950,11 @@ public abstract class DriveableType extends PaintableType
 		}
 		catch(Exception e)
 		{
-			FlansMod.log.error("Errored reading " + file.name);
-			FlansMod.log.throwing(e);
+			FlansMod.log.error("Errored reading " + file.name, e);
 		}
 	}
 	
-	public abstract EntityDriveable createDriveable(World world, double x, double y, double z, DriveableData data);
+	public abstract EntityDriveable createDriveable(Level world, double x, double y, double z, DriveableData data);
 	
 	private DriveablePosition getShootPoint(String[] split)
 	{
@@ -1057,10 +1053,56 @@ public abstract class DriveableType extends PaintableType
 		return null;
 	}
 	
-	@Override
-	public void addLoot(LootTableLoadEvent event)
+	private static Block getHarvestBlock(String mat)
 	{
-		//Do not add vehicles to dungeon chests. That would be so op.
+		switch(mat.toUpperCase())
+		{
+			case "WOOD": return Blocks.OAK_LOG;
+			case "PLANTS": return Blocks.WHEAT;
+			case "VINE": return Blocks.VINE;
+			case "IRON": return Blocks.IRON_BLOCK;
+			case "ANVIL": return Blocks.ANVIL;
+			case "ROCK": return Blocks.STONE;
+			case "ICE": return Blocks.ICE;
+			case "GROUND": return Blocks.DIRT;
+			case "GRASS": return Blocks.GRASS_BLOCK;
+			case "SPONGE": return Blocks.SPONGE;
+			case "SAND": return Blocks.SAND;
+			case "SNOW": return Blocks.SNOW_BLOCK;
+			case "CRAFTED_SNOW": return Blocks.SNOW;
+			case "CLAY": return Blocks.CLAY;
+			case "LEAVES": return Blocks.OAK_LEAVES;
+			case "CLOTH": return Blocks.WHITE_WOOL;
+			case "CARPET": return Blocks.WHITE_CARPET;
+			case "WEB": return Blocks.COBWEB;
+			case "CACTUS": return Blocks.CACTUS;
+			case "GOURD": return Blocks.PUMPKIN;
+			default: return Blocks.STONE;
+		}
+	}
+	
+	public static Item getDyeItem(int damage)
+	{
+		switch(damage)
+		{
+			case 0: return Items.WHITE_DYE;
+			case 1: return Items.ORANGE_DYE;
+			case 2: return Items.MAGENTA_DYE;
+			case 3: return Items.LIGHT_BLUE_DYE;
+			case 4: return Items.YELLOW_DYE;
+			case 5: return Items.LIME_DYE;
+			case 6: return Items.PINK_DYE;
+			case 7: return Items.GRAY_DYE;
+			case 8: return Items.LIGHT_GRAY_DYE;
+			case 9: return Items.CYAN_DYE;
+			case 10: return Items.PURPLE_DYE;
+			case 11: return Items.BLUE_DYE;
+			case 12: return Items.BROWN_DYE;
+			case 13: return Items.GREEN_DYE;
+			case 14: return Items.RED_DYE;
+			case 15: return Items.BLACK_DYE;
+			default: return Items.WHITE_DYE;
+		}
 	}
 	
 	public class ParticleEmitter
@@ -1068,7 +1110,7 @@ public abstract class DriveableType extends PaintableType
 		/**
 		 * The name of the effect
 		 */
-		public EnumParticleTypes effectType;
+		public ParticleOptions effectType;
 		/**
 		 * The rate of emission
 		 */
@@ -1108,7 +1150,6 @@ public abstract class DriveableType extends PaintableType
 	}
 	
 	@Override
-	@SideOnly(Side.CLIENT)
 	public ModelBase GetModel()
 	{
 		return model;

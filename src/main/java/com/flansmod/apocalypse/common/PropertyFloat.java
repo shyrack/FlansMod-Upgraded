@@ -1,8 +1,6 @@
 package com.flansmod.apocalypse.common;
 
-import net.minecraftforge.common.property.IUnlistedProperty;
-
-public class PropertyFloat implements IUnlistedProperty<Float>
+public class PropertyFloat
 {
 	
 	protected final String name;
@@ -20,25 +18,21 @@ public class PropertyFloat implements IUnlistedProperty<Float>
 		this.maxValue = maxValue;
 	}
 	
-	@Override
 	public String getName()
 	{
 		return name;
 	}
 	
-	@Override
 	public boolean isValid(Float value)
 	{
 		return minValue > maxValue ? true : (value >= minValue && value <= maxValue);
 	}
 	
-	@Override
 	public Class<Float> getType()
 	{
 		return Float.class;
 	}
 	
-	@Override
 	public String valueToString(Float value)
 	{
 		return value.toString();

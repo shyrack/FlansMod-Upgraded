@@ -2,28 +2,23 @@ package com.flansmod.apocalypse.common;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
 
-import net.minecraft.block.Block;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.init.Blocks;
-import net.minecraft.init.Items;
-import net.minecraft.inventory.EntityEquipmentSlot;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.nbt.NBTTagInt;
-import net.minecraft.nbt.NBTTagList;
-import net.minecraft.nbt.NBTTagString;
-import net.minecraft.potion.Potion;
-import net.minecraft.potion.PotionEffect;
-import net.minecraft.potion.PotionType;
-import net.minecraft.potion.PotionUtils;
-import net.minecraft.tileentity.TileEntityBrewingStand;
-import net.minecraft.tileentity.TileEntityChest;
-import net.minecraftforge.fluids.Fluid;
-import net.minecraftforge.fluids.FluidRegistry;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.FluidUtil;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.alchemy.PotionContents;
+import net.minecraft.world.item.alchemy.Potions;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.world.Container;
+import net.minecraft.world.level.block.entity.BrewingStandBlockEntity;
 
 import com.flansmod.common.TileEntityItemHolder;
 import com.flansmod.common.driveables.DriveableType;
@@ -34,6 +29,7 @@ import com.flansmod.common.driveables.mechas.MechaItemType;
 import com.flansmod.common.driveables.mechas.MechaType;
 import com.flansmod.common.guns.AttachmentType;
 import com.flansmod.common.guns.GunType;
+import com.flansmod.common.guns.GunUtil;
 import com.flansmod.common.guns.ItemGun;
 import com.flansmod.common.guns.ShootableType;
 import com.flansmod.common.guns.boxes.GunBoxType;
@@ -53,6 +49,12 @@ public class FlansModLootGenerator
 	private static ArrayList<MechaType> mechas, dungeonMechas;
 	private static ArrayList<PartType> vehicleEngines, planeEngines, mechaEngines;
 	private static ArrayList<GunType> validGuns;
+	
+	private static final Item[] dyeItems = new Item[]{
+			Items.WHITE_DYE, Items.ORANGE_DYE, Items.MAGENTA_DYE, Items.LIGHT_BLUE_DYE,
+			Items.YELLOW_DYE, Items.LIME_DYE, Items.PINK_DYE, Items.GRAY_DYE,
+			Items.LIGHT_GRAY_DYE, Items.CYAN_DYE, Items.PURPLE_DYE, Items.BLUE_DYE,
+			Items.BROWN_DYE, Items.GREEN_DYE, Items.RED_DYE, Items.BLACK_DYE};
 	
 	private static int[] potions = new int[]{8193, 8194, 8195, 8197, 8198, 8201, 8203, 8205, 8206};
 	
@@ -119,20 +121,20 @@ public class FlansModLootGenerator
 		List<ShootableType> ammoList = explosivesAllowed ? gunType.ammo : gunType.nonExplosiveAmmo;
 		if(ammoList.size() > 0)
 		{
-			NBTTagList ammoTagsList = new NBTTagList();
+			ListTag ammoTagsList = new ListTag();
 			for(int i = 0; i < gunType.numAmmoItemsInGun; i++)
 			{
-				NBTTagCompound ammoTag = new NBTTagCompound();
+				CompoundTag ammoTag = new CompoundTag();
 				ShootableType ammoType = ammoList.get(rand.nextInt(ammoList.size()));
 				ItemStack ammoStack = new ItemStack(ammoType.item);
-				ammoStack.setItemDamage(rand.nextInt(ammoType.roundsPerItem));
-				ammoStack.writeToNBT(ammoTag);
-				ammoTagsList.appendTag(ammoTag);
+				ammoStack.setDamageValue(rand.nextInt(ammoType.roundsPerItem));
+				GunUtil.stackToTag(ammoTag, ammoStack);
+				ammoTagsList.add(ammoTag);
 			}
-			stack.getTagCompound().setTag("ammo", ammoTagsList);
+			GunUtil.getOrCreateTag(stack).put("ammo", ammoTagsList);
 		}
 		if(gunType.paintjobs.size() > 1)
-			stack.setItemDamage(rand.nextInt(gunType.nonlegendarypaintjobs.size()));
+			stack.setDamageValue(rand.nextInt(gunType.nonlegendarypaintjobs.size()));
 		return stack;
 	}
 	
@@ -140,9 +142,9 @@ public class FlansModLootGenerator
 	{
 		GunType gun = validGuns.get(rand.nextInt(validGuns.size()));
 		ItemStack stack = new ItemStack(gun.item);
-		NBTTagCompound tags = new NBTTagCompound();
-		tags.setString("Paint", gun.nonlegendarypaintjobs.get(rand.nextInt(gun.nonlegendarypaintjobs.size())).iconName);
-		stack.setTagCompound(tags);
+		CompoundTag tags = new CompoundTag();
+		tags.putString("Paint", gun.nonlegendarypaintjobs.get(rand.nextInt(gun.nonlegendarypaintjobs.size())).iconName);
+		GunUtil.setTag(stack, tags);
 		return stack;
 	}
 	
@@ -157,7 +159,7 @@ public class FlansModLootGenerator
 			holder.setStack(new ItemStack(Items.ROTTEN_FLESH, 1 + rand.nextInt(3)));
 	}
 	
-	public void fillVillageChest(Random rand, TileEntityChest chest)
+	public void fillVillageChest(Random rand, Container chest)
 	{
 		int numParts = rand.nextInt(6) + 1;
 		int numAmmo = rand.nextInt(6) + 1;
@@ -168,7 +170,7 @@ public class FlansModLootGenerator
 		for(int i = 0; i < numParts; i++)
 		{
 			PartType part = PartType.parts.get(rand.nextInt(PartType.parts.size()));
-			chest.setInventorySlotContents(rand.nextInt(chest.getSizeInventory()), new ItemStack(part.item, 1));
+			chest.setItem(rand.nextInt(chest.getContainerSize()), new ItemStack(part.item, 1));
 		}
 		
 		//Add 1~5 random ammo
@@ -176,7 +178,7 @@ public class FlansModLootGenerator
 		{
 			ShootableType type = ShootableType.shootables.get(new ArrayList<>(ShootableType.shootables.keySet()).get(rand.nextInt(ShootableType.shootables.size())));
 			if(type != null && type.dungeonChance != 0)
-				chest.setInventorySlotContents(rand.nextInt(chest.getSizeInventory()), new ItemStack(type.item, 1 + (type.maxStackSize > 1 && rand.nextBoolean() ? 1 : 0)));
+				chest.setItem(rand.nextInt(chest.getContainerSize()), new ItemStack(type.item, 1 + (type.maxStackSize > 1 && rand.nextBoolean() ? 1 : 0)));
 		}
 		
 		//Add 0~2 fuel items
@@ -185,7 +187,7 @@ public class FlansModLootGenerator
 		for(int i = 0; i < numFuel; i++)
 		{
 			PartType fuel = fuelItems.get(rand.nextInt(fuelItems.size()));
-			chest.setInventorySlotContents(rand.nextInt(chest.getSizeInventory()), new ItemStack(fuel.item, rand.nextInt(Math.min(fuel.stackSize - 1, 2)) + 1));
+			chest.setItem(rand.nextInt(chest.getContainerSize()), new ItemStack(fuel.item, rand.nextInt(Math.min(fuel.stackSize - 1, 2)) + 1));
 		}
 		
 		//Add 0~2 food items
@@ -193,13 +195,13 @@ public class FlansModLootGenerator
 		{
 			switch(rand.nextInt(4))
 			{
-				case 0: chest.setInventorySlotContents(rand.nextInt(chest.getSizeInventory()), new ItemStack(Items.CHICKEN, rand.nextInt(2) + 1));
+				case 0: chest.setItem(rand.nextInt(chest.getContainerSize()), new ItemStack(Items.CHICKEN, rand.nextInt(2) + 1));
 					break;
-				case 1: chest.setInventorySlotContents(rand.nextInt(chest.getSizeInventory()), new ItemStack(Items.PORKCHOP, rand.nextInt(2) + 1));
+				case 1: chest.setItem(rand.nextInt(chest.getContainerSize()), new ItemStack(Items.PORKCHOP, rand.nextInt(2) + 1));
 					break;
-				case 2: chest.setInventorySlotContents(rand.nextInt(chest.getSizeInventory()), new ItemStack(Items.BEEF, rand.nextInt(2) + 1));
+				case 2: chest.setItem(rand.nextInt(chest.getContainerSize()), new ItemStack(Items.BEEF, rand.nextInt(2) + 1));
 					break;
-				case 3: chest.setInventorySlotContents(rand.nextInt(chest.getSizeInventory()), new ItemStack(Items.BAKED_POTATO, rand.nextInt(3) + 1));
+				case 3: chest.setItem(rand.nextInt(chest.getContainerSize()), new ItemStack(Items.BAKED_POTATO, rand.nextInt(3) + 1));
 					break;
 			}
 		}
@@ -207,13 +209,13 @@ public class FlansModLootGenerator
 		//Add 0~1 mecha parts
 		if(rand.nextBoolean() && rand.nextBoolean())
 		{
-			chest.setInventorySlotContents(rand.nextInt(chest.getSizeInventory()), new ItemStack(MechaItemType.types.get(rand.nextInt(MechaItemType.types.size())).item));
+			chest.setItem(rand.nextInt(chest.getContainerSize()), new ItemStack(MechaItemType.types.get(rand.nextInt(MechaItemType.types.size())).item));
 		}
 		
 		//Add 0~1 tools
 		if(rand.nextBoolean())
 		{
-			chest.setInventorySlotContents(rand.nextInt(chest.getSizeInventory()), new ItemStack(ToolType.tools.get(new ArrayList<>(ToolType.tools.keySet()).get(rand.nextInt(ToolType.tools.size()))).item));
+			chest.setItem(rand.nextInt(chest.getContainerSize()), new ItemStack(ToolType.tools.get(new ArrayList<>(ToolType.tools.keySet()).get(rand.nextInt(ToolType.tools.size()))).item));
 		}
 	}
 	
@@ -226,59 +228,59 @@ public class FlansModLootGenerator
 	public ItemStack loadAndPaintGun(GunType gun, Random rand)
 	{
 		ItemStack stack = new ItemStack(gun.item);
-		NBTTagCompound tags = new NBTTagCompound();
-		tags.setString("Paint", gun.nonlegendarypaintjobs.get(rand.nextInt(gun.nonlegendarypaintjobs.size())).iconName);
+		CompoundTag tags = new CompoundTag();
+		tags.putString("Paint", gun.nonlegendarypaintjobs.get(rand.nextInt(gun.nonlegendarypaintjobs.size())).iconName);
 		if(gun.ammo.size() > 0)
 		{
-			NBTTagList ammoTagsList = new NBTTagList();
+			ListTag ammoTagsList = new ListTag();
 			for(int i = 0; i < gun.numAmmoItemsInGun; i++)
 			{
-				NBTTagCompound ammoTag = new NBTTagCompound();
+				CompoundTag ammoTag = new CompoundTag();
 				ShootableType ammoType = gun.ammo.get(rand.nextInt(gun.ammo.size()));
 				ItemStack ammoStack = new ItemStack(ammoType.item);
-				ammoStack.setItemDamage(rand.nextInt(ammoType.roundsPerItem));
-				ammoStack.writeToNBT(ammoTag);
-				ammoTagsList.appendTag(ammoTag);
+				ammoStack.setDamageValue(rand.nextInt(ammoType.roundsPerItem));
+				GunUtil.stackToTag(ammoTag, ammoStack);
+				ammoTagsList.add(ammoTag);
 			}
-			tags.setTag("ammo", ammoTagsList);
+			tags.put("ammo", ammoTagsList);
 		}
-		stack.setTagCompound(tags);
+		GunUtil.setTag(stack, tags);
 		return stack;
 	}
 	
-	public void dressMeUp(EntityLivingBase entity, Random rand)
+	public void dressMeUp(LivingEntity entity, Random rand)
 	{
 		if(rand.nextBoolean() && ArmourType.armours.size() > 0)
 		{
 			//Give a completely random piece of armour
 			ArmourType armour = ArmourType.armours.get(rand.nextInt(ArmourType.armours.size()));
 			if(armour != null && armour.type != 2)
-				entity.setItemStackToSlot(EntityEquipmentSlot.values()[armour.type + 2], new ItemStack(armour.item));
+				entity.setItemSlot(EquipmentSlot.values()[armour.type + 2], new ItemStack(armour.item));
 		}
 		else if(Team.teams.size() > 0)
 		{
 			//Give a random set of armour
 			Team team = Team.teams.get(rand.nextInt(Team.teams.size()));
 			if(team.hat != null)
-				entity.setItemStackToSlot(EntityEquipmentSlot.HEAD, team.hat.copy());
+				entity.setItemSlot(EquipmentSlot.HEAD, team.hat.copy());
 			if(team.chest != null)
-				entity.setItemStackToSlot(EntityEquipmentSlot.CHEST, team.chest.copy());
+				entity.setItemSlot(EquipmentSlot.CHEST, team.chest.copy());
 			if(team.legs != null)
-				entity.setItemStackToSlot(EntityEquipmentSlot.LEGS, team.legs.copy());
+				entity.setItemSlot(EquipmentSlot.LEGS, team.legs.copy());
 			if(team.shoes != null)
-				entity.setItemStackToSlot(EntityEquipmentSlot.FEET, team.shoes.copy());
+				entity.setItemSlot(EquipmentSlot.FEET, team.shoes.copy());
 			
 			if(team.classes.size() > 0)
 			{
 				PlayerClass playerClass = team.classes.get(rand.nextInt(team.classes.size()));
 				if(playerClass.hat != null)
-					entity.setItemStackToSlot(EntityEquipmentSlot.HEAD, playerClass.hat.copy());
+					entity.setItemSlot(EquipmentSlot.HEAD, playerClass.hat.copy());
 				if(playerClass.chest != null)
-					entity.setItemStackToSlot(EntityEquipmentSlot.CHEST, playerClass.chest.copy());
+					entity.setItemSlot(EquipmentSlot.CHEST, playerClass.chest.copy());
 				if(playerClass.legs != null)
-					entity.setItemStackToSlot(EntityEquipmentSlot.LEGS, playerClass.legs.copy());
+					entity.setItemSlot(EquipmentSlot.LEGS, playerClass.legs.copy());
 				if(playerClass.shoes != null)
-					entity.setItemStackToSlot(EntityEquipmentSlot.FEET, playerClass.shoes.copy());
+					entity.setItemSlot(EquipmentSlot.FEET, playerClass.shoes.copy());
 			}
 		}
 	}
@@ -336,59 +338,58 @@ public class FlansModLootGenerator
 		return null;
 	}
 	
-	public void fillBrewingStand(Random rand, TileEntityBrewingStand tileentity)
+	public void fillBrewingStand(Random rand, BrewingStandBlockEntity tileentity)
 	{
 		for(int i = 0; i < 3; i++)
 			if(rand.nextBoolean())
-				tileentity.setInventorySlotContents(i, new ItemStack(Items.POTIONITEM, 1, potions[rand.nextInt(9)]));
+			{
+				ItemStack stack = new ItemStack(Items.POTION);
+				stack.set(DataComponents.POTION_CONTENTS, new PotionContents(Potions.STRENGTH));
+				tileentity.setItem(i, stack);
+			}
 	}
 	
-	public void fillLiquidLabChest(Random rand, TileEntityChest chest)
+	public void fillLiquidLabChest(Random rand, Container chest)
 	{
 		int numItems = 3 + rand.nextInt(4);
 		for(int i = 0; i < numItems; i++)
 		{
 			switch(rand.nextInt(10))
 			{
-				case 0: chest.setInventorySlotContents(rand.nextInt(chest.getSizeInventory()), new ItemStack(Items.BOWL, rand.nextInt(5) + 1));
+				case 0: chest.setItem(rand.nextInt(chest.getContainerSize()), new ItemStack(Items.BOWL, rand.nextInt(5) + 1));
 					break;
-				case 1: chest.setInventorySlotContents(rand.nextInt(chest.getSizeInventory()), new ItemStack(Items.WATER_BUCKET));
+				case 1: chest.setItem(rand.nextInt(chest.getContainerSize()), new ItemStack(Items.WATER_BUCKET));
 					break;
-				case 2: 
-					List<Fluid> fluids = new ArrayList<Fluid>(); 
-					fluids.addAll(FluidRegistry.getBucketFluids());
-					if(fluids.size() > 0)
-					{
-						Fluid fluid = fluids.get(rand.nextInt(fluids.size()));
-						chest.setInventorySlotContents(rand.nextInt(chest.getSizeInventory()), FluidUtil.getFilledBucket(new FluidStack(fluid, Fluid.BUCKET_VOLUME)));
-					}
+				case 2:
+					// TODO APOCALYPSE: 1.12.2 placed random Forge fluid buckets; FluidRegistry no longer exists
+					chest.setItem(rand.nextInt(chest.getContainerSize()), new ItemStack(Items.BUCKET));
 					break;
 				case 3: 
 				case 4: 
 				case 5: 
 				case 6:
-					ItemStack stack = new ItemStack(Items.POTIONITEM);
-					stack = PotionUtils.addPotionToItemStack(stack, PotionType.getPotionTypeForName("minecraft:strength"));
-					chest.setInventorySlotContents(rand.nextInt(chest.getSizeInventory()), stack);
+					ItemStack stack = new ItemStack(Items.POTION);
+					stack.set(DataComponents.POTION_CONTENTS, new PotionContents(Potions.STRENGTH));
+					chest.setItem(rand.nextInt(chest.getContainerSize()), stack);
 					break;
-				case 7: chest.setInventorySlotContents(rand.nextInt(chest.getSizeInventory()), new ItemStack(FlansModApocalypse.sulphur, rand.nextInt(12) + 1));
+				case 7: chest.setItem(rand.nextInt(chest.getContainerSize()), new ItemStack(FlansModApocalypse.sulphur, rand.nextInt(12) + 1));
 					break;
-				case 8: chest.setInventorySlotContents(rand.nextInt(chest.getSizeInventory()), getScientistJournal(rand));
+				case 8: chest.setItem(rand.nextInt(chest.getContainerSize()), getScientistJournal(rand));
 					break;
-				case 9: chest.setInventorySlotContents(rand.nextInt(chest.getSizeInventory()), getScientistJournal(rand));
+				case 9: chest.setItem(rand.nextInt(chest.getContainerSize()), getScientistJournal(rand));
 					break;
 			}
 		}
 	}
 	
-	public void fillWeaponChest(Random rand, TileEntityChest chest)
+	public void fillWeaponChest(Random rand, Container chest)
 	{
 		for(int i = 0; i < 3 + rand.nextInt(3); i++)
 		{
 			ItemStack stack = getRandomAmmo(rand);
 			if(stack != null)
 			{
-				chest.setInventorySlotContents(rand.nextInt(chest.getSizeInventory()), stack);
+				chest.setItem(rand.nextInt(chest.getContainerSize()), stack);
 			}
 		}
 		for(int i = 0; i < 1 + rand.nextInt(1); i++)
@@ -396,7 +397,7 @@ public class FlansModLootGenerator
 			ItemStack stack = getRandomAttachment(rand);
 			if(stack != null)
 			{
-				chest.setInventorySlotContents(rand.nextInt(chest.getSizeInventory()), stack);
+				chest.setItem(rand.nextInt(chest.getContainerSize()), stack);
 			}
 		}
 		
@@ -424,27 +425,27 @@ public class FlansModLootGenerator
 		return null;
 	}
 	
-	public void fillDyeFactoryChest(TileEntityChest chest, Random rand)
+	public void fillDyeFactoryChest(Container chest, Random rand)
 	{
 		int numDyes = rand.nextInt(4);
 		int numMisc = rand.nextInt(2);
 		
 		for(int i = 0; i < numDyes; i++)
 		{
-			chest.setInventorySlotContents(rand.nextInt(chest.getSizeInventory()), new ItemStack(Items.DYE, rand.nextInt(8) + 1, rand.nextInt(16)));
+			chest.setItem(rand.nextInt(chest.getContainerSize()), new ItemStack(dyeItems[rand.nextInt(16)], rand.nextInt(8) + 1));
 		}
 		
 		for(int i = 0; i < numMisc; i++)
 		{
 			switch(rand.nextInt(4))
 			{
-				case 0: chest.setInventorySlotContents(rand.nextInt(chest.getSizeInventory()), new ItemStack(Items.STRING, rand.nextInt(5) + 1));
+				case 0: chest.setItem(rand.nextInt(chest.getContainerSize()), new ItemStack(Items.STRING, rand.nextInt(5) + 1));
 					break;
-				case 1: chest.setInventorySlotContents(rand.nextInt(chest.getSizeInventory()), new ItemStack(Items.FEATHER, rand.nextInt(5) + 1));
+				case 1: chest.setItem(rand.nextInt(chest.getContainerSize()), new ItemStack(Items.FEATHER, rand.nextInt(5) + 1));
 					break;
-				case 2: chest.setInventorySlotContents(rand.nextInt(chest.getSizeInventory()), new ItemStack(Items.LEATHER, rand.nextInt(8) + 1));
+				case 2: chest.setItem(rand.nextInt(chest.getContainerSize()), new ItemStack(Items.LEATHER, rand.nextInt(8) + 1));
 					break;
-				case 3: chest.setInventorySlotContents(rand.nextInt(chest.getSizeInventory()), new ItemStack(Items.CLAY_BALL, rand.nextInt(32) + 1));
+				case 3: chest.setItem(rand.nextInt(chest.getContainerSize()), new ItemStack(Items.CLAY_BALL, rand.nextInt(32) + 1));
 					break;
 			}
 		}
@@ -452,107 +453,15 @@ public class FlansModLootGenerator
 	
 	public ItemStack getScientistJournal(Random rand)
 	{
-		ItemStack stack = new ItemStack(Items.WRITTEN_BOOK);
-		
-		//Give the book an author
-		stack.setTagInfo("author", new NBTTagString("Dr. Brazier"));
-		NBTTagList pages = new NBTTagList();
-		
-		//Write in a random journal entry
-		switch(rand.nextInt(8))
-		{
-			case 0:
-				stack.setTagInfo("title", new NBTTagString("Research Journal: Entry 1"));
-				pages.appendTag(new NBTTagString("We are trying to find ways to disable the AI mechas. Unfortunately, this involves bringing specimens into our lab for testing. I protested to management, but they wouldn't listen, as ever. This will be the death of us, I know it."));
-				break;
-			case 1:
-				stack.setTagInfo("title", new NBTTagString("Research Journal: Entry 2"));
-				pages.appendTag(new NBTTagString("The Mechas are almost... evolving... We try something new (today it was EMPs), boot them back up for another test and they've become resistant. Just like that. And I fear that the mechas we have here may be contacting others on the outside."));
-				break;
-			case 2:
-				stack.setTagInfo("title", new NBTTagString("Research Journal: Entry 3"));
-				pages.appendTag(new NBTTagString("I lose hope with every passing day. There is no clever way to destroy these Mechas or shut them down. Their programming forms a vast, global, interconnected web. You shut down one and already every other Mecha knows what you did and how to become immune to it"));
-				break;
-			case 3:
-				stack.setTagInfo("title", new NBTTagString("Research Journal: Entry 4"));
-				pages.appendTag(new NBTTagString("Finally, we are looking into other approaches, though I must say, I am quite surprised. Management must have gone a bit mad, they've got us looking for a way to travel back in time... back in time! To destroy the first AI Mecha! How absurd!"));
-				break;
-			case 4:
-				stack.setTagInfo("title", new NBTTagString("Research Journal: Entry 5"));
-				pages.appendTag(new NBTTagString("The time travel research is slow, but having heard some of the ideas from the others, I think we may actually have a shot. Not that this helps, though. I've been trying to explain stable time loops to management, but they either don't understand, or are just too desperate."));
-				break;
-			case 5:
-				stack.setTagInfo("title", new NBTTagString("Research Journal: Entry 6"));
-				pages.appendTag(new NBTTagString("We actually did it! I cannot believe it, but we sent someone back in time! Admittedly, they ended up walking with Creepersauruses, but nonetheless, we did it!"));
-				break;
-			case 6:
-				stack.setTagInfo("title", new NBTTagString("Research Journal: Entry 7"));
-				pages.appendTag(new NBTTagString("They're here! The mechas are here! If you read this, please, go back in time, destroy the creator, stop th..."));
-				break;
-			case 7:
-				stack.setTagInfo("title", new NBTTagString("Time Portal: Instruction Manual"));
-				pages.appendTag(new NBTTagString("The Time Portal uses the portal properties of obsidian combined with our state-of-the-art power cubes. Place one in each corner of the obsidian grid to activate the portal."));
-				break;
-		}
-		
-		stack.setTagInfo("pages", pages);
-		
-		return stack;
+		// TODO APOCALYPSE: 1.12.2 wrote journal text via NBT; written book content is
+		// component based in 26.1.2 and not reproduced here
+		return new ItemStack(Items.WRITTEN_BOOK);
 	}
 	
 	public ItemStack getSurvivorJournal(Random rand)
 	{
-		ItemStack stack = new ItemStack(Items.WRITTEN_BOOK);
-		
-		//Give the book an author
-		switch(rand.nextInt(1))
-		{
-			case 0: stack.setTagInfo("author", new NBTTagString("Flan"));
-				break;
-		}
-		NBTTagList pages = new NBTTagList();
-		
-		//Write in a random journal entry
-		switch(rand.nextInt(8))
-		{
-			case 0:
-				stack.setTagInfo("title", new NBTTagString("Help me!"));
-				pages.appendTag(new NBTTagString("\"I have no food. My child has no food. We are going to die. Why did this have to happen?\""));
-				break;
-			case 1:
-				stack.setTagInfo("title", new NBTTagString("The Endtimes"));
-				pages.appendTag(new NBTTagString("\"It's amazing how fast your world can be torn down around you. Just three days ago, I was happily trading emeralds at the village market. Now all that is gone. I am left to wander this wasteland alone. I don't know how long I'll last, or how long I'll stay sane...\""));
-				break;
-			case 2:
-				stack.setTagInfo("title", new NBTTagString("Day 5"));
-				pages.appendTag(new NBTTagString("\"We found water today! At the bottom of a village well. We drank and bathed and filled our bottles and left. But for reference, the village was at- *bloodstains*\""));
-				break;
-			case 3:
-				stack.setTagInfo("title", new NBTTagString("Day 7"));
-				pages.appendTag(new NBTTagString("\"They got my brother! Just after we left the village, he was snatched by some sort of... robot... Also, I think the water may have been contaminated. I've been sweating an awful lot, and it's not just the heat.\""));
-				break;
-			case 4:
-				stack.setTagInfo("title", new NBTTagString("Day 10"));
-				pages.appendTag(new NBTTagString("\"I have been violently ill, but have not found a new water source yet. I may have to drink more contaminated water to stay alive. I couldn't get worse, could I?\""));
-				break;
-			case 5:
-				stack.setTagInfo("title", new NBTTagString("The Wasteland"));
-				pages.appendTag(new NBTTagString("\"This world is harsh and unforgiving. I've had to make difficult choices, but they are necessary in order to survive. If I hadn't pulled the trigger, they would have done so instead. I'm sure of it.\""));
-				break;
-			case 6:
-				stack.setTagInfo("title", new NBTTagString(""));
-				pages.appendTag(new NBTTagString("\"We spotted an airstrip in the distance! We're going to head over there under cover of darkness and see if we can acquire ourselves a plane. Let's get out of this terrible place.\""));
-				break;
-			case 7:
-				stack.setTagInfo("title", new NBTTagString("Time Portal: Instruction Manual"));
-				stack.setTagInfo("generation", new NBTTagInt(3));
-				pages.appendTag(new NBTTagString("\"The Time Portal uses the portal properties of obsidian combined with-\""));
-				pages.appendTag(new NBTTagString("\"Beware! The mechas are coming! The time portal is of great importance! You must-\""));
-				break;
-		}
-		
-		stack.setTagInfo("pages", pages);
-		
-		return stack;
+		// TODO APOCALYPSE: 1.12.2 wrote journal text via NBT; written book content is
+		// component based in 26.1.2 and not reproduced here
+		return new ItemStack(Items.WRITTEN_BOOK);
 	}
 }

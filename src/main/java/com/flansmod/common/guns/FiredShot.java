@@ -2,17 +2,19 @@ package com.flansmod.common.guns;
 
 import java.util.Optional;
 
-import javax.annotation.Nullable;
-
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.EntityDamageSource;
+import net.minecraft.core.Holder;
+import net.minecraft.world.damagesource.DamageScaling;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageType;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.Level;
+import net.minecraft.server.level.ServerPlayer;
 
 /**
  * Class for creating object containing all necessary informations about a fired shot
  */
 public class FiredShot {
+	protected Level world;
 
 	/**
 	 * The weapon used to fire the shot
@@ -25,7 +27,7 @@ public class FiredShot {
 	/**
 	 * Optional containing a player, if one can be associated with the shot
 	 */
-	private Optional<EntityPlayerMP> player;
+	private Optional<ServerPlayer> player;
 	/**
 	 * Optional of the entity which fired the shot. Can be the same as the Player optional
 	 */
@@ -48,7 +50,7 @@ public class FiredShot {
 	 * @param bullet BulletType of the fired bullet
 	 * @param player The player who shot
 	 */
-	public FiredShot(FireableGun weapon, BulletType bullet, EntityPlayerMP player)
+	public FiredShot(FireableGun weapon, BulletType bullet, ServerPlayer player)
 	{
 		this(weapon,bullet, player, player);
 	}
@@ -75,7 +77,7 @@ public class FiredShot {
 	 * @param shooter the Entity firing the shot
 	 * @param player  the Player causing the shot
 	 */
-	public FiredShot(FireableGun weapon, BulletType bullet, Entity shooter, @Nullable EntityPlayerMP player)
+	public FiredShot(FireableGun weapon, BulletType bullet, Entity shooter, ServerPlayer player)
 	{
 		this.weapon = weapon;
 		this.bullet = bullet;
@@ -119,13 +121,13 @@ public class FiredShot {
 		{
 			return new EntityDamageSourceFlan(weapon.getShortName(), null, null, weapon.getInfoType(), headshot).setProjectile();
 		}
-		return DamageSource.GENERIC;
+		return new DamageSource(Holder.direct(new DamageType("generic", DamageScaling.WHEN_CAUSED_BY_LIVING_NON_PLAYER, 0.1F)));
 	}
 	
 	/**
 	 * @return Optional containing a player if one is involved in the cause of the shot
 	 */
-	public Optional<EntityPlayerMP> getPlayerOptional()
+	public Optional<ServerPlayer> getPlayerOptional()
 	{
 		return this.player;
 	}

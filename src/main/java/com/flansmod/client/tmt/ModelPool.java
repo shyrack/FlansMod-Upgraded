@@ -4,8 +4,6 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
-import net.minecraftforge.fml.common.Loader;
-
 import com.flansmod.common.FlansMod;
 
 public class ModelPool
@@ -21,25 +19,25 @@ public class ModelPool
 		}
 		try
 		{
-			entry = (ModelPoolEntry)modelClass.newInstance();
+			entry = (ModelPoolEntry)modelClass.getDeclaredConstructor().newInstance();
 		}
 		catch(Exception e)
 		{
-			FlansMod.log.error("A new " + entry.getClass().getName() + " could not be initialized.");
-			FlansMod.log.error(e.getMessage());
+			FlansMod.LOGGER.error("A new model pool entry could not be initialized.");
+			FlansMod.LOGGER.error(e.getMessage());
 			return null;
 		}
 		File modelFile = null;
 		for(int i = 0; i < resourceDir.length && (modelFile == null || !modelFile.exists()); i++)
 		{
-			String absPath = new File(Loader.instance().getConfigDir().getParent(), resourceDir[i]).getAbsolutePath();
+			String absPath = new File(FlansMod.gameDirectory, resourceDir[i]).getAbsolutePath();
 			if(!absPath.endsWith("/") || !absPath.endsWith("\\"))
 				absPath += "/";
 			modelFile = entry.checkValidPath(absPath + file);
 		}
 		if(modelFile == null || !modelFile.exists())
 		{
-			FlansMod.log.warn("The model with the name " + file + " does not exist.");
+			FlansMod.LOGGER.warn("The model with the name {} does not exist.", file);
 			return null;
 		}
 		entry.groups = new HashMap<>();

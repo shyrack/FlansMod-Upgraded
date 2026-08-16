@@ -1,20 +1,16 @@
 package com.flansmod.common.network;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import net.minecraft.block.Block;
-import net.minecraft.block.SoundType;
-import net.minecraft.block.state.IBlockState;
-import net.minecraft.client.audio.PositionedSoundRecord;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.util.SoundCategory;
-import net.minecraft.util.SoundEvent;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
-import net.minecraftforge.fml.client.FMLClientHandler;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.level.Level;
 
 import com.flansmod.common.FlansMod;
 
@@ -32,11 +28,11 @@ public class PacketBreakSound extends PacketBase
 		this.x = x;
 		this.y = y;
 		this.z = z;
-		blockID = Block.getIdFromBlock(block);
+		blockID = BuiltInRegistries.BLOCK.getId(block);
 	}
 	
 	@Override
-	public void encodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void encodeInto(ByteBuf data)
 	{
 		data.writeInt(x);
 		data.writeInt(y);
@@ -45,7 +41,7 @@ public class PacketBreakSound extends PacketBase
 	}
 	
 	@Override
-	public void decodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void decodeInto(ByteBuf data)
 	{
 		x = data.readInt();
 		y = data.readInt();
@@ -54,24 +50,21 @@ public class PacketBreakSound extends PacketBase
 	}
 	
 	@Override
-	public void handleServerSide(EntityPlayerMP playerEntity)
+	public void handleServerSide(ServerPlayer playerEntity)
 	{
 		FlansMod.log.warn("Received block break sound packet on server. Skipping.");
 	}
 	
 	@Override
-	@SideOnly(Side.CLIENT)
-	public void handleClientSide(EntityPlayer clientPlayer)
+	public void handleClientSide(Player clientPlayer)
 	{
-		World world = clientPlayer.world;
+		Level world = clientPlayer.level();
 		BlockPos pos = new BlockPos(x, y, z);
-		IBlockState state = world.getBlockState(new BlockPos(x, y, z));
-		Block block = Block.getBlockById(blockID);
+		BlockState state = world.getBlockState(pos);
 		
-		FMLClientHandler.instance().getClient().effectRenderer.addBlockDestroyEffects(new BlockPos(x, y, z), block.getDefaultState());
-		SoundType sound = block.getSoundType(state, world, pos, clientPlayer);
+		SoundType sound = state.getSoundType();
 		SoundEvent event = sound.getBreakSound();
-		FMLClientHandler.instance().getClient().getSoundHandler().playSound(
-				new PositionedSoundRecord(event, SoundCategory.BLOCKS, (sound.getVolume() + 1.0F) / 2.0F, sound.getPitch() * 0.8F, x + 0.5F, y + 0.5F, z + 0.5F));
+		world.playSound(clientPlayer, x + 0.5F, y + 0.5F, z + 0.5F, event, SoundSource.BLOCKS,
+				(sound.getVolume() + 1.0F) / 2.0F, sound.getPitch() * 0.8F);
 	}
 }

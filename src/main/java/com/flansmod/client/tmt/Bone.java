@@ -4,9 +4,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-import net.minecraft.client.model.ModelRenderer;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
+import com.flansmod.client.model.ModelRenderer;
+import net.minecraft.util.Mth;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * The Bone class makes it possible to create skeletons, which should help you out in
@@ -37,7 +37,7 @@ import net.minecraft.util.math.Vec3d;
  * setAnglesToModels, since this will override the settings the model originally had.
  * The best way to solve this is to make a separate method to rotate the Bones.
  * <br /><br />
- * The following would be an example of a biped with a skeleton. It takes ModelBiped
+ * The following would be an example of a biped with a skeleton. It takes HumanoidModel
  * as an example and extends it with a skeleton. First, we have the part that goes
  * in the constructor.
  * <pre>
@@ -72,13 +72,13 @@ import net.minecraft.util.math.Vec3d;
  * <pre>
  * skeletonHead.relativeAngles.angleY = f3 / 57.29578F;
  * skeletonHead.relativeAngles.angleX = f4 / 57.29578F;
- * skeletonArmRight.relativeAngles.angleX = MathHelper.cos(f * 0.6662F + 3.141593F) * 2.0F * f1 * 0.5F;
+ * skeletonArmRight.relativeAngles.angleX = Mth.cos(f * 0.6662F + 3.141593F) * 2.0F * f1 * 0.5F;
  * skeletonArmRight.relativeAngles.angleZ = 0.0F;
- * skeletonArmLeft.relativeAngles.angleX = MathHelper.cos(f * 0.6662F) * 2.0F * f1 * 0.5F;
+ * skeletonArmLeft.relativeAngles.angleX = Mth.cos(f * 0.6662F) * 2.0F * f1 * 0.5F;
  * skeletonArmLeft.relativeAngles.angleZ = 0.0F;
- * skeletonLegRight.relativeAngles.angleX = MathHelper.cos(f * 0.6662F) * 1.4F * f1;
+ * skeletonLegRight.relativeAngles.angleX = Mth.cos(f * 0.6662F) * 1.4F * f1;
  * skeletonLegRight.relativeAngles.angleY = 0.0F;
- * skeletonLegLeft.relativeAngles.angleX = MathHelper.cos(f * 0.6662F + 3.141593F) * 1.4F * f1;
+ * skeletonLegLeft.relativeAngles.angleX = Mth.cos(f * 0.6662F + 3.141593F) * 1.4F * f1;
  * skeletonLegLeft.relativeAngles.angleY = 0.0F;
  * </pre>
  * <br /><br />
@@ -112,7 +112,7 @@ public class Bone
 		neutralAngles = new Angle3D(x, y, z);
 		relativeAngles = new Angle3D(0, 0, 0);
 		absoluteAngles = new Angle3D(0, 0, 0);
-		positionVector = new Vec3d(0, 0, 0);
+		positionVector = new Vec3(0, 0, 0);
 		length = l;
 		childNodes = new ArrayList<>();
 		models = new ArrayList<>();
@@ -121,7 +121,7 @@ public class Bone
 		offsetX = 0;
 		offsetY = 0;
 		offsetZ = 0;
-		positionVector = new Vec3d(0, 0, 0);
+		positionVector = new Vec3(0, 0, 0);
 	}
 	
 	/**
@@ -192,13 +192,13 @@ public class Bone
 	 * @param x the x-position
 	 * @param y the y-position
 	 * @param z the z-position
-	 * @return a Vec3d with the new coordinates of the current bone
+	 * @return a Vec3 with the new coordinates of the current bone
 	 */
-	public Vec3d setOffset(float x, float y, float z)
+	public Vec3 setOffset(float x, float y, float z)
 	{
 		if(parentNode != null)
 		{
-			Vec3d vector = parentNode.setOffset(x, y, z);
+			Vec3 vector = parentNode.setOffset(x, y, z);
 			offsetX = (float)vector.x;
 			offsetY = (float)vector.y;
 			offsetZ = (float)vector.z;
@@ -208,7 +208,7 @@ public class Bone
 		offsetY = y;
 		offsetZ = z;
 		resetOffset(true);
-		return new Vec3d(x, y, z);
+		return new Vec3(x, y, z);
 	}
 	
 	/**
@@ -228,7 +228,7 @@ public class Bone
 	{
 		if(parentNode != null)
 		{
-			positionVector = new Vec3d(0, 0, parentNode.length);
+			positionVector = new Vec3(0, 0, parentNode.length);
 			parentNode.setVectorRotations(positionVector);
 			positionVector = positionVector.add(parentNode.positionVector);
 		}
@@ -391,9 +391,9 @@ public class Bone
 	 *
 	 * @return a vector containing the current position relative to the origin.
 	 */
-	public Vec3d getPosition()
+	public Vec3 getPosition()
 	{
-		return new Vec3d(positionVector.x, positionVector.y, positionVector.z);
+		return new Vec3(positionVector.x, positionVector.y, positionVector.z);
 	}
 	
 	protected void addChildBone(Bone bone)
@@ -453,7 +453,7 @@ public class Bone
 		
 	}
 	
-	protected void setVectorRotations(Vec3d vector)
+	protected void setVectorRotations(Vec3 vector)
 	{
 		float x = neutralAngles.angleX + absoluteAngles.angleX;
 		float y = neutralAngles.angleY + absoluteAngles.angleY;
@@ -461,14 +461,14 @@ public class Bone
 		setVectorRotations(vector, x, y, z);
 	}
 	
-	protected void setVectorRotations(Vec3d vector, float xRot, float yRot, float zRot)
+	protected void setVectorRotations(Vec3 vector, float xRot, float yRot, float zRot)
 	{
-		float xC = MathHelper.cos(xRot);
-		float xS = MathHelper.sin(xRot);
-		float yC = MathHelper.cos(yRot);
-		float yS = MathHelper.sin(yRot);
-		float zC = MathHelper.cos(zRot);
-		float zS = MathHelper.sin(zRot);
+		float xC = Mth.cos(xRot);
+		float xS = Mth.sin(xRot);
+		float yC = Mth.cos(yRot);
+		float yS = Mth.sin(yRot);
+		float zC = Mth.cos(zRot);
+		float zS = Mth.sin(zRot);
 		
 		double xVec = vector.x;
 		double yVec = vector.y;
@@ -488,18 +488,18 @@ public class Bone
 		yVec = zy;
 		zVec = yz;
 		
-		vector = new Vec3d(xVec, yVec, zVec);
+		vector = new Vec3(xVec, yVec, zVec);
 	}
 	
-	protected void add(Vec3d destVec, Vec3d srcVec)
+	protected void add(Vec3 destVec, Vec3 srcVec)
 	{
 		destVec = destVec.add(srcVec);
 	}
 	
 	protected void setVectors()
 	{
-		Vec3d tempVec = new Vec3d(0, 0, length);
-		positionVector = new Vec3d(offsetX, offsetY, offsetZ);
+		Vec3 tempVec = new Vec3(0, 0, length);
+		positionVector = new Vec3(offsetX, offsetY, offsetZ);
 		add(tempVec, positionVector);
 		setVectorRotations(tempVec);
 		for(Bone childNode : childNodes)
@@ -508,10 +508,10 @@ public class Bone
 		}
 	}
 	
-	protected void setVectors(Vec3d vector)
+	protected void setVectors(Vec3 vector)
 	{
 		positionVector = vector;
-		Vec3d tempVec = new Vec3d(0, 0, length);
+		Vec3 tempVec = new Vec3(0, 0, length);
 		setVectorRotations(tempVec);
 		add(tempVec, vector);
 		for(Bone childNode : childNodes)
@@ -546,7 +546,7 @@ public class Bone
 	protected Angle3D neutralAngles;
 	public Angle3D relativeAngles;
 	protected Angle3D absoluteAngles;
-	private Vec3d positionVector;
+	private Vec3 positionVector;
 	private float length;
 	private Bone parentNode;
 	protected ArrayList<Bone> childNodes;

@@ -1,12 +1,8 @@
 package com.flansmod.common.network;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
 
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.driveables.DriveablePart;
@@ -27,7 +23,7 @@ public class PacketDriveableDamage extends PacketBase
 	
 	public PacketDriveableDamage(EntityDriveable driveable)
 	{
-		entityId = driveable.getEntityId();
+		entityId = driveable.getId();
 		health = new int[EnumDriveablePart.values().length];
 		onFire = new boolean[EnumDriveablePart.values().length];
 		for(int i = 0; i < EnumDriveablePart.values().length; i++)
@@ -40,7 +36,7 @@ public class PacketDriveableDamage extends PacketBase
 	}
 	
 	@Override
-	public void encodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void encodeInto(ByteBuf data)
 	{
 		data.writeInt(entityId);
 		for(int i = 0; i < EnumDriveablePart.values().length; i++)
@@ -51,7 +47,7 @@ public class PacketDriveableDamage extends PacketBase
 	}
 	
 	@Override
-	public void decodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void decodeInto(ByteBuf data)
 	{
 		entityId = data.readInt();
 		for(int i = 0; i < EnumDriveablePart.values().length; i++)
@@ -62,24 +58,16 @@ public class PacketDriveableDamage extends PacketBase
 	}
 	
 	@Override
-	public void handleServerSide(EntityPlayerMP playerEntity)
+	public void handleServerSide(ServerPlayer playerEntity)
 	{
 		FlansMod.log.warn("Driveable damage packet received on server. Skipping.");
 	}
 	
 	@Override
-	@SideOnly(Side.CLIENT)
-	public void handleClientSide(EntityPlayer clientPlayer)
+	public void handleClientSide(Player clientPlayer)
 	{
-		EntityDriveable driveable = null;
-		for(Object obj : clientPlayer.world.loadedEntityList)
-		{
-			if(obj instanceof EntityDriveable && ((Entity)obj).getEntityId() == entityId)
-			{
-				driveable = (EntityDriveable)obj;
-				break;
-			}
-		}
+		EntityDriveable driveable = clientPlayer.level().getEntity(entityId) instanceof EntityDriveable ?
+				(EntityDriveable)clientPlayer.level().getEntity(entityId) : null;
 		if(driveable != null)
 		{
 			for(int i = 0; i < EnumDriveablePart.values().length; i++)

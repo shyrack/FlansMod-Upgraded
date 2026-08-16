@@ -1,7 +1,6 @@
 package com.flansmod.client.teams;
 
 import net.minecraft.client.Minecraft;
-import net.minecraftforge.fml.client.FMLClientHandler;
 
 import com.flansmod.client.gui.teams.GuiEditLoadout;
 import com.flansmod.client.gui.teams.GuiLandingPage;
@@ -85,7 +84,7 @@ public class ClientTeamsData
 				break;
 		}
 		
-		if(stage != RoundFinishedStage.NOT_FINISHED && Minecraft.getMinecraft().currentScreen == null)
+		if(stage != RoundFinishedStage.NOT_FINISHED && Minecraft.getInstance().screen == null)
 		{
 			OpenMenu();
 		}
@@ -107,21 +106,21 @@ public class ClientTeamsData
 		switch(stage)
 		{
 			case NOT_FINISHED:
-				if((Minecraft.getMinecraft().currentScreen instanceof GuiVoting)
-						|| (Minecraft.getMinecraft().currentScreen instanceof GuiTeamScores)
-						|| (Minecraft.getMinecraft().currentScreen instanceof GuiMissionResults))
+				if((Minecraft.getInstance().screen instanceof GuiVoting)
+						|| (Minecraft.getInstance().screen instanceof GuiTeamScores)
+						|| (Minecraft.getInstance().screen instanceof GuiMissionResults))
 				{
-					Minecraft.getMinecraft().displayGuiScreen(null);
+					Minecraft.getInstance().setScreen(null);
 				}
 				break;
 			case RANK_UPDATE:
-				Minecraft.getMinecraft().displayGuiScreen(new GuiMissionResults());
+				Minecraft.getInstance().setScreen(new GuiMissionResults());
 				break;
 			case SCORES:
-				Minecraft.getMinecraft().displayGuiScreen(new GuiTeamScores());
+				Minecraft.getInstance().setScreen(new GuiTeamScores());
 				break;
 			case VOTING:
-				Minecraft.getMinecraft().displayGuiScreen(new GuiVoting());
+				Minecraft.getInstance().setScreen(new GuiVoting());
 				break;
 			default:
 				break;
@@ -202,31 +201,31 @@ public class ClientTeamsData
 			return;
 		}
 		
-		if(Minecraft.getMinecraft().currentScreen instanceof GuiOpenRewardBox)
+		if(Minecraft.getInstance().screen instanceof GuiOpenRewardBox)
 		{
-			((GuiOpenRewardBox)Minecraft.getMinecraft().currentScreen).SetTarget(paintjob);
+			((GuiOpenRewardBox)Minecraft.getInstance().screen).SetTarget(paintjob);
 		}
 	}
 	
 	public static void OpenLandingPage()
 	{
-		FMLClientHandler.instance().getClient().displayGuiScreen(new GuiLandingPage());
+		Minecraft.getInstance().setScreen(new GuiLandingPage());
 	}
 	
 	public static void OpenEditLoadoutPage(int loadout)
 	{
-		FMLClientHandler.instance().getClient().displayGuiScreen(new GuiEditLoadout(loadout));
+		Minecraft.getInstance().setScreen(new GuiEditLoadout(loadout));
 	}
 	
 	public static void OpenTeamSelectPage()
 	{
-		FMLClientHandler.instance().getClient().displayGuiScreen(new GuiTeamSelect());
+		Minecraft.getInstance().setScreen(new GuiTeamSelect());
 	}
 	
 	public static void OpenRewardBox(int i)
 	{
 		FlansMod.getPacketHandler().sendToServer(new PacketOpenRewardBox(currentPool.rewardBoxes[i]));
-		FMLClientHandler.instance().getClient().displayGuiScreen(new GuiOpenRewardBox(currentPool.rewardBoxes[i]));
+		Minecraft.getInstance().setScreen(new GuiOpenRewardBox(currentPool.rewardBoxes[i]));
 	}
 	
 	public static void AddRewardBox(int boxHash)

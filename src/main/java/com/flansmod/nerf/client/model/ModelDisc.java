@@ -1,16 +1,16 @@
 package com.flansmod.nerf.client.model;
 
-import net.minecraft.client.model.ModelBase;
-import net.minecraft.client.model.ModelRenderer;
-import net.minecraft.entity.Entity;
+import com.flansmod.client.model.ModelBase;
+import com.flansmod.client.tmt.ModelRendererTurbo;
+import net.minecraft.world.entity.Entity;
 
 public class ModelDisc extends ModelBase
 {
-	public ModelRenderer bulletModel;
+	public ModelRendererTurbo bulletModel;
 
 	public ModelDisc()
 	{
-		bulletModel = new ModelRenderer(this, 0, 0);
+		bulletModel = new ModelRendererTurbo(this, 0, 0);
 		bulletModel.addBox(-1F, -1F, -0.5F, 2, 2, 1);
 	}
 

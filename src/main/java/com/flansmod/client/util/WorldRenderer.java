@@ -1,30 +1,33 @@
 package com.flansmod.client.util;
 
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.ByteBufferBuilder;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.VertexFormat;
 
 public class WorldRenderer
 {
-	public Tessellator tessellator;
-	
+	private final ByteBufferBuilder byteBufferBuilder = new ByteBufferBuilder(1024);
+	private BufferBuilder bufferBuilder;
+
 	public WorldRenderer()
 	{
-		
 	}
-	
+
 	public void startDrawingQuads()
 	{
-		tessellator = Tessellator.getInstance();
-		tessellator.getBuffer().begin(7, DefaultVertexFormats.POSITION_TEX);
+		bufferBuilder = new BufferBuilder(byteBufferBuilder, VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
 	}
-	
+
 	public void addVertexWithUV(double x, double y, double z, double u, double v)
 	{
-		tessellator.getBuffer().pos(x, y, z).tex(u, v).endVertex();
+		bufferBuilder.addVertex((float)x, (float)y, (float)z).setUv((float)u, (float)v);
 	}
-	
+
 	public void draw()
 	{
-		tessellator.draw();
+		bufferBuilder.build();
+		byteBufferBuilder.clear();
+		bufferBuilder = null;
 	}
 }

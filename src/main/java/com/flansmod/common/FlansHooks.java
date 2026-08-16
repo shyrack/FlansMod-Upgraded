@@ -1,8 +1,8 @@
 package com.flansmod.common;
 
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraftforge.fml.common.Loader;
+import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 
 public class FlansHooks
 {
@@ -15,7 +15,7 @@ public class FlansHooks
 	
 	public void hook()
 	{
-		if(Loader.isModLoaded("BuildCraft|Energy"))
+		if(FabricLoader.getInstance().isModLoaded("buildcraftcore") || FabricLoader.getInstance().isModLoaded("buildcraftenergy"))
 		{
 			BuildCraftFuelBucket = getBuildCraftItem("bucketFuel");
 			BuildCraftOilBucket = getBuildCraftItem("bucketOil");

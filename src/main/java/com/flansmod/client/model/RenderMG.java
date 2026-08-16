@@ -1,52 +1,77 @@
 package com.flansmod.client.model;
 
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.entity.Render;
-import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.fml.client.registry.IRenderFactory;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.entity.EntityRenderer;
+import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.resources.Identifier;
 
 import com.flansmod.client.handlers.FlansModResourceHandler;
 import com.flansmod.common.guns.EntityMG;
 
-public class RenderMG extends Render<EntityMG>
+public class RenderMG extends EntityRenderer<EntityMG, RenderMG.State>
 {
-	public RenderMG(RenderManager renderManager)
+	public static class State extends EntityRenderState
 	{
-		super(renderManager);
-		shadowSize = 0.5F;
+		public EntityMG mg;
+		public ModelMG model;
+		public Identifier texture;
+		public float yaw;
+		public float prevYaw;
+		public float partialTick;
 	}
-	
-	@Override
-	public void doRender(EntityMG mg, double d, double d1, double d2, float f, float f1)
+
+	private final PoseStack poseStack = new PoseStack();
+
+	public RenderMG(EntityRendererProvider.Context context)
 	{
-		bindEntityTexture(mg);
-		GlStateManager.pushMatrix();
-		GlStateManager.translate((float)d, (float)d1, (float)d2);
-		
-		GlStateManager.rotate(180F - mg.direction * 90F, 0.0F, 1.0F, 0.0F);
-		ModelMG model = mg.type.deployableModel;
+		super(context);
+		shadowRadius = 0.5F;
+	}
+
+	@Override
+	public State createRenderState()
+	{
+		return new State();
+	}
+
+	@Override
+	public void extractRenderState(EntityMG mg, State state, float partialTick)
+	{
+		super.extractRenderState(mg, state, partialTick);
+		state.mg = mg;
+		state.model = mg.type.deployableModel;
+		state.texture = FlansModResourceHandler.getDeployableTexture(mg.type);
+		state.yaw = mg.getYRot();
+		state.prevYaw = mg.yRotO;
+		state.partialTick = partialTick;
+	}
+
+	@Override
+	public void submit(State state, PoseStack pose, SubmitNodeCollector collector, CameraRenderState camera)
+	{
+		ModelMG model = state.model;
 		if(model == null)
 			return;
-		//GlStateManager.scale(-1F, -1F, 1.0F);
-		model.renderBipod(0.0F, 0.0F, -0.1F, 0.0F, 0.0F, 0.0625F, mg);
-		GlStateManager.rotate(-(mg.prevRotationYaw + (mg.rotationYaw - mg.prevRotationYaw) * f1), 0.0F, 1.0F, 0.0F);
-		model.renderGun(0.0F, 0.0F, -0.1F, 0.0F, 0.0F, 0.0625F, f1, mg);
-		GlStateManager.popMatrix();
-	}
-	
-	@Override
-	protected ResourceLocation getEntityTexture(EntityMG entity)
-	{
-		return FlansModResourceHandler.getDeployableTexture(entity.type);
-	}
-	
-	public static class Factory implements IRenderFactory<EntityMG>
-	{
-		@Override
-		public Render<EntityMG> createRenderFor(RenderManager manager)
+
+		pose.pushPose();
+		pose.mulPose(Axis.YP.rotationDegrees(180F - state.mg.direction * 90F));
+		collector.submitCustomGeometry(pose, RenderTypes.entityCutout(state.texture), (p, consumer) ->
 		{
-			return new RenderMG(manager);
-		}
+			poseStack.pushPose();
+			poseStack.last().set(p);
+			ModelRenderer.beginRender(poseStack, consumer, state.lightCoords, OverlayTexture.NO_OVERLAY);
+			model.renderBipod(0.0F, 0.0F, -0.1F, 0.0F, 0.0F, 0.0625F, state.mg);
+			poseStack.mulPose(Axis.YP.rotationDegrees(-(state.prevYaw + (state.yaw - state.prevYaw) * state.partialTick)));
+			model.renderGun(0.0F, 0.0F, -0.1F, 0.0F, 0.0F, 0.0625F, state.partialTick, state.mg);
+			ModelRenderer.endRender();
+			poseStack.popPose();
+		});
+		pose.popPose();
 	}
 }

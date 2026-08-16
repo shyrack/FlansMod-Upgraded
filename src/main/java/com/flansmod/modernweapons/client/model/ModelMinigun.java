@@ -6,7 +6,6 @@ import com.flansmod.client.model.ModelGun;
 import com.flansmod.client.tmt.ModelRendererTurbo;
 import com.flansmod.common.vector.Vector3f;
 
-import net.minecraft.client.renderer.GlStateManager;
 
 public class ModelMinigun extends ModelGun
 {
@@ -259,11 +258,15 @@ public class ModelMinigun extends ModelGun
 	@Override
 	public void renderCustom(float f, GunAnimations anims)
 	{
-		GlStateManager.pushMatrix();
-		GlStateManager.translate(spinnerOrigin.x, spinnerOrigin.y, spinnerOrigin.z);
-		GlStateManager.rotate(anims.minigunBarrelRotation, 0F, 0F, 1F);
-		GlStateManager.translate(-spinnerOrigin.x, -spinnerOrigin.y, -spinnerOrigin.z);
+		com.flansmod.client.model.ModelRenderer.RenderContext ctx = com.flansmod.client.model.ModelRenderer.getRenderContext();
+		if(ctx == null || ctx.poseStack == null)
+			return;
+		com.mojang.blaze3d.vertex.PoseStack pose = ctx.poseStack;
+		pose.pushPose();
+		pose.translate(spinnerOrigin.x, spinnerOrigin.y, spinnerOrigin.z);
+		pose.mulPose(com.mojang.math.Axis.ZP.rotationDegrees(anims.minigunBarrelRotation));
+		pose.translate(-spinnerOrigin.x, -spinnerOrigin.y, -spinnerOrigin.z);
 		render(spinnerModel, f);
-		GlStateManager.popMatrix();
+		pose.popPose();
 	}
 }

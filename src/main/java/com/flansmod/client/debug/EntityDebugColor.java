@@ -1,52 +1,62 @@
 package com.flansmod.client.debug;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.network.datasync.DataParameter;
-import net.minecraft.network.datasync.DataSerializers;
-import net.minecraft.network.datasync.EntityDataManager;
-import net.minecraft.world.World;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 
 /**
  * Class Skeleton for DebugEntities which use a color
  */
 public abstract class EntityDebugColor extends Entity
 {
-	
-	private static final DataParameter<Float> COLOR_RED = EntityDataManager.createKey(EntityDebugVector.class, DataSerializers.FLOAT);
-	private static final DataParameter<Float> COLOR_GREEN = EntityDataManager.createKey(EntityDebugVector.class, DataSerializers.FLOAT);
-	private static final DataParameter<Float> COLOR_BLUE = EntityDataManager.createKey(EntityDebugVector.class, DataSerializers.FLOAT);
+	protected Level world;
+
+	private static final EntityDataAccessor<Float> COLOR_RED = SynchedEntityData.defineId(EntityDebugColor.class, EntityDataSerializers.FLOAT);
+	private static final EntityDataAccessor<Float> COLOR_GREEN = SynchedEntityData.defineId(EntityDebugColor.class, EntityDataSerializers.FLOAT);
+	private static final EntityDataAccessor<Float> COLOR_BLUE = SynchedEntityData.defineId(EntityDebugColor.class, EntityDataSerializers.FLOAT);
 	
 	/**
-	 * @param w World for Entity Constructor
+	 * @param w Level for Entity Constructor
 	 */
-	public EntityDebugColor(World w)
+	public EntityDebugColor(EntityType<?> type, Level w)
 	{
-		super(w);
+		super(type, w);
+		this.world = level();
 	}
 	
 	@Override
-	protected void entityInit()
+	public boolean hurtServer(net.minecraft.server.level.ServerLevel level, net.minecraft.world.damagesource.DamageSource source, float amount)
 	{
-		this.dataManager.register(COLOR_RED, 1F);
-		this.dataManager.register(COLOR_GREEN, 1F);
-		this.dataManager.register(COLOR_BLUE, 1F);
+		return false;
 	}
 	
 	@Override
-	protected void readEntityFromNBT(NBTTagCompound nbttagcompound)
+	protected void defineSynchedData(SynchedEntityData.Builder builder)
 	{
-		this.setColorRed(nbttagcompound.getFloat("color_red"));
-		this.setColorGreen(nbttagcompound.getFloat("color_green"));
-		this.setColorBlue(nbttagcompound.getFloat("color_blue"));
+		builder.define(COLOR_RED, 1F);
+		builder.define(COLOR_GREEN, 1F);
+		builder.define(COLOR_BLUE, 1F);
 	}
 	
 	@Override
-	protected void writeEntityToNBT(NBTTagCompound nbttagcompound)
+	protected void readAdditionalSaveData(ValueInput nbttagcompound)
 	{
-		nbttagcompound.setFloat("color_red", getColorRed());
-		nbttagcompound.setFloat("color_green", getColorGreen());
-		nbttagcompound.setFloat("color_blue", getColorBlue());
+		this.setColorRed(nbttagcompound.getFloatOr("color_red", 0F));
+		this.setColorGreen(nbttagcompound.getFloatOr("color_green", 0F));
+		this.setColorBlue(nbttagcompound.getFloatOr("color_blue", 0F));
+	}
+	
+	@Override
+	protected void addAdditionalSaveData(ValueOutput nbttagcompound)
+	{
+		nbttagcompound.putFloat("color_red", getColorRed());
+		nbttagcompound.putFloat("color_green", getColorGreen());
+		nbttagcompound.putFloat("color_blue", getColorBlue());
 	}
 	
 	/**
@@ -56,7 +66,7 @@ public abstract class EntityDebugColor extends Entity
 	 */
 	public void setColorRed(Float red)
 	{
-		this.dataManager.set(COLOR_RED, red);
+		this.entityData.set(COLOR_RED, red);
 	}
 	
 	/**
@@ -66,7 +76,7 @@ public abstract class EntityDebugColor extends Entity
 	 */
 	public Float getColorRed()
 	{
-		return this.dataManager.get(COLOR_RED);
+		return this.entityData.get(COLOR_RED);
 	}
 	
 	/**
@@ -76,7 +86,7 @@ public abstract class EntityDebugColor extends Entity
 	 */
 	public void setColorGreen(Float green)
 	{
-		this.dataManager.set(COLOR_GREEN, green);
+		this.entityData.set(COLOR_GREEN, green);
 	}
 	
 	/**
@@ -86,7 +96,7 @@ public abstract class EntityDebugColor extends Entity
 	 */
 	public Float getColorGreen()
 	{
-		return dataManager.get(COLOR_GREEN);
+		return this.entityData.get(COLOR_GREEN);
 	}
 	
 	/**
@@ -96,7 +106,7 @@ public abstract class EntityDebugColor extends Entity
 	 */
 	public void setColorBlue(Float blue)
 	{
-		dataManager.set(COLOR_BLUE, blue);
+		this.entityData.set(COLOR_BLUE, blue);
 	}
 	
 	/**
@@ -106,7 +116,7 @@ public abstract class EntityDebugColor extends Entity
 	 */
 	public Float getColorBlue()
 	{
-		return dataManager.get(COLOR_BLUE);
+		return this.entityData.get(COLOR_BLUE);
 	}
 	
 	/**

@@ -1,52 +1,66 @@
 package com.flansmod.client.model;
 
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.entity.Render;
-import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.fml.client.registry.IRenderFactory;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.entity.EntityRenderer;
+import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.resources.Identifier;
 
 import com.flansmod.common.teams.EntityFlagpole;
 
-public class RenderFlagpole extends Render<EntityFlagpole>
+public class RenderFlagpole extends EntityRenderer<EntityFlagpole, RenderFlagpole.State>
 {
-	private static final ResourceLocation texture = new ResourceLocation("flansmod", "teamsMod/Flagpole.png");
-	
-	public ModelFlagpole modelFlagpole;
-	
-	public RenderFlagpole(RenderManager renderManager)
+	private static final Identifier texture = Identifier.fromNamespaceAndPath("flansmod", "teamsmod/flagpole.png");
+
+	public static class State extends EntityRenderState
 	{
-		super(renderManager);
+		public EntityFlagpole flagpole;
+		public float yaw;
+	}
+
+	public ModelFlagpole modelFlagpole;
+	private final PoseStack poseStack = new PoseStack();
+
+	public RenderFlagpole(EntityRendererProvider.Context context)
+	{
+		super(context);
 		modelFlagpole = new ModelFlagpole();
 	}
-	
+
 	@Override
-	public void doRender(EntityFlagpole flagpole, double d, double d1, double d2, float f, float f1)
+	public State createRenderState()
 	{
-		bindEntityTexture(flagpole);
-		GlStateManager.pushMatrix();
-		GlStateManager.translate((float)d, (float)d1, (float)d2);
-		GlStateManager.rotate(f, 0.0F, 1.0F, 0.0F);
-		
-		GlStateManager.scale(-1F, -1F, 1F);
-		GlStateManager.color(1F, 1F, 1F);
-		
-		modelFlagpole.renderPole(0.0F, 0.0F, -0.1F, 0.0F, 0.0F, 0.0625F, flagpole);
-		GlStateManager.popMatrix();
+		return new State();
 	}
-	
+
 	@Override
-	protected ResourceLocation getEntityTexture(EntityFlagpole entity)
+	public void extractRenderState(EntityFlagpole flagpole, State state, float partialTick)
 	{
-		return texture;
+		super.extractRenderState(flagpole, state, partialTick);
+		state.flagpole = flagpole;
+		state.yaw = flagpole.getYRot();
 	}
-	
-	public static class Factory implements IRenderFactory<EntityFlagpole>
+
+	@Override
+	public void submit(State state, PoseStack pose, SubmitNodeCollector collector, CameraRenderState camera)
 	{
-		@Override
-		public Render<EntityFlagpole> createRenderFor(RenderManager manager)
+		pose.pushPose();
+		pose.mulPose(Axis.YP.rotationDegrees(state.yaw));
+		pose.scale(-1F, -1F, 1F);
+		collector.submitCustomGeometry(pose, RenderTypes.entityCutout(texture), (p, consumer) ->
 		{
-			return new RenderFlagpole(manager);
-		}
+			poseStack.pushPose();
+			poseStack.last().set(p);
+			ModelRenderer.beginRender(poseStack, consumer, state.lightCoords, OverlayTexture.NO_OVERLAY);
+			modelFlagpole.renderPole(0.0F, 0.0F, -0.1F, 0.0F, 0.0F, 0.0625F, state.flagpole);
+			ModelRenderer.endRender();
+			poseStack.popPose();
+		});
+		pose.popPose();
 	}
 }

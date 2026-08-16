@@ -8,10 +8,9 @@ import com.flansmod.common.PlayerData;
 import com.flansmod.common.PlayerHandler;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.util.EnumHand;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
 
 public class PacketGunAnimation extends PacketBase
 {
@@ -23,14 +22,14 @@ public class PacketGunAnimation extends PacketBase
 	private Integer pumptime;
 	private Float recoil;
 	private Integer reloadtime;
-	private EnumHand hand;
+	private InteractionHand hand;
 	
 	public PacketGunAnimation()
 	{
 		
 	}
 	
-	public PacketGunAnimation(EnumHand hand, Integer pumpdelay, Integer pumptime, Float recoil)
+	public PacketGunAnimation(InteractionHand hand, Integer pumpdelay, Integer pumptime, Float recoil)
 	{
 		this.type = AnimationType.SHOOT;
 		this.pumpdelay = pumpdelay;
@@ -39,21 +38,21 @@ public class PacketGunAnimation extends PacketBase
 		this.hand = hand;
 	}
 	
-	public PacketGunAnimation(EnumHand hand, Integer pumpdelay, Integer pumptime, Float recoil, Float minigunAddSpeed)
+	public PacketGunAnimation(InteractionHand hand, Integer pumpdelay, Integer pumptime, Float recoil, Float minigunAddSpeed)
 	{
 		this(hand,pumpdelay,pumptime,recoil);
 		this.type2 = AnimationType.ROTATION;
 		this.minigunRotationAddSpeed = minigunAddSpeed;
 	}
 	
-	public PacketGunAnimation(EnumHand hand, Float minigunAddSpeed)
+	public PacketGunAnimation(InteractionHand hand, Float minigunAddSpeed)
 	{
 		this.type = AnimationType.ROTATION;
 		this.hand = hand;
 		this.minigunRotationAddSpeed = minigunAddSpeed;
 	}
 	
-	public PacketGunAnimation(EnumHand hand, Integer reloadtime, Integer pumpdelay, Integer pumptime)
+	public PacketGunAnimation(InteractionHand hand, Integer reloadtime, Integer pumpdelay, Integer pumptime)
 	{
 		this.type = AnimationType.RELOAD;
 		this.hand = hand;
@@ -63,17 +62,17 @@ public class PacketGunAnimation extends PacketBase
 	}
 	
 	@Override
-	public void encodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void encodeInto(ByteBuf data)
 	{
 		data.writeInt(encode(type));
 		data.writeInt(encode(type2));
 		//TODO proper enum encoding
-		data.writeInt(hand.equals(EnumHand.MAIN_HAND)?0:1);
-		encodeInto(ctx, data, type);
-		encodeInto(ctx, data, type2);
+		data.writeInt(hand.equals(InteractionHand.MAIN_HAND)?0:1);
+		encodeInto(data, type);
+		encodeInto(data, type2);
 	}
 
-	private void encodeInto(ChannelHandlerContext ctx, ByteBuf data,AnimationType type)
+	private void encodeInto(ByteBuf data, AnimationType type)
 	{
 		switch (type)
 		{
@@ -99,16 +98,16 @@ public class PacketGunAnimation extends PacketBase
 	}
 	
 	@Override
-	public void decodeInto(ChannelHandlerContext ctx, ByteBuf data) {
+	public void decodeInto(ByteBuf data) {
 		this.type = decode(data.readInt());
 		this.type2 = decode(data.readInt());
 		//TODO proper enum decoding
-		this.hand = data.readInt()==0?EnumHand.MAIN_HAND:EnumHand.OFF_HAND;
-		decodeInto(ctx, data, type);
-		decodeInto(ctx, data, type2);
+		this.hand = data.readInt()==0?InteractionHand.MAIN_HAND:InteractionHand.OFF_HAND;
+		decodeInto(data, type);
+		decodeInto(data, type2);
 	}
 
-	private void decodeInto(ChannelHandlerContext ctx, ByteBuf data,AnimationType type)
+	private void decodeInto(ByteBuf data, AnimationType type)
 	{
 		switch (type)
 		{
@@ -134,13 +133,13 @@ public class PacketGunAnimation extends PacketBase
 	}
 	
 	@Override
-	public void handleServerSide(EntityPlayerMP playerEntity)
+	public void handleServerSide(ServerPlayer playerEntity)
 	{
 		FlansMod.log.warn("Server Side should not receive this Packet");
 	}
 
 	@Override
-	public void handleClientSide(EntityPlayer clientPlayer)
+	public void handleClientSide(Player clientPlayer)
 	{
 		GunAnimations animations = FlansModClient.getGunAnimations(clientPlayer, hand);
 		
@@ -148,7 +147,7 @@ public class PacketGunAnimation extends PacketBase
 		handleAnimation(animations, type2, clientPlayer);
 	}
 
-	private void handleAnimation(GunAnimations animations, AnimationType type, EntityPlayer player)
+	private void handleAnimation(GunAnimations animations, AnimationType type, Player player)
 	{
 		switch (type)
 		{

@@ -6,8 +6,6 @@ import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -15,9 +13,6 @@ import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
-
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.filefilter.TrueFileFilter;
 
 import com.flansmod.common.driveables.ItemPlane;
 import com.flansmod.common.driveables.ItemVehicle;
@@ -55,35 +50,13 @@ import com.flansmod.common.types.EnumType;
 import com.flansmod.common.types.InfoType;
 import com.flansmod.common.types.TypeFile;
 
-import net.minecraftforge.fml.common.Loader;
-import net.minecraftforge.fml.common.ModContainer;
-import net.minecraftforge.fml.common.versioning.ArtifactVersion;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Block;
 
 public class ContentManager 
 {
-	public class ContentPackMod implements IFlansModContentProvider
-	{
-		public ContentPackMod(ModContainer c, IFlansModContentProvider p)
-		{
-			container = c;
-			provider = p;
-		}
-		public IFlansModContentProvider provider;
-		public ModContainer container;
-		
-		@Override
-		public String GetContentFolder() 
-		{
-			return provider.GetContentFolder();
-		}
-		
-		@Override
-		public void RegisterModelRedirects() 
-		{
-			provider.RegisterModelRedirects();
-		}
-	}
-	
 	public class ContentPackFlanFolder implements IFlansModContentProvider
 	{
 		public ContentPackFlanFolder(String n, File f) { folder = f; name = n; }
@@ -196,39 +169,62 @@ public class ContentManager
 	public void FindContentInModsFolder()
 	{
 		// Search for content packs in the mods folder
-		for(ModContainer container : Loader.instance().getActiveModList())
+		if(FlansMod.modDir == null || !FlansMod.modDir.exists())
+			return;
+		for(File file : FlansMod.modDir.listFiles())
 		{
-			for(ArtifactVersion requirement : container.getRequirements())
+			if(!zipJar.matcher(file.getName()).matches())
+				continue;
+			try
 			{
-				if(requirement.getLabel().equals(FlansMod.MODID))
+				ZipFile zip = new ZipFile(file);
+				boolean isContentPack = false;
+				for(ZipEntry entry : java.util.Collections.list(zip.entries()))
 				{
-					if(container.getMod() instanceof IFlansModContentProvider)
+					if(entry.isDirectory())
+						continue;
+					for(EnumType type : EnumType.values())
 					{
-						IFlansModContentProvider mod = ((IFlansModContentProvider)container.getMod());
-						String folder = mod.GetContentFolder();
-					
-						// This is a Flan's Mod dependency. Register it as a content pack
-						File source = container.getSource();
-						if(source.getName().endsWith("bin"))
+						if(entry.getName().startsWith(type.folderName + "/"))
 						{
-							FlansMod.log.info("Found .java content pack" + source.getName() + " We must be in MCP. Loading from folder using IFlansModContentProvider");
-							packs.put(folder, new ContentPackMod(container, mod));
-						}
-						else if(zipJar.matcher(source.getName()).matches())
-						{
-							FlansMod.log.info("Found .jar content pack " + source.getName() + " in mods folder. Loading from jar");
-							packs.put(folder, new ContentPackMod(container, mod));
+							isContentPack = true;
+							break;
 						}
 					}
-					else
-					{
-						FlansMod.log.error("Found Flan's Mod content pack on the classpath which did not implement IFlansModContentProvider");
-					}
+					if(isContentPack)
+						break;
 				}
+				zip.close();
+				if(isContentPack && !packs.containsKey(file.getName()))
+				{
+					FlansMod.log.info("Found .jar content pack " + file.getName() + " in mods folder. Loading from jar");
+					packs.put(file.getName(), new ContentPackFlanFolder(file.getName(), file));
+				}
+			}
+			catch(Exception e)
+			{
+				FlansMod.log.error("Failed to inspect " + file.getName() + " in mods folder for content pack data", e);
 			}
 		}
 	}
 	
+	private static java.util.Collection<File> listTypeFiles(File typesDir)
+	{
+		java.util.List<File> files = new ArrayList<>();
+		java.io.File[] children = typesDir.listFiles();
+		if(children != null)
+		{
+			for(File child : children)
+			{
+				if(child.isDirectory())
+					files.addAll(listTypeFiles(child));
+				else if(child.getName().toLowerCase().endsWith(".txt"))
+					files.add(child);
+			}
+		}
+		return files;
+	}
+
 	private void LoadTypesFromDirectory(String contentPackName, File contentPack)
 	{
 		for(EnumType typeToCheckFor : EnumType.values())
@@ -236,7 +232,7 @@ public class ContentManager
 			File typesDir = new File(contentPack, "/" + typeToCheckFor.folderName + "/");
 			if(!typesDir.exists())
 				continue;
-			for(File file : FileUtils.listFiles(typesDir, new String[] {"txt" }, true))
+			for(File file : listTypeFiles(typesDir))
 			{
 				if(!file.isDirectory())
 				{
@@ -264,7 +260,7 @@ public class ContentManager
 					}
 					catch(IOException e)
 					{
-						FlansMod.log.throwing(e);
+						FlansMod.log.error("Failed to read type file " + file.getName(), e);
 					}
 				}
 			}
@@ -322,7 +318,7 @@ public class ContentManager
 		}
 		catch(IOException e)
 		{
-			FlansMod.log.throwing(e);
+			FlansMod.log.error("Failed to load type files from archive " + contentPack.getName(), e);
 		}
 	}
 	
@@ -345,26 +341,12 @@ public class ContentManager
 					LoadTypesFromArchive(contentPackName, contentPack.folder);
 				}
 			}
-			else if(provider instanceof ContentPackMod)// Must be a mod in the classpath
-			{
-				ContentPackMod mod = (ContentPackMod)provider;
-				
-				if(mod.container.getSource().getName().endsWith("bin"))
-				{	
-					// If loading from inside MCP, use the content name to find content in run directory
-					LoadTypesFromDirectory(contentPackName, new File(FlansMod.flanDir + "/" + contentPackName));
-				}
-				else if(zipJar.matcher(mod.container.getSource().getName()).matches())
-				{
-					// Else must be a mod loading from a jar in the mods folder
-					LoadTypesFromArchive(contentPackName, mod.container.getSource());
-				}
-			}	
 		}
 	}
 	
 	public void CreateItems()
 	{
+		java.util.Set<String> seenNames = new java.util.HashSet<>();
 		for(EnumType type : EnumType.values())
 		{
 			Class<? extends InfoType> typeClass = type.getTypeClass();
@@ -374,58 +356,168 @@ public class ContentManager
 				{
 					InfoType infoType = (typeClass.getConstructor(TypeFile.class).newInstance(typeFile));
 					infoType.read(typeFile);
+					if(!seenNames.add(infoType.shortName.toLowerCase()))
+					{
+						FlansMod.log.warn("Skipping duplicate type " + infoType.shortName + " in " + typeFile.name);
+						continue;
+					}
 					switch(type)
 					{
-						case bullet: new ItemBullet((BulletType)infoType).setTranslationKey(infoType.shortName);
+						case bullet:
+						{
+							Item item = new ItemBullet((BulletType)infoType);
+							ModItems.registerTypeItem(item, infoType);
+							FlansMod.tabFlanGuns.addItem(item);
 							break;
-						case attachment: new ItemAttachment((AttachmentType)infoType).setTranslationKey(infoType.shortName);
+						}
+						case attachment:
+						{
+							Item item = new ItemAttachment((AttachmentType)infoType);
+							ModItems.registerTypeItem(item, infoType);
+							FlansMod.tabFlanGuns.addItem(item);
 							break;
-						case gun: new ItemGun((GunType)infoType).setTranslationKey(infoType.shortName);
+						}
+						case gun:
+						{
+							Item item = new ItemGun((GunType)infoType);
+							ModItems.registerTypeItem(item, infoType);
+							FlansMod.tabFlanGuns.addItem(item);
 							break;
-						case grenade: new ItemGrenade((GrenadeType)infoType).setTranslationKey(infoType.shortName);
+						}
+						case grenade:
+						{
+							Item item = new ItemGrenade((GrenadeType)infoType);
+							ModItems.registerTypeItem(item, infoType);
+							FlansMod.tabFlanGuns.addItem(item);
 							break;
-						case part: FlansMod.partItems.add((ItemPart)new ItemPart((PartType)infoType).setTranslationKey(infoType.shortName));
+						}
+						case part:
+						{
+							ItemPart item = new ItemPart((PartType)infoType);
+							ModItems.registerTypeItem(item, infoType);
+							FlansMod.partItems.add(item);
+							FlansMod.tabFlanParts.addItem(item);
 							break;
-						case plane: new ItemPlane((PlaneType)infoType).setTranslationKey(infoType.shortName);
+						}
+						case plane:
+						{
+							Item item = new ItemPlane((PlaneType)infoType);
+							ModItems.registerTypeItem(item, infoType);
+							FlansMod.tabFlanDriveables.addItem(item);
 							break;
-						case vehicle: new ItemVehicle((VehicleType)infoType).setTranslationKey(infoType.shortName);
+						}
+						case vehicle:
+						{
+							Item item = new ItemVehicle((VehicleType)infoType);
+							ModItems.registerTypeItem(item, infoType);
+							FlansMod.tabFlanDriveables.addItem(item);
 							break;
-						case aa: new ItemAAGun((AAGunType)infoType).setTranslationKey(infoType.shortName);
+						}
+						case aa:
+						{
+							Item item = new ItemAAGun((AAGunType)infoType);
+							ModItems.registerTypeItem(item, infoType);
+							FlansMod.tabFlanGuns.addItem(item);
 							break;
-						case mechaItem: new ItemMechaAddon((MechaItemType)infoType).setTranslationKey(infoType.shortName);
+						}
+						case mechaItem:
+						{
+							Item item = new ItemMechaAddon((MechaItemType)infoType);
+							ModItems.registerTypeItem(item, infoType);
+							FlansMod.tabFlanMechas.addItem(item);
 							break;
-						case mecha: FlansMod.mechaItems.add((ItemMecha)new ItemMecha((MechaType)infoType).setTranslationKey(infoType.shortName));
+						}
+						case mecha:
+						{
+							ItemMecha item = new ItemMecha((MechaType)infoType);
+							ModItems.registerTypeItem(item, infoType);
+							FlansMod.mechaItems.add(item);
+							FlansMod.tabFlanMechas.addItem(item);
 							break;
-						case tool: FlansMod.toolItems.add((ItemTool)new ItemTool((ToolType)infoType).setTranslationKey(infoType.shortName));
+						}
+						case tool:
+						{
+							ItemTool item = new ItemTool((ToolType)infoType);
+							ModItems.registerTypeItem(item, infoType);
+							FlansMod.toolItems.add(item);
+							FlansMod.tabFlanParts.addItem(item);
 							break;
-						case box: new BlockGunBox((GunBoxType)infoType).setTranslationKey(infoType.shortName);
+						}
+						case box:
+						{
+							GunBoxType gunBoxType = (GunBoxType)infoType;
+							BlockGunBox block = ModBlocks.registerBlock(nameOf(infoType),
+									p -> new BlockGunBox(p.mapColor(net.minecraft.world.level.material.MapColor.WOOD).strength(2F, 4F)
+											.pushReaction(net.minecraft.world.level.material.PushReaction.BLOCK), gunBoxType));
+							ModItems.registerTypeItem(ModItems.blockItem(block), infoType);
+							FlansMod.tabFlanGuns.addItem(block);
 							break;
-						case armour: FlansMod.armourItems.add((ItemTeamArmour)new ItemTeamArmour((ArmourType)infoType).setTranslationKey(infoType.shortName));
+						}
+						case armour:
+						{
+							ItemTeamArmour item = new ItemTeamArmour((ArmourType)infoType);
+							ModItems.registerTypeItem(item, infoType);
+							FlansMod.armourItems.add(item);
+							FlansMod.tabFlanTeams.addItem(item);
 							break;
-						case armourBox: new BlockArmourBox((ArmourBoxType)infoType).setTranslationKey(infoType.shortName);
+						}
+						case armourBox:
+						{
+							ArmourBoxType armourBoxType = (ArmourBoxType)infoType;
+							BlockArmourBox block = ModBlocks.registerBlock(nameOf(infoType),
+									p -> new BlockArmourBox(p.mapColor(net.minecraft.world.level.material.MapColor.WOOD).strength(2F, 4F)
+											.pushReaction(net.minecraft.world.level.material.PushReaction.BLOCK), armourBoxType));
+							FlansMod.tabFlanTeams.addItem(block);
 							break;
+						}
 						case playerClass: break;
 						case team: break;
-						case itemHolder: new BlockItemHolder((ItemHolderType)infoType);
+						case itemHolder:
+						{
+							ItemHolderType holderType = (ItemHolderType)infoType;
+							BlockItemHolder block = ModBlocks.registerBlock(nameOf(infoType),
+									p -> new BlockItemHolder(p.mapColor(net.minecraft.world.level.material.MapColor.STONE).strength(2F, 4F), holderType));
+							ModItems.registerTypeItem(ModItems.blockItem(block), infoType);
+							FlansMod.tabFlanParts.addItem(block);
 							break;
-						case rewardBox: new ItemRewardBox((RewardBox)infoType).setTranslationKey(infoType.shortName);
+						}
+						case rewardBox:
+						{
+							Item item = new ItemRewardBox((RewardBox)infoType);
+							ModItems.registerTypeItem(item, infoType);
+							FlansMod.tabFlanTeams.addItem(item);
 							break;
+						}
 						case loadout: break;
 						case glove:
-							new ItemGlove((GloveType)infoType);
+						{
+							Item item = new ItemGlove((GloveType)infoType);
+							ModItems.registerTypeItem(item, infoType);
+							FlansMod.tabFlanTeams.addItem(item);
 							break;
+						}
 						default: FlansMod.log.warn("Unrecognised type for " + infoType.shortName);
 							break;
 					}
 				}
 				catch(Exception e)
 				{
-					FlansMod.log.error("Failed to add " + type.name() + " : " + typeFile.name);
-					FlansMod.log.throwing(e);
+					FlansMod.log.error("Failed to add " + type.name() + " : " + typeFile.name, e);
 				}
 			}
 			FlansMod.log.info("Loaded " + type.name() + ".");
 		}
+	}
+
+	private static String nameOf(InfoType infoType)
+	{
+		return (infoType.contentPack + "_" + infoType.shortName).toLowerCase().replaceAll("[^a-z0-9/._-]", "_");
+	}
+
+	private static void registerBlockAndItem(String name, java.util.function.Function<net.minecraft.world.level.block.state.BlockBehaviour.Properties, Block> factory, InfoType infoType)
+	{
+		Block block = ModBlocks.registerBlock(name, factory);
+		ModItems.registerTypeItem(ModItems.blockItem(block), infoType);
 	}
 
 	public List<File> GetFolderContentPacks() 
@@ -442,15 +534,6 @@ public class ContentManager
 				if(contentPack.folder.isDirectory())
 				{
 					result.add(contentPack.folder);
-				}
-			}
-			else if(provider instanceof ContentPackMod)
-			{
-				ContentPackMod mod = (ContentPackMod)provider;
-				if(mod.container.getSource().getName().endsWith("bin"))
-				{	
-					// If loading from inside MCP, use the content name to find content in run directory
-					result.add(new File(FlansMod.flanDir + "/" + contentPackName));
 				}
 			}
 		}

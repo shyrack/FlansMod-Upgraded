@@ -1,13 +1,10 @@
 package com.flansmod.common.network;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
 import net.minecraft.client.Minecraft;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraftforge.fml.common.FMLCommonHandler;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.server.players.NameAndId;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
 
 import com.flansmod.client.gui.teams.GuiBaseEditor;
 import com.flansmod.common.FlansMod;
@@ -66,7 +63,7 @@ public class PacketBaseEdit extends PacketBase
 	}
 	
 	@Override
-	public void encodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void encodeInto(ByteBuf data)
 	{
 		data.writeInt(baseID);
 		writeUTF(data, baseName);
@@ -79,7 +76,7 @@ public class PacketBaseEdit extends PacketBase
 	}
 	
 	@Override
-	public void decodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void decodeInto(ByteBuf data)
 	{
 		baseID = data.readInt();
 		baseName = readUTF(data);
@@ -93,10 +90,10 @@ public class PacketBaseEdit extends PacketBase
 	}
 	
 	@Override
-	public void handleServerSide(EntityPlayerMP playerEntity)
+	public void handleServerSide(ServerPlayer playerEntity)
 	{
 		//Do another op check
-		if(!FMLCommonHandler.instance().getMinecraftServerInstance().getPlayerList().canSendCommands(playerEntity.getGameProfile()))
+		if(!FlansMod.serverInstance.getPlayerList().isOp(new NameAndId(playerEntity.getGameProfile())))
 			return;
 		
 		//Find the base and change its attributes (or destroy it)
@@ -116,9 +113,8 @@ public class PacketBaseEdit extends PacketBase
 	}
 	
 	@Override
-	@SideOnly(Side.CLIENT)
-	public void handleClientSide(EntityPlayer clientPlayer)
+	public void handleClientSide(Player clientPlayer)
 	{
-		Minecraft.getMinecraft().displayGuiScreen(new GuiBaseEditor(this));
+		Minecraft.getInstance().setScreen(new GuiBaseEditor(this));
 	}
 }

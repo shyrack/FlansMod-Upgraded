@@ -1,26 +1,17 @@
 package com.flansmod.common;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
+import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
+import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.minecraft.client.Minecraft;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.network.NetHandlerPlayServer;
-import net.minecraft.world.WorldServer;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.entity.living.LivingAttackEvent;
-import net.minecraftforge.event.entity.living.LivingDeathEvent;
-import net.minecraftforge.fml.common.FMLCommonHandler;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.common.gameevent.PlayerEvent;
-import net.minecraftforge.fml.common.gameevent.PlayerEvent.PlayerLoggedInEvent;
-import net.minecraftforge.fml.common.gameevent.PlayerEvent.PlayerLoggedOutEvent;
-import net.minecraftforge.fml.common.gameevent.PlayerEvent.PlayerRespawnEvent;
-import net.minecraftforge.fml.relauncher.ReflectionHelper;
-import net.minecraftforge.fml.relauncher.Side;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 
 import com.flansmod.common.driveables.EntityDriveable;
 import com.flansmod.common.driveables.EntitySeat;
@@ -31,92 +22,86 @@ public class PlayerHandler
 	public static Map<String, PlayerData> serverSideData = new HashMap<>();
 	public static Map<String, PlayerData> clientSideData = new HashMap<>();
 	public static ArrayList<String> clientsToRemoveAfterThisRound = new ArrayList<>();
-	public static Field floatingTickCount = null;
+	
+	/**
+	 * Kept for compatibility with existing code. The flight kick counter no longer
+	 * needs to be reset as modern Minecraft does not kick players for flying in vehicles.
+	 */
+	public static java.lang.reflect.Field floatingTickCount = null;
 	
 	public PlayerHandler()
 	{
-		MinecraftForge.EVENT_BUS.register(this);
-		
-		try
-		{
-			floatingTickCount = ReflectionHelper.findField(NetHandlerPlayServer.class, "floatingTickCount", "field_147365_f");
-		}
-		catch(Exception e)
-		{
-			FlansMod.log.error("Couldn't find floatingTickCount field.", e);
-		}
+		ServerLivingEntityEvents.ALLOW_DAMAGE.register(this::onEntityHurt);
+		ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> onPlayerRespawn(newPlayer));
 	}
 	
-	@SubscribeEvent
-	public void onEntityHurt(LivingAttackEvent event)
+	public boolean onEntityHurt(LivingEntity entity, DamageSource source, float amount)
 	{
-		EntityLivingBase entity = event.getEntityLiving();
-		if(event instanceof LivingAttackEvent && (entity.getRidingEntity() instanceof EntityDriveable || entity.getRidingEntity() instanceof EntitySeat))
+		if(entity.getVehicle() instanceof EntityDriveable || entity.getVehicle() instanceof EntitySeat)
 		{
 			//TODO Set Drivable damage
-			event.setCanceled(true);
+			return false;
 		}
+		return true;
 	}
 	
-	@SubscribeEvent
-	public void onEntityKilled(LivingDeathEvent event)
+	public void onLivingDeath(LivingEntity entity, DamageSource source)
 	{
-		EntityLivingBase entity = event.getEntityLiving();
-		if(entity instanceof EntityPlayer)
+		if(entity instanceof Player)
 		{
-			getPlayerData((EntityPlayer)entity).playerKilled();
+			getPlayerData((Player)entity).playerKilled();
 		}
 	}
 	
 	public void serverTick()
 	{
-		if(FMLCommonHandler.instance().getMinecraftServerInstance() == null)
+		if(FlansMod.serverInstance == null)
 		{
 			FlansMod.log.warn("Receiving server ticks when server is null");
 			return;
 		}
-		for(WorldServer world : FMLCommonHandler.instance().getMinecraftServerInstance().worlds)
+		for(ServerLevel world : FlansMod.serverInstance.getAllLevels())
 		{
-			for(Object player : world.playerEntities)
+			for(Player player : world.players())
 			{
-				getPlayerData((EntityPlayer)player).tick((EntityPlayer)player);
+				getPlayerData(player).tick(player);
 			}
 		}
 	}
 	
 	public void clientTick()
 	{
-		if(Minecraft.getMinecraft().world != null)
+		if(Minecraft.getInstance().level != null)
 		{
-			for(Object player : Minecraft.getMinecraft().world.playerEntities)
+			for(Player player : Minecraft.getInstance().level.players())
 			{
-				getPlayerData((EntityPlayer)player).tick((EntityPlayer)player);
+				getPlayerData(player).tick(player);
 			}
 		}
 	}
 	
-	public static PlayerData getPlayerData(EntityPlayer player)
+	public static PlayerData getPlayerData(Player player)
 	{
 		if(player == null)
 			return null;
-		return getPlayerData(player.getName(), player.world.isRemote ? Side.CLIENT : Side.SERVER);
+		return getPlayerData(player.getGameProfile().name(), player.level().isClientSide());
 	}
 	
 	public static PlayerData getPlayerData(String username)
 	{
-		return getPlayerData(username, Side.SERVER);
+		return getPlayerData(username, false);
 	}
 	
-	public static PlayerData getPlayerData(EntityPlayer player, Side side)
+	public static PlayerData getPlayerData(Player player, boolean clientSide)
 	{
 		if(player == null)
 			return null;
-		return getPlayerData(player.getName(), side);
+		return getPlayerData(player.getGameProfile().name(), clientSide);
 	}
 	
-	public static PlayerData getPlayerData(String username, Side side)
+	public static PlayerData getPlayerData(String username, boolean clientSide)
 	{
-		if(side.isClient())
+		if(clientSide)
 		{
 			if(!clientSideData.containsKey(username))
 				clientSideData.put(username, new PlayerData(username));
@@ -126,43 +111,38 @@ public class PlayerHandler
 			if(!serverSideData.containsKey(username))
 				serverSideData.put(username, new PlayerData(username));
 		}
-		return side.isClient() ? clientSideData.get(username) : serverSideData.get(username);
+		return clientSide ? clientSideData.get(username) : serverSideData.get(username);
 	}
 	
-	@SubscribeEvent
-	public void onPlayerEvent(PlayerEvent event)
+	public void playerLoggedIn(ServerPlayer player)
 	{
-		if(event instanceof PlayerLoggedInEvent)
+		String username = player.getGameProfile().name();
+		
+		PlayerData data = new PlayerData(username);
+		data.ReadFromFile();
+		
+		if(!serverSideData.containsKey(username))
+			serverSideData.put(username, data);
+		clientsToRemoveAfterThisRound.remove(username);
+	}
+	
+	public void playerLoggedOut(ServerPlayer player)
+	{
+		String username = player.getGameProfile().name();
+		
+		clientsToRemoveAfterThisRound.add(username);
+		
+		if(TeamsManager.getInstance().currentRound == null)
 		{
-			EntityPlayer player = event.player;
-			String username = player.getName();
-			
-			PlayerData data = new PlayerData(username);
-			data.ReadFromFile();
-			
-			if(!serverSideData.containsKey(username))
-				serverSideData.put(username, data);
-			clientsToRemoveAfterThisRound.remove(username);
+			roundEnded();
 		}
-		else if(event instanceof PlayerLoggedOutEvent)
-		{
-			EntityPlayer player = event.player;
-			String username = player.getName();
-			
-			clientsToRemoveAfterThisRound.add(username);
-			
-			if(TeamsManager.getInstance().currentRound == null)
-			{
-				roundEnded();
-			}
-		}
-		else if(event instanceof PlayerRespawnEvent)
-		{
-			EntityPlayer player = event.player;
-			String username = player.getName();
-			if(!serverSideData.containsKey(username))
-				serverSideData.put(username, new PlayerData(username));
-		}
+	}
+	
+	public void onPlayerRespawn(ServerPlayer player)
+	{
+		String username = player.getGameProfile().name();
+		if(!serverSideData.containsKey(username))
+			serverSideData.put(username, new PlayerData(username));
 	}
 	
 	/**

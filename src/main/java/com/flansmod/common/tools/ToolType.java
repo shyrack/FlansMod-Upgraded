@@ -3,17 +3,10 @@ package com.flansmod.common.tools;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import net.minecraft.client.model.ModelBase;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.crafting.IRecipe;
-import net.minecraft.item.crafting.Ingredient;
-import net.minecraft.item.crafting.ShapelessRecipes;
-import net.minecraft.util.NonNullList;
-import net.minecraftforge.fml.common.FMLCommonHandler;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
-import net.minecraftforge.registries.IForgeRegistry;
+import com.flansmod.client.model.ModelBase;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.Ingredient;
 
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.types.InfoType;
@@ -23,7 +16,6 @@ public class ToolType extends InfoType
 {
 	public static HashMap<String, ToolType> tools = new HashMap<>();
 	
-	@SideOnly(value = Side.CLIENT)
 	/** The parachute model */
 	public ModelBase model;
 	
@@ -84,7 +76,7 @@ public class ToolType extends InfoType
 		super.read(split, file);
 		try
 		{
-			if(FMLCommonHandler.instance().getSide().isClient() && split[0].equals("Model"))
+			if(FlansMod.isClient() && split[0].equals("Model"))
 				model = FlansMod.proxy.loadModel(split[1], shortName, ModelBase.class);
 			else if(split[0].equals("Parachute"))
 				parachute = Boolean.parseBoolean(split[1].toLowerCase());
@@ -118,26 +110,8 @@ public class ToolType extends InfoType
 		}
 		catch(Exception e)
 		{
-			FlansMod.log.error("Reading file failed : " + shortName);
-			FlansMod.log.throwing(e);
+			FlansMod.log.error("Reading file failed : " + shortName, e);
 		}
-	}
-	
-	@Override
-	public void addRecipe(IForgeRegistry<IRecipe> registry, Item item)
-	{
-		super.addRecipe(registry, item);
-		//Add the recharge recipe if there is one
-		if(rechargeRecipe.size() < 1)
-			return;
-		rechargeRecipe.add(Ingredient.fromStacks(new ItemStack(item, 1, toolLife)));
-		
-		NonNullList<Ingredient> ingredients = NonNullList.create();
-		for(Ingredient stack : rechargeRecipe)
-		{
-			ingredients.add(stack);
-		}
-		registry.register(new ShapelessRecipes("FlansMod", new ItemStack(item, 1, 0), ingredients).setRegistryName(name + "_recharge"));
 	}
 	
 	public static ToolType getType(String shortName)
@@ -151,7 +125,6 @@ public class ToolType extends InfoType
 	}
 	
 	@Override
-	@SideOnly(Side.CLIENT)
 	public ModelBase GetModel()
 	{
 		return null;

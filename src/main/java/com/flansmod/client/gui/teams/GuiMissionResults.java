@@ -2,15 +2,14 @@ package com.flansmod.client.gui.teams;
 
 import java.util.ArrayList;
 
-import org.lwjgl.opengl.GL11;
-
-import net.minecraft.client.gui.GuiButton;
-import net.minecraft.client.gui.ScaledResolution;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.math.MathHelper;
-import net.minecraftforge.fml.client.FMLClientHandler;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.util.Mth;
+import net.minecraft.world.item.ItemStack;
 
 import com.flansmod.client.FlansModClient;
 import com.flansmod.client.teams.ClientTeamsData;
@@ -27,7 +26,7 @@ public class GuiMissionResults extends GuiTeamsBase
 	/**
 	 * The background image
 	 */
-	private static final ResourceLocation texture = new ResourceLocation("flansmod", "gui/MissionResults.png");
+	private static final Identifier texture = Identifier.fromNamespaceAndPath("flansmod", "gui/missionresults.png");
 	
 	private static final int WIDTH = 256, HEIGHT = 256;
 	
@@ -127,31 +126,18 @@ public class GuiMissionResults extends GuiTeamsBase
 	}
 	
 	@Override
-	public void initGui()
+	public void init()
 	{
-		super.initGui();
+		super.init();
 		
-		ScaledResolution scaledresolution = new ScaledResolution(mc);
-		int w = scaledresolution.getScaledWidth();
-		int h = scaledresolution.getScaledHeight();
-		guiOriginX = w / 2 - WIDTH / 2;
-		guiOriginY = h / 2 - HEIGHT / 2;
+		guiOriginX = width / 2 - WIDTH / 2;
+		guiOriginY = height / 2 - HEIGHT / 2;
 		
-		buttonList.add(new GuiButton(0, width / 2 - WIDTH / 2 + 214, height / 2 - HEIGHT / 2 + 6, 36, 20, "Done"));
+		addRenderableWidget(Button.builder(Component.literal("Done"), b -> Minecraft.getInstance().setScreen(new GuiTeamScores())).bounds(width / 2 - WIDTH / 2 + 214, height / 2 - HEIGHT / 2 + 6, 36, 20).build());
 	}
 	
 	@Override
-	protected void actionPerformed(GuiButton button)
-	{
-		if(button.id == 0) // Confirm
-		{
-			// Send data to server
-			FMLClientHandler.instance().getClient().displayGuiScreen(new GuiTeamScores());
-		}
-	}
-	
-	@Override
-	public void updateScreen()
+	public void tick()
 	{
 		PlayerRankData data = ClientTeamsData.theRankData;
 		LoadoutPool pool = ClientTeamsData.currentPool;
@@ -189,7 +175,7 @@ public class GuiMissionResults extends GuiTeamsBase
 				{
 					currentTarget = pool.GetXPForLevel(displayRank + 1);
 				}
-				displayXP = MathHelper.floor(lastXP + ((float)(currentTarget - lastXP) * (float)(timeInState - 1) / (float)stateTimes[state.ordinal()]));
+				displayXP = Mth.floor(lastXP + ((float)(currentTarget - lastXP) * (float)(timeInState - 1) / (float)stateTimes[state.ordinal()]));
 				
 				if(timeInState > stateTimes[state.ordinal()])
 				{
@@ -315,27 +301,19 @@ public class GuiMissionResults extends GuiTeamsBase
 	}
 	
 	@Override
-	public void drawScreen(int i, int j, float f)
+	public void extractRenderState(GuiGraphicsExtractor extractor, int mouseX, int mouseY, float partialTick)
 	{
 		PacketTeamInfo teamInfo = FlansModClient.teamInfo;
 		if(teamInfo == null || teamInfo.gametype == null || teamInfo.gametype.equals("") || teamInfo.teamData == null || teamInfo.teamData.length < 1 || !teamInfo.roundOver())
 		{
-			mc.displayGuiScreen(null);
+			Minecraft.getInstance().setScreen(null);
 			return;
 		}
 		
-		ScaledResolution scaledresolution = new ScaledResolution(mc);
-		int w = scaledresolution.getScaledWidth();
-		int h = scaledresolution.getScaledHeight();
-		drawDefaultBackground();
-		GlStateManager.enableBlend();
+		extractMenuBackground(extractor);
 		
-		GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
-		guiOriginX = w / 2 - WIDTH / 2;
-		guiOriginY = h / 2 - HEIGHT / 2;
-		
-		//Bind the background texture
-		mc.renderEngine.bindTexture(texture);
+		guiOriginX = width / 2 - WIDTH / 2;
+		guiOriginY = height / 2 - HEIGHT / 2;
 		
 		int textureX = 512;
 		int textureY = 256;
@@ -349,7 +327,7 @@ public class GuiMissionResults extends GuiTeamsBase
 		}
 		
 		//Draw the background
-		drawModalRectWithCustomSizedTexture(guiOriginX, guiOriginY, 0, 0, WIDTH, HEIGHT, textureX, textureY);
+		extractor.blit(RenderPipelines.GUI_TEXTURED, texture, guiOriginX, guiOriginY, 0F, 0F, WIDTH, HEIGHT, textureX, textureY);
 		
 		int XPForNextLevel = pool.GetXPForLevel(displayRank + 1);
 		float XPProgress = 0.0f;
@@ -361,113 +339,111 @@ public class GuiMissionResults extends GuiTeamsBase
 		{
 			XPProgress = 1.0f;
 		}
-		XPProgress = MathHelper.clamp(XPProgress, 0.0f, 1.0f);
+		XPProgress = Mth.clamp(XPProgress, 0.0f, 1.0f);
 		
-		drawModalRectWithCustomSizedTexture(guiOriginX + 7, guiOriginY + 109, 259, 109, (int)(242 * XPProgress), 10, textureX, textureY);
+		extractor.blit(RenderPipelines.GUI_TEXTURED, texture, guiOriginX + 7, guiOriginY + 109, 259, 109, (int)(242 * XPProgress), 10, textureX, textureY);
 		
 		if(state.ordinal() >= EnumResultsState.LEVEL_UP.ordinal() && state.ordinal() <= EnumResultsState.REVEAL_UNLOCK4.ordinal())
 		{
-			drawModalRectWithCustomSizedTexture(guiOriginX + 5, guiOriginY + 120, 266, 120, 246, 38, textureX, textureY);
+			extractor.blit(RenderPipelines.GUI_TEXTURED, texture, guiOriginX + 5, guiOriginY + 120, 266, 120, 246, 38, textureX, textureY);
 		}
 		
 		if(XPForNextLevel > 0)
 		{
-			drawCenteredString(fontRenderer, displayXP + " / " + XPForNextLevel, guiOriginX + 128, guiOriginY + 110, 0xffffff);
+			extractor.centeredText(font, displayXP + " / " + XPForNextLevel, guiOriginX + 128, guiOriginY + 110, 0xffffff);
 		}
 		else
 		{
-			drawCenteredString(fontRenderer, "" + displayXP, guiOriginX + 128, guiOriginY + 110, 0xffffff);
+			extractor.centeredText(font, "" + displayXP, guiOriginX + 128, guiOriginY + 110, 0xffffff);
 		}
 		
 		// Draw text
-		drawString(fontRenderer, (ClientTeamsData.timeLeftInStage / 20) + "", guiOriginX + 12, guiOriginY + 12, 0xffffff);
-		drawCenteredString(fontRenderer, "ROUND OVER", guiOriginX + 128, guiOriginY + 12, 0xffffff);
+		extractor.text(font, (ClientTeamsData.timeLeftInStage / 20) + "", guiOriginX + 12, guiOriginY + 12, 0xffffff);
+		extractor.centeredText(font, "ROUND OVER", guiOriginX + 128, guiOriginY + 12, 0xffffff);
 		
 		if(state.ordinal() >= EnumResultsState.LEVEL_UP.ordinal() && state.ordinal() <= EnumResultsState.REVEAL_UNLOCK4.ordinal())
 		{
-			drawCenteredString(fontRenderer, "RANK INCREASED", guiOriginX + 128, guiOriginY + 135, 0xffffff);
+			extractor.centeredText(font, "RANK INCREASED", guiOriginX + 128, guiOriginY + 135, 0xffffff);
 		}
 		else
 		{
-			drawString(fontRenderer, "Rank " + displayRank, guiOriginX + 44, guiOriginY + 135, 0xffffff);
-			drawString(fontRenderer, "Next Rank", guiOriginX + 163, guiOriginY + 135, 0xffffff);
+			extractor.text(font, "Rank " + displayRank, guiOriginX + 44, guiOriginY + 135, 0xffffff);
+			extractor.text(font, "Next Rank", guiOriginX + 163, guiOriginY + 135, 0xffffff);
 		}
 		
 		if(state.ordinal() >= EnumResultsState.SHOW_LINE_1_XP.ordinal())
 		{
-			drawString(fontRenderer, "XP Earned: ", guiOriginX + 11, guiOriginY + 31, 0xffffff);
-			drawString(fontRenderer, "" + earnedXP, guiOriginX + 244 - fontRenderer.getStringWidth("" + earnedXP), guiOriginY + 31, 0xffffff);
+			extractor.text(font, "XP Earned: ", guiOriginX + 11, guiOriginY + 31, 0xffffff);
+			extractor.text(font, "" + earnedXP, guiOriginX + 244 - font.width("" + earnedXP), guiOriginY + 31, 0xffffff);
 		}
 		
 		if(state.ordinal() >= EnumResultsState.SHOW_LINE_2_VICTORY_BONUS.ordinal())
-			drawString(fontRenderer, "", guiOriginX + 11, guiOriginY + 41, 0xffffff);
+			extractor.text(font, "", guiOriginX + 11, guiOriginY + 41, 0xffffff);
 		
 		if(state.ordinal() >= EnumResultsState.SHOW_LINE_3.ordinal())
-			drawString(fontRenderer, "", guiOriginX + 11, guiOriginY + 51, 0xffffff);
+			extractor.text(font, "", guiOriginX + 11, guiOriginY + 51, 0xffffff);
 		
 		if(state.ordinal() >= EnumResultsState.SHOW_LINE_4.ordinal())
-			drawString(fontRenderer, "", guiOriginX + 11, guiOriginY + 61, 0xffffff);
+			extractor.text(font, "", guiOriginX + 11, guiOriginY + 61, 0xffffff);
 		
 		if(state.ordinal() >= EnumResultsState.SHOW_LINE_5_TOTAL.ordinal())
 		{
-			drawString(fontRenderer, "Total: ", guiOriginX + 11, guiOriginY + 91, 0xffffff);
-			drawString(fontRenderer, "" + earnedXP, guiOriginX + 244 - fontRenderer.getStringWidth("" + earnedXP), guiOriginY + 91, 0xffffff);
+			extractor.text(font, "Total: ", guiOriginX + 11, guiOriginY + 91, 0xffffff);
+			extractor.text(font, "" + earnedXP, guiOriginX + 244 - font.width("" + earnedXP), guiOriginY + 91, 0xffffff);
 		}
 		
 		// Draw rank icon
-		DrawRankIcon(displayRank, 0, 8, 123, true);
+		DrawRankIcon(extractor, displayRank, 0, 8, 123, true);
 		
 		if(displayRank < pool.maxLevel)
 		{
-			DrawRankIcon(displayRank + 1, 0, 216, 123, true);
+			DrawRankIcon(extractor, displayRank + 1, 0, 216, 123, true);
 		}
 		
 		
 		boolean hasDoneFinalLevel = hasDoneFinalLevelUp;
 		
 		if(state.ordinal() >= EnumResultsState.REVEAL_UNLOCK1.ordinal() || hasDoneFinalLevel)
-			DrawUnlock(unlocks[0], guiOriginX + 8, guiOriginY + 160);
+			DrawUnlock(extractor, unlocks[0], guiOriginX + 8, guiOriginY + 160);
 		
 		if(state.ordinal() >= EnumResultsState.REVEAL_UNLOCK2.ordinal() || hasDoneFinalLevel)
-			DrawUnlock(unlocks[1], guiOriginX + 131, guiOriginY + 160);
+			DrawUnlock(extractor, unlocks[1], guiOriginX + 131, guiOriginY + 160);
 		
 		if(state.ordinal() >= EnumResultsState.REVEAL_UNLOCK3.ordinal() || hasDoneFinalLevel)
-			DrawUnlock(unlocks[2], guiOriginX + 8, guiOriginY + 207);
+			DrawUnlock(extractor, unlocks[2], guiOriginX + 8, guiOriginY + 207);
 		
 		if(state.ordinal() >= EnumResultsState.REVEAL_UNLOCK4.ordinal() || hasDoneFinalLevel)
-			DrawUnlock(unlocks[3], guiOriginX + 131, guiOriginY + 207);
-		
-		super.drawScreen(i, j, f);
+			DrawUnlock(extractor, unlocks[3], guiOriginX + 131, guiOriginY + 207);
 	}
 	
-	private void DrawUnlock(MissionResultsUnlock entry, int i, int j)
+	private void DrawUnlock(GuiGraphicsExtractor extractor, MissionResultsUnlock entry, int i, int j)
 	{
 		if(entry == null) return;
 		
 		if(entry.isWeapon)
 		{
-			drawCenteredString(fontRenderer, "New item unlocked", i + 58, j + 2, 0xffffff);
-			drawCenteredString(fontRenderer, entry.loadoutEntry.type.name, i + 58, j + 31, 0xffffff);
+			extractor.centeredText(font, "New item unlocked", i + 58, j + 2, 0xffffff);
+			extractor.centeredText(font, entry.loadoutEntry.type.name, i + 58, j + 31, 0xffffff);
 			
 			if(entry.loadoutEntry.type instanceof GunType)
 			{
-				DrawGun(new ItemStack(entry.loadoutEntry.type.getItem()), i + 50, j + 24, 25.0f);
+				DrawGun(extractor, new ItemStack(entry.loadoutEntry.type.getItem()), i + 50, j + 24, 25.0f);
 			}
 			else
 			{
-				drawSlotInventory(new ItemStack(entry.loadoutEntry.type.getItem()), i + 49, j + 12);
+				drawSlotInventory(extractor, new ItemStack(entry.loadoutEntry.type.getItem()), i + 49, j + 12);
 			}
 		}
 		else
 		{
-			drawCenteredString(fontRenderer, "Reward obtained", i + 58, j + 2, 0xffffff);
-			drawCenteredString(fontRenderer, entry.rewardBox.name, i + 58, j + 31, 0xffffff);
-			drawSlotInventory(new ItemStack(entry.rewardBox.getItem()), i + 49, j + 12);
+			extractor.centeredText(font, "Reward obtained", i + 58, j + 2, 0xffffff);
+			extractor.centeredText(font, entry.rewardBox.name, i + 58, j + 31, 0xffffff);
+			drawSlotInventory(extractor, new ItemStack(entry.rewardBox.getItem()), i + 49, j + 12);
 		}
 	}
 	
 	@Override
-	public boolean doesGuiPauseGame()
+	public boolean isPauseScreen()
 	{
 		return false;
 	}

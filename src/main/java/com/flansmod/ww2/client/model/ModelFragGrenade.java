@@ -1,8 +1,8 @@
   
 package com.flansmod.ww2.client.model;
 
-import net.minecraft.client.model.ModelBase;
-import net.minecraft.entity.Entity;
+import com.flansmod.client.model.ModelBase;
+import net.minecraft.world.entity.Entity;
 
 import com.flansmod.client.tmt.ModelRendererTurbo;
 

@@ -1,91 +1,82 @@
 package com.flansmod.client.gui;
 
-import java.io.IOException;
-
-import net.minecraft.client.gui.inventory.GuiContainer;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.entity.player.InventoryPlayer;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.world.World;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.level.Level;
 
 import com.flansmod.common.driveables.ContainerDriveableMenu;
 import com.flansmod.common.driveables.EntityDriveable;
 
 
-public class GuiDriveableFuel extends GuiContainer
+public class GuiDriveableFuel extends AbstractContainerScreen<ContainerDriveableMenu>
 {
-	private static final ResourceLocation texture = new ResourceLocation("flansmod", "gui/planeFuel.png");
+	private static final Identifier texture = Identifier.fromNamespaceAndPath("flansmod", "gui/planefuel.png");
 
-	public World world;
-	public InventoryPlayer inventory;
+	public Level world;
+	public Inventory inventory;
 	public EntityDriveable plane;
 	private int anim = 0;
 	private long lastTime;
 	
-	public GuiDriveableFuel(InventoryPlayer inventoryplayer, World world1, EntityDriveable entPlane)
+	public GuiDriveableFuel(Inventory inventoryplayer, Level world1, EntityDriveable entPlane)
 	{
-		super(new ContainerDriveableMenu(inventoryplayer, world1, true, entPlane));
+		super(new ContainerDriveableMenu(inventoryplayer, world1, true, entPlane), inventoryplayer, Component.literal(""), 176, 161);
 		plane = entPlane;
-		ySize = 161;
 		world = world1;
 		inventory = inventoryplayer;
 	}
 
 	@Override
-	protected void drawGuiContainerForegroundLayer(int i, int j)
+	protected void extractLabels(GuiGraphicsExtractor extractor, int mouseX, int mouseY)
 	{
-		fontRenderer.drawString(plane.getDriveableType().name + " - Fuel", 6, 6, 0x404040);
-		fontRenderer.drawString("Inventory", 8, (ySize - 96) + 2, 0x404040);
+		extractor.text(font, plane.getDriveableType().name + " - Fuel", 6, 6, 0x404040);
+		extractor.text(font, "Inventory", 8, (imageHeight - 96) + 2, 0x404040);
 	}
 
 	@Override
-	protected void drawGuiContainerBackgroundLayer(float f, int i1, int j1)
+	public void extractBackground(GuiGraphicsExtractor extractor, int mouseX, int mouseY, float partialTick)
 	{
-		long newTime = mc.world.getWorldInfo().getWorldTime();
+		super.extractBackground(extractor, mouseX, mouseY, partialTick);
+		long newTime = Minecraft.getInstance().level.getLevelData().getGameTime();
 		if(newTime > lastTime)
 		{
 			lastTime = newTime;
 			if(newTime % 5 == 0)
 				anim++;
 		}
-		GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
 
-		mc.renderEngine.bindTexture(texture);
-
-		int j = (width - xSize) / 2;
-		int k = (height - ySize) / 2;
-		drawTexturedModalRect(j, k, 0, 0, xSize, ySize);
+		extractor.blit(RenderPipelines.GUI_TEXTURED, texture, leftPos, topPos, 0F, 0F, imageWidth, imageHeight, 256, 256);
 		int fuelTankSize = plane.getDriveableType().fuelTankSize;
 		float fuelInTank = plane.driveableData.fuelInTank;
 		if(plane.fuelling)
-			drawTexturedModalRect(j + 15, k + 44, 176 + 15 * (anim % 4), 0, 15, 16);
+			extractor.blit(RenderPipelines.GUI_TEXTURED, texture, leftPos + 15, topPos + 44, 176 + 15 * (anim % 4), 0, 15, 16, 256, 256);
 		if(fuelInTank < fuelTankSize / 8 && (anim % 4) > 1)
-			drawTexturedModalRect(j + 16, k + 25, 176, 16, 6, 6);
+			extractor.blit(RenderPipelines.GUI_TEXTURED, texture, leftPos + 16, topPos + 25, 176, 16, 6, 6, 256, 256);
 		if(fuelInTank > 0)
-			drawTexturedModalRect(j + 26, k + 21, 0, 161, (int)((129 * fuelInTank) / fuelTankSize), 15);
+			extractor.blit(RenderPipelines.GUI_TEXTURED, texture, leftPos + 26, topPos + 21, 0, 161, (int)((129 * fuelInTank) / fuelTankSize), 15, 256, 256);
 	}
 	
 	@Override
-	public void drawScreen(int mouseX, int mouseY, float partialTicks)
+	public boolean mouseClicked(MouseButtonEvent event, boolean bl)
 	{
-		super.drawScreen(mouseX, mouseY, partialTicks);
-		renderHoveredToolTip(mouseX, mouseY);
-	}
-	
-	@Override
-	protected void mouseClicked(int i, int j, int k) throws IOException
-	{
-		super.mouseClicked(i, j, k);
-		int m = i - (width - xSize) / 2;
-		int n = j - (height - ySize) / 2;
+		super.mouseClicked(event, bl);
+		int m = (int)event.x() - leftPos;
+		int n = (int)event.y() - topPos;
 		if(m > 161 && m < 171 && n > 5 && n < 15)
 		{
-			mc.displayGuiScreen(new GuiDriveableMenu(inventory, world, plane));
+			Minecraft.getInstance().setScreen(new GuiDriveableMenu(inventory, world, plane));
 		}
+		return true;
 	}
 	
 	@Override
-	public boolean doesGuiPauseGame()
+	public boolean isPauseScreen()
 	{
 		return false;
 	}

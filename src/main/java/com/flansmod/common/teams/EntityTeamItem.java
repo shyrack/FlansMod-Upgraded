@@ -1,24 +1,25 @@
 package com.flansmod.common.teams;
 
-import io.netty.buffer.ByteBuf;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.SoundEvents;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.DamageSource;
-import net.minecraft.world.World;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.entity.player.EntityItemPickupEvent;
-import net.minecraftforge.fml.common.FMLCommonHandler;
-import net.minecraftforge.fml.common.eventhandler.Event.Result;
-import net.minecraftforge.fml.common.network.ByteBufUtils;
-import net.minecraftforge.fml.common.registry.IEntityAdditionalSpawnData;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.level.Level;
 
 import com.flansmod.common.EntityItemCustomRender;
+import com.flansmod.common.ModEntities;
 import com.flansmod.common.PlayerHandler;
 
-public class EntityTeamItem extends EntityItemCustomRender implements IEntityAdditionalSpawnData
+public class EntityTeamItem extends EntityItemCustomRender
 {
+	private static final EntityDataAccessor<Integer> X_COORD = SynchedEntityData.defineId(EntityTeamItem.class, EntityDataSerializers.INT);
+	private static final EntityDataAccessor<Integer> Y_COORD = SynchedEntityData.defineId(EntityTeamItem.class, EntityDataSerializers.INT);
+	private static final EntityDataAccessor<Integer> Z_COORD = SynchedEntityData.defineId(EntityTeamItem.class, EntityDataSerializers.INT);
+	private static final EntityDataAccessor<Float> ANGLE = SynchedEntityData.defineId(EntityTeamItem.class, EntityDataSerializers.FLOAT);
 	
 	public TileEntitySpawner spawner;
 	public double angle;
@@ -27,62 +28,72 @@ public class EntityTeamItem extends EntityItemCustomRender implements IEntityAdd
 	
 	public EntityTeamItem(TileEntitySpawner te, int i)
 	{
-		super(te.getWorld(), te.getPos().getX() + 0.5F, te.getPos().getY() + 0.5F, te.getPos().getZ() + 0.5F, te.stacksToSpawn.get(i).copy());
+		super(te.getWorld(), te.getBlockPos().getX() + 0.5F, te.getBlockPos().getY() + 0.5F, te.getBlockPos().getZ() + 0.5F, te.stacksToSpawn.get(i).copy());
+		this.world = level();
 		te.itemEntities.add(this);
 		angle = i * Math.PI * 2 / te.stacksToSpawn.size();
-		motionX = motionY = motionZ = 0D;
-		lifespan = 1000000000;
+		setDeltaMovement(0D, 0D, 0D);
+		xCoord = te.getBlockPos().getX();
+		yCoord = te.getBlockPos().getY();
+		zCoord = te.getBlockPos().getZ();
+		entityData.set(X_COORD, xCoord);
+		entityData.set(Y_COORD, yCoord);
+		entityData.set(Z_COORD, zCoord);
+		entityData.set(ANGLE, (float)angle);
 		spawner = te;
 	}
 	
-	public EntityTeamItem(World world)
+		public EntityTeamItem(EntityType<? extends net.minecraft.world.entity.item.ItemEntity> type, Level world)
 	{
-		super(world);
+		super(type, world);
+		this.world = level();
+	}
+
+public EntityTeamItem(Level world)
+	{
+		this(ModEntities.TEAMS_ITEM, world);
+		this.world = level();
 	}
 	
 	@Override
-	public void setPositionAndRotationDirect(double x, double y, double z, float yaw, float pitch, int i, boolean b)
+	protected void defineSynchedData(SynchedEntityData.Builder builder)
 	{
-		
+		super.defineSynchedData(builder);
+		builder.define(X_COORD, 0);
+		builder.define(Y_COORD, 0);
+		builder.define(Z_COORD, 0);
+		builder.define(ANGLE, 0F);
 	}
 	
 	@Override
-	public void onUpdate()
+	public void tick()
 	{
-		++ticksExisted;
-		prevPosX = posX;
-		prevPosY = posY;
-		prevPosZ = posZ;
-		prevRotationYaw = rotationYaw;
 		++age;
-		if(world.isRemote)
+		xo = getX();
+		yo = getY();
+		zo = getZ();
+		yRotO = getYRot();
+		if(world.isClientSide())
 		{
+			xCoord = entityData.get(X_COORD);
+			yCoord = entityData.get(Y_COORD);
+			zCoord = entityData.get(Z_COORD);
+			angle = entityData.get(ANGLE);
 			angle += 0.05D;
-			setPosition(xCoord + 0.5F + Math.cos(angle) * 0.3F, yCoord + 0.5F, zCoord + 0.5F + Math.sin(angle) * 0.3F);
+			entityData.set(ANGLE, (float)angle);
+			setPos(xCoord + 0.5F + Math.cos(angle) * 0.3F, yCoord + 0.5F, zCoord + 0.5F + Math.sin(angle) * 0.3F);
 		}
 		
 		//Temporary fire glitch fix
-		if(world.isRemote)
-			extinguish();
-	}
-	
-	public boolean attackEntityFrom(DamageSource par1DamageSource, int par2)
-	{
-		return false;
+		if(world.isClientSide())
+			extinguishFire();
 	}
 	
 	@Override
-	public void onCollideWithPlayer(EntityPlayer player)
+	public void playerTouch(Player player)
 	{
-		if(!world.isRemote)
+		if(!world.isClientSide())
 		{
-			EntityItemPickupEvent event = new EntityItemPickupEvent(player, this);
-			
-			if(MinecraftForge.EVENT_BUS.post(event))
-			{
-				return;
-			}
-			
 			int spawnerTeamID = spawner.getTeamID();
 			Team spawnerTeam = TeamsManager.getInstance().getTeam(spawnerTeamID);
 			Team playerTeam = PlayerHandler.getPlayerData(player).team;
@@ -92,67 +103,27 @@ public class EntityTeamItem extends EntityItemCustomRender implements IEntityAdd
 					return;
 			}
 			
-			//Getter of EntityItem
+			//Getter of ItemEntity
 			int var2 = getItem().getCount();
 			
-			if((event.getResult() == Result.ALLOW || var2 <= 0 || player.inventory.addItemStackToInventory(getItem())))
+			if(var2 <= 0 || player.getInventory().add(getItem()))
 			{
-				FMLCommonHandler.instance().firePlayerItemPickupEvent(player, this, getItem().copy());
+				playSound(SoundEvents.ITEM_PICKUP, 0.2F, ((random.nextFloat() - random.nextFloat()) * 0.7F + 1.0F) * 2.0F);
+				player.take(this, var2);
 				
-				playSound(SoundEvents.ENTITY_ITEM_PICKUP, 0.2F, ((rand.nextFloat() - rand.nextFloat()) * 0.7F + 1.0F) * 2.0F);
-				player.onItemPickup(this, var2);
-				
-				//Getter of EntityItem
+				//Getter of ItemEntity
 				if(getItem().getCount() <= 0)
 				{
 					spawner.itemEntities.remove(this);
-					setDead();
+					discard();
 				}
 			}
 		}
 	}
 	
 	@Override
-	public void writeSpawnData(ByteBuf data)
+	protected void readAdditionalSaveData(ValueInput input)
 	{
-		if(spawner == null)
-		{
-			data.writeInt(0);
-			data.writeInt(0);
-			data.writeInt(0);
-		}
-		else
-		{
-			data.writeInt(spawner.getPos().getX());
-			data.writeInt(spawner.getPos().getY());
-			data.writeInt(spawner.getPos().getZ());
-		}
-		data.writeDouble(angle);
-		NBTTagCompound tags = new NBTTagCompound();
-		//Getter of EntityItem
-		getItem().writeToNBT(tags);
-		ByteBufUtils.writeTag(data, tags);
-	}
-	
-	@Override
-	public void readSpawnData(ByteBuf data)
-	{
-		xCoord = data.readInt();
-		yCoord = data.readInt();
-		zCoord = data.readInt();
-		angle = data.readDouble();
-		setItem(new ItemStack(ByteBufUtils.readTag(data)));
-	}
-	
-	@Override
-	public void readEntityFromNBT(NBTTagCompound tags)
-	{
-		setDead();
-	}
-	
-	@Override
-	public boolean isBurning()
-	{
-		return false;
+		discard();
 	}
 }

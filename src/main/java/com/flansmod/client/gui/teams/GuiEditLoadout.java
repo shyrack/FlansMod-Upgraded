@@ -1,21 +1,27 @@
 package com.flansmod.client.gui.teams;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 
-import org.lwjgl.opengl.GL11;
-
-import net.minecraft.client.gui.GuiButton;
-import net.minecraft.client.gui.ScaledResolution;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.init.Items;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.ResourceLocation;
+import com.mojang.serialization.DynamicOps;
+import net.minecraft.nbt.Tag;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.RegistryOps;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.nbt.NbtOps;
 
 import com.flansmod.client.teams.ClientTeamsData;
 import com.flansmod.common.FlansMod;
+import com.flansmod.common.util.FlansModUtil;
 import com.flansmod.common.guns.AttachmentType;
 import com.flansmod.common.guns.EnumAttachmentType;
 import com.flansmod.common.guns.GunType;
@@ -29,7 +35,6 @@ import com.flansmod.common.teams.LoadoutPool;
 import com.flansmod.common.teams.LoadoutPool.LoadoutEntry;
 import com.flansmod.common.teams.LoadoutPool.LoadoutEntryInfoType;
 import com.flansmod.common.teams.LoadoutPool.LoadoutEntryPaintjob;
-import com.flansmod.common.teams.PlayerLoadout;
 import com.flansmod.common.teams.PlayerRankData;
 import com.flansmod.common.teams.TeamsManagerRanked;
 import com.flansmod.common.types.IFlanItem;
@@ -40,7 +45,7 @@ public class GuiEditLoadout extends GuiTeamsBase
 	/**
 	 * The background image
 	 */
-	private static final ResourceLocation texture = new ResourceLocation("flansmod", "gui/LoadoutEditor.png");
+	private static final Identifier texture = Identifier.fromNamespaceAndPath("flansmod", "gui/loadouteditor.png");
 	
 	private static final int WIDTH = 326, HEIGHT = 198;
 	
@@ -49,7 +54,7 @@ public class GuiEditLoadout extends GuiTeamsBase
 	protected int selectedCategory = 0;
 	protected int scroller = 0;
 	
-	private PlayerLoadout previousLoadout = null;
+	private com.flansmod.common.teams.PlayerLoadout previousLoadout = null;
 	
 	protected ArrayList<LoadoutEntry> availableComponents = new ArrayList<>();
 	
@@ -67,51 +72,33 @@ public class GuiEditLoadout extends GuiTeamsBase
 	}
 	
 	@Override
-	public void initGui()
+	public void init()
 	{
-		super.initGui();
+		super.init();
 		
-		ScaledResolution scaledresolution = new ScaledResolution(mc);
-		int w = scaledresolution.getScaledWidth();
-		int h = scaledresolution.getScaledHeight();
-		guiOriginX = w / 2 - WIDTH / 2;
-		guiOriginY = h / 2 - HEIGHT / 2;
+		guiOriginX = width / 2 - WIDTH / 2;
+		guiOriginY = height / 2 - HEIGHT / 2;
 		
-		buttonList.add(new GuiButton(0, width / 2 - WIDTH / 2 + 10, height / 2 - HEIGHT / 2 + 143, 82, 20, "Confirm"));
-		buttonList.add(new GuiButton(1, width / 2 - WIDTH / 2 + 10, height / 2 - HEIGHT / 2 + 165, 82, 20, "Cancel"));
-	}
-	
-	@Override
-	protected void actionPerformed(GuiButton button)
-	{
-		if(button.id == 0) // Confirm
+		addRenderableWidget(Button.builder(Component.literal("Confirm"), b ->
 		{
 			// Send data to server
 			TeamsManagerRanked.ConfirmLoadoutChanges();
 			ClientTeamsData.OpenLandingPage();
-		}
-		else if(button.id == 1) // Cancel
+		}).bounds(width / 2 - WIDTH / 2 + 10, height / 2 - HEIGHT / 2 + 143, 82, 20).build());
+		addRenderableWidget(Button.builder(Component.literal("Cancel"), b ->
 		{
 			ClientTeamsData.theRankData.loadouts[selectedLoadout] = previousLoadout.copy();
 			ClientTeamsData.OpenLandingPage();
-		}
+		}).bounds(width / 2 - WIDTH / 2 + 10, height / 2 - HEIGHT / 2 + 165, 82, 20).build());
 	}
 	
 	@Override
-	public void drawScreen(int i, int j, float f)
+	public void extractRenderState(GuiGraphicsExtractor extractor, int mouseX, int mouseY, float partialTick)
 	{
-		ScaledResolution scaledresolution = new ScaledResolution(mc);
-		int w = scaledresolution.getScaledWidth();
-		int h = scaledresolution.getScaledHeight();
-		drawDefaultBackground();
-		GlStateManager.enableBlend();
+		extractMenuBackground(extractor);
 		
-		GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
-		guiOriginX = w / 2 - WIDTH / 2;
-		guiOriginY = h / 2 - HEIGHT / 2;
-		
-		//Bind the background texture
-		mc.renderEngine.bindTexture(texture);
+		guiOriginX = width / 2 - WIDTH / 2;
+		guiOriginY = height / 2 - HEIGHT / 2;
 		
 		int textureX = 512;
 		int textureY = 256;
@@ -125,32 +112,30 @@ public class GuiEditLoadout extends GuiTeamsBase
 		}
 		
 		//Draw the background
-		drawModalRectWithCustomSizedTexture(guiOriginX, guiOriginY, 0, 0, WIDTH, HEIGHT, textureX, textureY);
+		extractor.blit(RenderPipelines.GUI_TEXTURED, texture, guiOriginX, guiOriginY, 0F, 0F, WIDTH, HEIGHT, textureX, textureY);
 		
 		// Draw title text
-		drawCenteredString(fontRenderer, "Edit Loadout " + (selectedLoadout + 1), guiOriginX + WIDTH / 2, guiOriginY + 4, 0xffffff);
+		extractor.centeredText(font, "Edit Loadout " + (selectedLoadout + 1), guiOriginX + WIDTH / 2, guiOriginY + 4, 0xffffff);
 		
 		// Draw loadout slots panel
 		{
-			mc.renderEngine.bindTexture(texture);
-			drawModalRectWithCustomSizedTexture(guiOriginX + 70, guiOriginY + 32 + 22 * selectedSlot.ordinal(), 70, 203, 36, 22, textureX, textureY);
+			extractor.blit(RenderPipelines.GUI_TEXTURED, texture, guiOriginX + 70, guiOriginY + 32 + 22 * selectedSlot.ordinal(), 70, 203, 36, 22, textureX, textureY);
 			
-			drawCenteredString(fontRenderer, "Loadout", guiOriginX + 51, guiOriginY + 18, 0xffffff);
+			extractor.centeredText(font, "Loadout", guiOriginX + 51, guiOriginY + 18, 0xffffff);
 			for(int n = 0; n < EnumLoadoutSlot.values().length; n++)
 			{
-				drawCenteredString(fontRenderer, EnumLoadoutSlot.values()[n].name, guiOriginX + 39, guiOriginY + 38 + 22 * n, 0xffffff);
+				extractor.centeredText(font, EnumLoadoutSlot.values()[n].name, guiOriginX + 39, guiOriginY + 38 + 22 * n, 0xffffff);
 				
 				ItemStack stack = data.loadouts[selectedLoadout].slots[n];
-				drawSlotInventory(stack, guiOriginX + 73, guiOriginY + 35 + 22 * n);
+				drawSlotInventory(extractor, stack, guiOriginX + 73, guiOriginY + 35 + 22 * n);
 			}
 		}
 		
 		// Draw slot panel
 		{
-			mc.renderEngine.bindTexture(texture);
-			drawModalRectWithCustomSizedTexture(guiOriginX + 169, guiOriginY + 32 + 22 * selectedCategory, 70, 203, 36, 22, textureX, textureY);
+			extractor.blit(RenderPipelines.GUI_TEXTURED, texture, guiOriginX + 169, guiOriginY + 32 + 22 * selectedCategory, 70, 203, 36, 22, textureX, textureY);
 			
-			drawCenteredString(fontRenderer, selectedSlot.name, guiOriginX + 150, guiOriginY + 18, 0xffffff);
+			extractor.centeredText(font, selectedSlot.name, guiOriginX + 150, guiOriginY + 18, 0xffffff);
 			if(selectedSlot.isWeapon)
 			{
 				for(int n = 0; n < WEAPON_COMPONENT_NAMES.length; n++)
@@ -160,10 +145,10 @@ public class GuiEditLoadout extends GuiTeamsBase
 					int numUnlocks = type != null ? data.GetNumUnlocksForType(type) : 0;
 					if(n == 1 && type != null && numUnlocks > 0)
 					{
-						drawCenteredString(fontRenderer, WEAPON_COMPONENT_NAMES[n] + " (" + numUnlocks + ")", guiOriginX + 138, guiOriginY + 38 + 22 * n, 0xffffff);
+						extractor.centeredText(font, WEAPON_COMPONENT_NAMES[n] + " (" + numUnlocks + ")", guiOriginX + 138, guiOriginY + 38 + 22 * n, 0xffffff);
 					}
 					else
-						drawCenteredString(fontRenderer, WEAPON_COMPONENT_NAMES[n], guiOriginX + 138, guiOriginY + 38 + 22 * n, 0xffffff);
+						extractor.centeredText(font, WEAPON_COMPONENT_NAMES[n], guiOriginX + 138, guiOriginY + 38 + 22 * n, 0xffffff);
 					
 					switch(n)
 					{
@@ -173,41 +158,41 @@ public class GuiEditLoadout extends GuiTeamsBase
 							if(stack != null)
 							{
 								copy = stack.copy();
-								copy.setItemDamage(0);
+								copy.setDamageValue(0);
 							}
 							
-							drawSlotInventory(copy, guiOriginX + 172, guiOriginY + 35 + 22 * n);
+							drawSlotInventory(extractor, copy, guiOriginX + 172, guiOriginY + 35 + 22 * n);
 							break;
 						}
 						case 1: // Paint
 						{
-							drawSlotInventory(stack, guiOriginX + 172, guiOriginY + 35 + 22 * n);
+							drawSlotInventory(extractor, stack, guiOriginX + 172, guiOriginY + 35 + 22 * n);
 							break;
 						}
 						default:
 						{
-							if(stack != null && !stack.isEmpty() && stack.getTagCompound() != null)
+							if(stack != null && !stack.isEmpty() && getTag(stack) != null)
 							{
-								NBTTagCompound attachmentTags = stack.getTagCompound().getCompoundTag("attachments");
+								CompoundTag attachmentTags = getTag(stack).getCompoundOrEmpty("attachments");
 								if(attachmentTags != null)
 								{
 									ItemStack attachmentStack = ItemStack.EMPTY.copy();
 									
 									switch(n)
 									{
-										case 2: attachmentStack = new ItemStack(attachmentTags.getCompoundTag("scope"));
+										case 2: attachmentStack = readStackFromNBT(attachmentTags.getCompoundOrEmpty("scope"));
 											break;
-										case 3: attachmentStack = new ItemStack(attachmentTags.getCompoundTag("barrel"));
+										case 3: attachmentStack = readStackFromNBT(attachmentTags.getCompoundOrEmpty("barrel"));
 											break;
-										case 4: attachmentStack = new ItemStack(attachmentTags.getCompoundTag("stock"));
+										case 4: attachmentStack = readStackFromNBT(attachmentTags.getCompoundOrEmpty("stock"));
 											break;
-										case 5: attachmentStack = new ItemStack(attachmentTags.getCompoundTag("grip"));
+										case 5: attachmentStack = readStackFromNBT(attachmentTags.getCompoundOrEmpty("grip"));
 											break;
-										case 6: attachmentStack = new ItemStack(attachmentTags.getCompoundTag("generic_0"));
+										case 6: attachmentStack = readStackFromNBT(attachmentTags.getCompoundOrEmpty("generic_0"));
 											break;
 									}
 									
-									drawSlotInventory(attachmentStack, guiOriginX + 172, guiOriginY + 35 + 22 * n);
+									drawSlotInventory(extractor, attachmentStack, guiOriginX + 172, guiOriginY + 35 + 22 * n);
 								}
 							}
 							
@@ -220,7 +205,7 @@ public class GuiEditLoadout extends GuiTeamsBase
 			{
 				for(int n = 0; n < NON_WEAPON_COMPONENT_NAMES.length; n++)
 				{
-					drawCenteredString(fontRenderer, NON_WEAPON_COMPONENT_NAMES[n], guiOriginX + 138, guiOriginY + 38 + 22 * n, 0xffffff);
+					extractor.centeredText(font, NON_WEAPON_COMPONENT_NAMES[n], guiOriginX + 138, guiOriginY + 38 + 22 * n, 0xffffff);
 					ItemStack stack = data.loadouts[selectedLoadout].slots[selectedSlot.ordinal()];
 					switch(n)
 					{
@@ -230,14 +215,14 @@ public class GuiEditLoadout extends GuiTeamsBase
 							if(stack != null)
 							{
 								copy = stack.copy();
-								copy.setItemDamage(0);
+								copy.setDamageValue(0);
 							}
-							drawSlotInventory(copy, guiOriginX + 172, guiOriginY + 35 + 22 * n);
+							drawSlotInventory(extractor, copy, guiOriginX + 172, guiOriginY + 35 + 22 * n);
 							break;
 						}
 						case 1: // Paint
 						{
-							drawSlotInventory(stack, guiOriginX + 172, guiOriginY + 35 + 22 * n);
+							drawSlotInventory(extractor, stack, guiOriginX + 172, guiOriginY + 35 + 22 * n);
 							break;
 						}
 						default:
@@ -255,16 +240,16 @@ public class GuiEditLoadout extends GuiTeamsBase
 			ItemStack stack = data.loadouts[selectedLoadout].slots[selectedSlot.ordinal()];
 			if(stack != null && !stack.isEmpty())
 			{
-				name = stack.getDisplayName();
+				name = stack.getHoverName().getString();
 			}
 			
-			drawCenteredString(fontRenderer, name, guiOriginX + 262, guiOriginY + 18, 0xffffff);
+			extractor.centeredText(font, name, guiOriginX + 262, guiOriginY + 18, 0xffffff);
 			
-			DrawGun(stack, guiOriginX + 254, guiOriginY + 48, 40f);
+			DrawGun(extractor, stack, guiOriginX + 254, guiOriginY + 48, 40f);
 			
-			drawCenteredString(fontRenderer, "Damage", guiOriginX + 234, guiOriginY + 60, 0xffffff);
-			drawCenteredString(fontRenderer, "Accuracy", guiOriginX + 234, guiOriginY + 70, 0xffffff);
-			drawCenteredString(fontRenderer, "Ammo", guiOriginX + 234, guiOriginY + 80, 0xffffff);
+			extractor.centeredText(font, "Damage", guiOriginX + 234, guiOriginY + 60, 0xffffff);
+			extractor.centeredText(font, "Accuracy", guiOriginX + 234, guiOriginY + 70, 0xffffff);
+			extractor.centeredText(font, "Ammo", guiOriginX + 234, guiOriginY + 80, 0xffffff);
 			
 			if(stack != null && stack.getItem() instanceof ItemGun)
 			{
@@ -286,16 +271,16 @@ public class GuiEditLoadout extends GuiTeamsBase
 				
 				if(mainAmmo != null)
 				{
-					drawCenteredString(fontRenderer, String.format("%.0f", type.damage * mainAmmo.damageVsLiving * mainAmmo.numBullets), guiOriginX + 290, guiOriginY + 60, 0xffffff);
-					drawCenteredString(fontRenderer, String.format("%.0f", (50.0f - type.bulletSpread) * 2.0f), guiOriginX + 290, guiOriginY + 70, 0xffffff);
-					drawCenteredString(fontRenderer, String.format("%d", mainAmmo.roundsPerItem * numClips), guiOriginX + 290, guiOriginY + 80, 0xffffff);
+					extractor.centeredText(font, String.format("%.0f", type.damage * mainAmmo.damageVsLiving * mainAmmo.numBullets), guiOriginX + 290, guiOriginY + 60, 0xffffff);
+					extractor.centeredText(font, String.format("%.0f", (50.0f - type.bulletSpread) * 2.0f), guiOriginX + 290, guiOriginY + 70, 0xffffff);
+					extractor.centeredText(font, String.format("%d", mainAmmo.roundsPerItem * numClips), guiOriginX + 290, guiOriginY + 80, 0xffffff);
 				}
 			}
 		}
 		
 		// Draw selector panel
 		{
-			drawCenteredString(fontRenderer, "Choose " + WEAPON_COMPONENT_NAMES[selectedCategory].toLowerCase(), guiOriginX + 262, guiOriginY + 95, 0xffffff);
+			extractor.centeredText(font, "Choose " + WEAPON_COMPONENT_NAMES[selectedCategory].toLowerCase(), guiOriginX + 262, guiOriginY + 95, 0xffffff);
 			
 			for(int row = 0; row < 4; row++)
 			{
@@ -311,37 +296,30 @@ public class GuiEditLoadout extends GuiTeamsBase
 					LoadoutEntry entry = availableComponents.get(index);
 					if(entry instanceof LoadoutEntryInfoType)
 					{
-						drawSlotInventory(new ItemStack(((LoadoutEntryInfoType)entry).type.getItem()), guiOriginX + 209 + col * 18, guiOriginY + 107 + row * 18);
+						drawSlotInventory(extractor, new ItemStack(((LoadoutEntryInfoType)entry).type.getItem()), guiOriginX + 209 + col * 18, guiOriginY + 107 + row * 18);
 					}
 					else if(entry instanceof LoadoutEntryPaintjob)
 					{
 						Paintjob paintjob = ((LoadoutEntryPaintjob)entry).paintjob;
 						
-						DrawRarityBackground(paintjob.rarity, guiOriginX + 209 + col * 18, guiOriginY + 107 + row * 18);
+						DrawRarityBackground(extractor, paintjob.rarity, guiOriginX + 209 + col * 18, guiOriginY + 107 + row * 18);
 						
-						drawSlotInventory(new ItemStack(paintjob.parent.getItem(), 1, paintjob.ID), guiOriginX + 209 + col * 18, guiOriginY + 107 + row * 18);
+						ItemStack paintjobStack = new ItemStack(paintjob.parent.getItem());
+						paintjobStack.setDamageValue(paintjob.ID);
+						drawSlotInventory(extractor, paintjobStack, guiOriginX + 209 + col * 18, guiOriginY + 107 + row * 18);
 					}
 					
 					if(!entry.available)
 					{
-						mc.renderEngine.bindTexture(texture);
-						GlStateManager.pushMatrix();
-						GlStateManager.translate(0.0f, 0.0f, 101.0f);
-						drawModalRectWithCustomSizedTexture(guiOriginX + 209 + col * 18, guiOriginY + 107 + row * 18, 332, 161, 16, 16, textureX, textureY);
+						extractor.blit(RenderPipelines.GUI_TEXTURED, texture, guiOriginX + 209 + col * 18, guiOriginY + 107 + row * 18, 332, 161, 16, 16, textureX, textureY);
 						if(entry.unlockLevel > 0)
 						{
-							drawCenteredString(fontRenderer, "" + entry.unlockLevel, guiOriginX + 218 + col * 18, guiOriginY + 112 + row * 18, 0xffffff);
+							extractor.centeredText(font, "" + entry.unlockLevel, guiOriginX + 218 + col * 18, guiOriginY + 112 + row * 18, 0xffffff);
 						}
-						GlStateManager.popMatrix();
 					}
 				}
 			}
 		}
-		
-		// Resets some GL modes to prevent screen going grey sometimes. Quick and easy hack. Thanks, stick.
-		drawSlotInventory(new ItemStack(Items.STICK), -50, -50);
-		
-		super.drawScreen(i, j, f);
 	}
 	
 	private boolean IsInSquare(int clickX, int clickY, int x, int y, int w, int h)
@@ -351,9 +329,12 @@ public class GuiEditLoadout extends GuiTeamsBase
 	}
 	
 	@Override
-	protected void mouseClicked(int i, int j, int k) throws IOException
+	public boolean mouseClicked(MouseButtonEvent event, boolean bl)
 	{
-		super.mouseClicked(i, j, k);
+		super.mouseClicked(event, bl);
+		int i = (int)event.x();
+		int j = (int)event.y();
+		int k = event.button();
 		int x = i - guiOriginX;
 		int y = j - guiOriginY;
 		if(k == 0 || k == 1)
@@ -418,6 +399,7 @@ public class GuiEditLoadout extends GuiTeamsBase
 				SelectItem(null);
 			}
 		}
+		return true;
 	}
 	
 	public void SelectItem(LoadoutEntry entry)
@@ -445,7 +427,7 @@ public class GuiEditLoadout extends GuiTeamsBase
 				{
 					if(data.loadouts[selectedLoadout].slots[selectedSlot.ordinal()] != null)
 					{
-						data.loadouts[selectedLoadout].slots[selectedSlot.ordinal()].setItemDamage(((LoadoutEntryPaintjob)entry).paintjob.ID);
+						data.loadouts[selectedLoadout].slots[selectedSlot.ordinal()].setDamageValue(((LoadoutEntryPaintjob)entry).paintjob.ID);
 					}
 					else FlansMod.log.warn("Applying paintjob to null item!");
 				}
@@ -461,38 +443,40 @@ public class GuiEditLoadout extends GuiTeamsBase
 					ItemStack stack = data.loadouts[selectedLoadout].slots[selectedSlot.ordinal()];
 					if(stack != null && !stack.isEmpty())
 					{
-						if(stack.getTagCompound() == null)
+						CompoundTag stackTags = getTag(stack);
+						if(stackTags == null)
 						{
-							stack.setTagCompound(new NBTTagCompound());
+							stackTags = new CompoundTag();
 						}
-						NBTTagCompound attachmentTags = stack.getTagCompound().getCompoundTag("attachments");
+						CompoundTag attachmentTags = stackTags.getCompoundOrEmpty("attachments");
 						if(attachmentTags == null)
 						{
-							attachmentTags = new NBTTagCompound();
+							attachmentTags = new CompoundTag();
 						}
 						
-						NBTTagCompound ourTags = new NBTTagCompound();
+						CompoundTag ourTags = new CompoundTag();
 						if(entry != null)
 						{
 							ItemStack attachmentStack = new ItemStack(((LoadoutEntryInfoType)entry).type.getItem());
-							attachmentStack.writeToNBT(ourTags);
+							ourTags = writeStackToNBT(attachmentStack);
 						}
 						
 						switch(selectedCategory)
 						{
-							case 2: attachmentTags.setTag("scope", ourTags);
+							case 2: attachmentTags.put("scope", ourTags);
 								break;
-							case 3: attachmentTags.setTag("barrel", ourTags);
+							case 3: attachmentTags.put("barrel", ourTags);
 								break;
-							case 4: attachmentTags.setTag("stock", ourTags);
+							case 4: attachmentTags.put("stock", ourTags);
 								break;
-							case 5: attachmentTags.setTag("grip", ourTags);
+							case 5: attachmentTags.put("grip", ourTags);
 								break;
-							case 6: attachmentTags.setTag("generic_0", ourTags);
+							case 6: attachmentTags.put("generic_0", ourTags);
 								break;
 						}
 						
-						stack.getTagCompound().setTag("attachments", attachmentTags);
+						stackTags.put("attachments", attachmentTags);
+						setTag(stack, stackTags);
 					}
 					else FlansMod.log.warn("Applying attachment to null item!");
 				}
@@ -501,6 +485,34 @@ public class GuiEditLoadout extends GuiTeamsBase
 			
 		}
 		
+	}
+	
+	private static CompoundTag getTag(ItemStack stack)
+	{
+		CustomData data = stack.get(DataComponents.CUSTOM_DATA);
+		return data == null ? null : data.copyTag();
+	}
+	
+	private static void setTag(ItemStack stack, CompoundTag tag)
+	{
+		if(tag == null || tag.isEmpty())
+			stack.remove(DataComponents.CUSTOM_DATA);
+		else
+			stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
+	}
+	
+	private static CompoundTag writeStackToNBT(ItemStack stack)
+	{
+		DynamicOps<Tag> ops = RegistryOps.create(NbtOps.INSTANCE, Minecraft.getInstance().level.registryAccess());
+		return (CompoundTag)ItemStack.CODEC.encodeStart(ops, stack).result().orElse(new CompoundTag());
+	}
+	
+	private static ItemStack readStackFromNBT(CompoundTag tag)
+	{
+		if(tag == null || tag.isEmpty())
+			return ItemStack.EMPTY;
+		DynamicOps<Tag> ops = RegistryOps.create(NbtOps.INSTANCE, Minecraft.getInstance().level.registryAccess());
+		return ItemStack.CODEC.parse(ops, tag).result().orElse(ItemStack.EMPTY);
 	}
 	
 	public class LoadoutComparator implements Comparator<LoadoutEntry>
@@ -620,7 +632,7 @@ public class GuiEditLoadout extends GuiTeamsBase
 	}
 	
 	@Override
-	public boolean doesGuiPauseGame()
+	public boolean isPauseScreen()
 	{
 		return false;
 	}

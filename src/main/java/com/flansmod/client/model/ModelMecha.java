@@ -8,7 +8,6 @@ import com.flansmod.common.driveables.mechas.EntityMecha;
 import com.flansmod.common.driveables.mechas.MechaType;
 import com.flansmod.common.vector.Vector3f;
 
-import net.minecraft.client.renderer.GlStateManager;
 
 public class ModelMecha extends ModelDriveable
 {
@@ -64,16 +63,10 @@ public class ModelMecha extends ModelDriveable
 		renderPart(rightFrontFootModel);
 		renderPart(barrelModel);
 		renderPart(headModel);
-		GlStateManager.pushMatrix();
-		GlStateManager.translate(mechaType.leftArmOrigin.x / mechaType.modelScale, mechaType.leftArmOrigin.y / mechaType.modelScale, mechaType.leftArmOrigin.z / mechaType.modelScale);
 		renderPart(leftArmModel);
 		renderPart(leftHandModel);
-		GlStateManager.popMatrix();
-		GlStateManager.pushMatrix();
-		GlStateManager.translate(mechaType.rightArmOrigin.x / mechaType.modelScale, mechaType.rightArmOrigin.y / mechaType.modelScale, mechaType.rightArmOrigin.z / mechaType.modelScale);
 		renderPart(rightArmModel);
 		renderPart(rightHandModel);
-		GlStateManager.popMatrix();
 	}
 	
 	public void render(float f5, EntityMecha mecha, float f)

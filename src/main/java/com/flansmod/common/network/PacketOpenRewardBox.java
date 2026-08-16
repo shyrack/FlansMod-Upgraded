@@ -1,11 +1,8 @@
 package com.flansmod.common.network;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
 
 import com.flansmod.client.teams.ClientTeamsData;
 import com.flansmod.common.FlansMod;
@@ -36,37 +33,36 @@ public class PacketOpenRewardBox extends PacketBase
 	}
 	
 	@Override
-	public void encodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void encodeInto(ByteBuf data)
 	{
 		data.writeInt(boxHash);
 		data.writeInt(unlockHash);
 	}
 	
 	@Override
-	public void decodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void decodeInto(ByteBuf data)
 	{
 		boxHash = data.readInt();
 		unlockHash = data.readInt();
 	}
 	
 	@Override
-	public void handleServerSide(EntityPlayerMP playerEntity)
+	public void handleServerSide(ServerPlayer playerEntity)
 	{
 		RewardBox box = RewardBox.GetRewardBox(boxHash);
 		if(box == null)
 		{
-			FlansMod.Assert(false, "Recieved invalid reward box open packet from player " + playerEntity.getDisplayNameString());
+			FlansMod.Assert(false, "Recieved invalid reward box open packet from player " + playerEntity.getName().getString());
 		}
 		else
 		{
-			FlansMod.log.info("Recieved reward box open packet from player " + playerEntity.getDisplayNameString() + " for box " + box.shortName);
+			FlansMod.log.info("Recieved reward box open packet from player " + playerEntity.getName().getString() + " for box " + box.shortName);
 			TeamsManagerRanked.OpenRewardBox(playerEntity, box);
 		}
 	}
 	
-	@SideOnly(Side.CLIENT)
 	@Override
-	public void handleClientSide(EntityPlayer clientPlayer)
+	public void handleClientSide(Player clientPlayer)
 	{
 		ClientTeamsData.UnlockReward(boxHash, unlockHash);
 	}

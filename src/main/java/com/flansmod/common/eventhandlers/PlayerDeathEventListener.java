@@ -1,10 +1,11 @@
 package com.flansmod.common.eventhandlers;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.entity.living.LivingDeathEvent;
-import net.minecraftforge.fml.common.Mod.EventHandler;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.level.Level;
 
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.PlayerHandler;
@@ -16,27 +17,26 @@ public class PlayerDeathEventListener
 {
 	public PlayerDeathEventListener()
 	{
-		MinecraftForge.EVENT_BUS.register(this);
+		ServerLivingEntityEvents.AFTER_DEATH.register(this::PlayerDied);
 	}
 	
-	@EventHandler
-	@SubscribeEvent
-	public void PlayerDied(LivingDeathEvent event)
+	public void PlayerDied(LivingEntity entity, DamageSource source)
 	{
-		if (event.getEntity().world.isRemote)
-			return;
-		
-		if (event.getSource() instanceof EntityDamageSourceFlan && event.getEntity() instanceof EntityPlayer)
+		if(source instanceof EntityDamageSourceFlan && entity instanceof Player)
 		{
-			EntityDamageSourceFlan source = (EntityDamageSourceFlan) event.getSource();
-			EntityPlayer died = (EntityPlayer) event.getEntity();
+			EntityDamageSourceFlan flanSource = (EntityDamageSourceFlan)source;
+			Player died = (Player)entity;
 			
 			Team killedTeam = PlayerHandler.getPlayerData(died).team;
-			if(source.getCausedPlayer() != null)
+			if(flanSource.getCausedPlayer() != null)
 			{
-				Team killerTeam = PlayerHandler.getPlayerData(source.getCausedPlayer()).team;
+				Team killerTeam = PlayerHandler.getPlayerData(flanSource.getCausedPlayer()).team;
 				
-				FlansMod.getPacketHandler().sendToDimension(new PacketKillMessage(source.isHeadshot(), source.getWeapon(), (killedTeam == null ? "f" : killedTeam.textColour) + died.getName(), (killerTeam == null ? "f" : killerTeam.textColour) + source.getCausedPlayer().getName()), died.dimension);
+				ResourceKey<Level> dimension = died.level().dimension();
+				int dimensionID = dimension == Level.NETHER ? -1 : (dimension == Level.END ? 1 : 0);
+				FlansMod.getPacketHandler().sendToDimension(new PacketKillMessage(flanSource.isHeadshot(), flanSource.getWeapon(),
+						(killedTeam == null ? "f" : String.valueOf(killedTeam.textColour)) + died.getName().getString(),
+						(killerTeam == null ? "f" : String.valueOf(killerTeam.textColour)) + flanSource.getCausedPlayer().getName().getString()), dimensionID);
 			}
 		}
 	}

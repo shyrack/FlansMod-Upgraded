@@ -1,7 +1,7 @@
 package com.flansmod.modernweapons.client.model;
 
-import net.minecraft.client.model.ModelBase;
-import net.minecraft.entity.Entity;
+import com.flansmod.client.model.ModelBase;
+import net.minecraft.world.entity.Entity;
 import com.flansmod.client.tmt.ModelRendererTurbo;
 import com.flansmod.client.tmt.Coord2D;
 import com.flansmod.client.tmt.Shape2D;

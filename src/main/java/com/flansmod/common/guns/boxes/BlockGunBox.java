@@ -1,24 +1,25 @@
 package com.flansmod.common.guns.boxes;
 
-import java.util.ArrayList;
-import java.util.List;
+import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.material.MapColor;
+import net.minecraft.world.level.material.PushReaction;
+import net.minecraft.world.phys.BlockHitResult;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.material.Material;
-import net.minecraft.block.state.IBlockState;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.InventoryPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.nbt.NBTTagList;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.EnumHand;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.IBlockAccess;
-import net.minecraft.world.World;
-
-import com.flansmod.common.FlansMod;
 import com.flansmod.common.guns.GunType;
+import com.flansmod.common.guns.GunUtil;
+import com.flansmod.common.util.FlansModUtil;
 import com.flansmod.common.guns.boxes.GunBoxType.GunBoxEntry;
 import com.flansmod.common.types.InfoType;
 
@@ -28,17 +29,17 @@ public class BlockGunBox extends Block
 	
 	public BlockGunBox(GunBoxType t)
 	{
-		super(Material.WOOD);
-		setHardness(2F);
-		setResistance(4F);
+		this(BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2F, 4F).pushReaction(PushReaction.BLOCK), t);
+	}
+
+	public BlockGunBox(BlockBehaviour.Properties properties, GunBoxType t)
+	{
+		super(properties);
 		type = t;
-		setRegistryName(type.shortName);
-		setTranslationKey(type.shortName);
-		setCreativeTab(FlansMod.tabFlanGuns);
 		type.block = this;
 	}
 
-	public void buyGun(InfoType gun, InventoryPlayer inventory, GunBoxType type)
+	public void buyGun(InfoType gun, Inventory inventory, GunBoxType type)
 	{
 		//FlansMod.proxy.buyGun(type, gun);
 		GunBoxEntry entry = type.canCraft(gun);
@@ -48,10 +49,10 @@ public class BlockGunBox extends Block
 			for(ItemStack check : entry.requiredParts)
 			{
 				int numMatchingStuff = 0;
-				for(int j = 0; j < inventory.getSizeInventory(); j++)
+				for(int j = 0; j < inventory.getContainerSize(); j++)
 				{
-					ItemStack stack = inventory.getStackInSlot(j);
-					if(stack != null && !stack.isEmpty() && stack.getItem() == check.getItem() && stack.getItemDamage() == check.getItemDamage())
+					ItemStack stack = inventory.getItem(j);
+					if(stack != null && !stack.isEmpty() && stack.getItem() == check.getItem() && stack.getDamageValue() == check.getDamageValue())
 					{
 						numMatchingStuff += stack.getCount();
 					}
@@ -66,12 +67,12 @@ public class BlockGunBox extends Block
 				for(ItemStack remove : entry.requiredParts)
 				{
 					int amountLeft = remove.getCount();
-					for(int j = 0; j < inventory.getSizeInventory(); j++)
+					for(int j = 0; j < inventory.getContainerSize(); j++)
 					{
-						ItemStack stack = inventory.getStackInSlot(j);
-						if(amountLeft > 0 && stack != null && !stack.isEmpty() && stack.getItem() == remove.getItem() && stack.getItemDamage() == remove.getItemDamage())
+						ItemStack stack = inventory.getItem(j);
+						if(amountLeft > 0 && stack != null && !stack.isEmpty() && stack.getItem() == remove.getItem() && stack.getDamageValue() == remove.getDamageValue())
 						{
-							amountLeft -= inventory.decrStackSize(j, amountLeft).getCount();
+							amountLeft -= inventory.removeItem(j, amountLeft).getCount();
 						}
 					}
 				}
@@ -79,22 +80,22 @@ public class BlockGunBox extends Block
 				if(entry.type instanceof GunType)
 				{
 					GunType gunType = (GunType)entry.type;
-					NBTTagCompound tags = new NBTTagCompound();
-					tags.setString("Paint", gunType.defaultPaintjob.iconName);
+					CompoundTag tags = new CompoundTag();
+					tags.putString("Paint", gunType.defaultPaintjob.iconName);
 					//Add ammo tags
-					NBTTagList ammoTagsList = new NBTTagList();
+					ListTag ammoTagsList = new ListTag();
 					for(int j = 0; j < gunType.numAmmoItemsInGun; j++)
 					{
-						ammoTagsList.appendTag(new NBTTagCompound());
+						ammoTagsList.add(new CompoundTag());
 					}
-					tags.setTag("ammo", ammoTagsList);
+					tags.put("ammo", ammoTagsList);
 					
-					gunStack.setTagCompound(tags);
+					GunUtil.setTag(gunStack, tags);
 				}
-				if(!inventory.addItemStackToInventory(gunStack))
+				if(!inventory.add(gunStack))
 				{
 					// Drop gun on floor
-					inventory.player.dropItem(gunStack, false);
+					inventory.player.drop(gunStack, false);
 				}
 			}
 			else
@@ -106,20 +107,12 @@ public class BlockGunBox extends Block
 	}
 	
 	@Override
-	public boolean onBlockActivated(World world, BlockPos pos, IBlockState state, EntityPlayer player, EnumHand hand, EnumFacing side, float par7, float par8, float par9)
+	public InteractionResult useWithoutItem(BlockState state, Level world, BlockPos pos, Player player, BlockHitResult hit)
 	{
-		if(player.isSneaking())
-			return false;
-		if(!world.isRemote)
-			player.openGui(FlansMod.INSTANCE, 5, world, pos.getX(), pos.getY(), pos.getZ());
-		return true;
-	}
-	
-	@Override
-	public List<ItemStack> getDrops(IBlockAccess world, BlockPos pos, IBlockState state, int fortune)
-	{
-		ArrayList<ItemStack> ret = new ArrayList<>();
-		ret.add(new ItemStack(this, 1, 0));
-		return ret;
+		if(player.isCrouching())
+			return InteractionResult.PASS;
+		if(!world.isClientSide())
+			player.openMenu(new SimpleMenuProvider((id, inv, p) -> new ContainerGunBox(id, inv, type), Component.literal(type.name)));
+		return InteractionResult.SUCCESS;
 	}
 }

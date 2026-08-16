@@ -1,0 +1,30 @@
+{
+    "schemaVersion": 1,
+    "id": "flansmod",
+    "version": "${version}",
+    "name": "Flan's Mod",
+    "description": "Guns, planes and other vehicles in Minecraft.",
+    "authors": [
+        "jamioflan"
+    ],
+    "contact": {
+        "homepage": "https://www.flansmod.com"
+    },
+    "license": "CC BY-NC-SA 3.0",
+    "icon": "assets/flansmod/icon.png",
+    "environment": "*",
+    "entrypoints": {
+        "main": [
+            "com.flansmod.common.FlansMod"
+        ],
+        "client": [
+            "com.flansmod.client.FlansModClient"
+        ]
+    },
+    "depends": {
+        "fabricloader": ">=0.19.3",
+        "minecraft": "~26.1.2",
+        "java": ">=25",
+        "fabric-api": ">=0.152.1"
+    }
+}

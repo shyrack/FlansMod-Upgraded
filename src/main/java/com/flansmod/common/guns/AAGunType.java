@@ -3,12 +3,9 @@ package com.flansmod.common.guns;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.minecraft.client.model.ModelBase;
-import net.minecraft.item.ItemStack;
-import net.minecraftforge.event.LootTableLoadEvent;
-import net.minecraftforge.fml.common.FMLCommonHandler;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import com.flansmod.client.model.ModelBase;
+
+import net.minecraft.world.item.ItemStack;
 
 import com.flansmod.client.model.ModelAAGun;
 import com.flansmod.common.FlansMod;
@@ -63,7 +60,7 @@ public class AAGunType extends InfoType
 		super.read(split, file);
 		try
 		{
-			if(FMLCommonHandler.instance().getSide().isClient() && split[0].equals("Model"))
+			if(FlansMod.isClient() && split[0].equals("Model"))
 			{
 				model = FlansMod.proxy.loadModel(split[1], shortName, ModelAAGun.class);
 			}
@@ -169,12 +166,6 @@ public class AAGunType extends InfoType
 	}
 	
 	@Override
-	public void addLoot(LootTableLoadEvent event)
-	{
-		//Do not add AA guns to dungeon chests. That would be so op.
-	}
-	
-	@Override
 	protected void preRead(TypeFile file)
 	{
 	}
@@ -190,7 +181,6 @@ public class AAGunType extends InfoType
 	}
 	
 	@Override
-	@SideOnly(Side.CLIENT)
 	public ModelBase GetModel()
 	{
 		return model;

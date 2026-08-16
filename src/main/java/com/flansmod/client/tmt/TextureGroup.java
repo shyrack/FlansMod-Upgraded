@@ -2,10 +2,12 @@ package com.flansmod.client.tmt;
 
 import java.util.ArrayList;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.texture.TextureManager;
-import net.minecraft.util.ResourceLocation;
-
+/**
+ * Groups polygons that share a texture. In the modern render pipeline the
+ * whole model is drawn through a single vertex consumer, so texture switching
+ * per group is not performed; the group structure is kept for data
+ * compatibility with content pack models.
+ */
 public class TextureGroup
 {
 	public TextureGroup()
@@ -21,20 +23,10 @@ public class TextureGroup
 	
 	public void loadTexture()
 	{
-		loadTexture(-1);
 	}
 	
 	public void loadTexture(int defaultTexture)
 	{
-		if(!texture.equals(""))
-		{
-			TextureManager renderengine = Minecraft.getMinecraft().renderEngine;
-			renderengine.bindTexture(new ResourceLocation("", texture)); //TODO : Check. Not sure about this one
-		}
-		else if(defaultTexture > -1)
-		{
-			Minecraft.getMinecraft().renderEngine.bindTexture(new ResourceLocation("", ""));
-		}
 	}
 	
 	public ArrayList<TexturedPolygon> poly;

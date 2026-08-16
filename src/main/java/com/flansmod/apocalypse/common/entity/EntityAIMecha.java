@@ -1,13 +1,16 @@
 package com.flansmod.apocalypse.common.entity;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.EnumHand;
-import net.minecraft.util.math.RayTraceResult;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.level.Level;
+import net.minecraft.server.level.ServerLevel;
 
 import com.flansmod.common.driveables.DriveableData;
 import com.flansmod.common.driveables.EnumDriveablePart;
@@ -23,35 +26,30 @@ public class EntityAIMecha extends EntityMecha
 	
 	private boolean usingLeft = false;
 	
-	public EntityAIMecha(World world)
+	public EntityAIMecha(Level world)
 	{
 		super(world);
+		this.world = level();
 	}
 	
-	public EntityAIMecha(World world, double x, double y, double z, MechaType type, DriveableData data, NBTTagCompound tags)
+	public EntityAIMecha(Level world, double x, double y, double z, MechaType type, DriveableData data, CompoundTag tags)
 	{
 		super(world, x, y, z, type, data, tags);
-	}
-	
-	public void onUpdate()
-	{
-		throttle = 1F;
-
-		//float lookAheadDist = 20F;
-		
-		//float targetHeight = getBiomeHeight(world.getBiomeGenForCoords(new BlockPos((int)(posX + motionX * lookAheadDist), (int)(posY + motionY * lookAheadDist), (int)(posZ + motionZ * lookAheadDist))));
-		//float currentTargetHeight = getBiomeHeight(world.getBiomeGenForCoords(new BlockPos((int)(posX), (int)(posY), (int)(posZ))));
-
-		//flapsPitchLeft = flapsPitchRight += (Math.max(currentTargetHeight, targetHeight) - (float)posY) * 0.1F;
-		
-		
-		super.onUpdate();
+		this.world = level();
 	}
 	
 	@Override
-	public boolean processInitialInteract(EntityPlayer entityplayer, EnumHand hand)
+	public void tick()
 	{
-		return false;
+		throttle = 1F;
+		
+		super.tick();
+	}
+	
+	@Override
+	public InteractionResult interact(Player entityplayer, InteractionHand hand, Vec3 pos)
+	{
+		return InteractionResult.PASS;
 	}
 	
 	@Override
@@ -61,12 +59,12 @@ public class EntityAIMecha extends EntityMecha
 		DriveableData data = getDriveableData();
 		
 		//Acquire target
-		if(target == null && (this.ticksExisted + this.getEntityId()) % targetAcquireInterval == 0)
+		if(target == null && (this.tickCount + this.getId()) % targetAcquireInterval == 0)
 		{
 			double distToCurrentTarget = 999D;
-			for(Object obj : world.getEntitiesWithinAABBExcludingEntity(this, getEntityBoundingBox().expand(targetingRange, targetingRange, targetingRange)))
+			for(Object obj : world.getEntities(this, getBoundingBox().inflate(targetingRange, targetingRange, targetingRange), entity -> true))
 			{
-				double distToPotentialTarget = this.getDistanceSq((Entity)obj);
+				double distToPotentialTarget = this.distanceToSqr((Entity)obj);
 				if(isBetterTarget(target, distToCurrentTarget, (Entity)obj, distToPotentialTarget))
 				{
 					target = (Entity)obj;
@@ -76,10 +74,10 @@ public class EntityAIMecha extends EntityMecha
 		}
 
 		//And if we have line of sight, shoot it
-		if(!world.isRemote && target != null)
+		if(!world.isClientSide() && target != null)
 		{
-			Vec3d rightArmOrigin = usingLeft ? axes.findLocalVectorGlobally(getMechaType().leftArmOrigin).toVec3().add(posX, posY, posZ) : axes.findLocalVectorGlobally(getMechaType().rightArmOrigin).toVec3().add(posX, posY, posZ);
-			Vec3d targetOrigin = new Vec3d(target.posX, target.posY + target.getEyeHeight() / 2D, target.posZ);
+			Vec3 rightArmOrigin = usingLeft ? axes.findLocalVectorGlobally(getMechaType().leftArmOrigin).toVec3().add(getX(), getY(), getZ()) : axes.findLocalVectorGlobally(getMechaType().rightArmOrigin).toVec3().add(getX(), getY(), getZ());
+			Vec3 targetOrigin = new Vec3(target.getX(), target.getY() + target.getEyeHeight() / 2D, target.getZ());
 			
 			double dX = targetOrigin.x - rightArmOrigin.x;
 			double dY = targetOrigin.y - rightArmOrigin.y;
@@ -92,30 +90,26 @@ public class EntityAIMecha extends EntityMecha
 				getSeat(0).prevLooking.setAngles(0F, -(float)Math.atan2(dY, Math.sqrt(dX * dX + dZ * dZ)) * 180F / 3.14159F, 0F);
 			}
 			
-			RayTraceResult hit = world.rayTraceBlocks(rightArmOrigin, targetOrigin, false);
+			HitResult hit = world.clip(new ClipContext(rightArmOrigin, targetOrigin, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, this));
 			
-			if(world.isRemote)
 			{
-				//world.spawnEntity(new EntityDebugVector(world, new Vector3f(rightArmOrigin), new Vector3f(dX, dY, dZ), 2));
-			}
-			{
-				double blockHitX = hit == null ? 0 : hit.hitVec.x - rightArmOrigin.x;
-				double blockHitY = hit == null ? 0 : hit.hitVec.y - rightArmOrigin.y;
-				double blockHitZ = hit == null ? 0 : hit.hitVec.z - rightArmOrigin.z;
+				double blockHitX = hit == null ? 0 : hit.getLocation().x - rightArmOrigin.x;
+				double blockHitY = hit == null ? 0 : hit.getLocation().y - rightArmOrigin.y;
+				double blockHitZ = hit == null ? 0 : hit.getLocation().z - rightArmOrigin.z;
 				
 				//If the target is nearer than the block hit or there was no block
-				if(hit == null || hit.typeOfHit != RayTraceResult.Type.BLOCK || dX * dX + dY * dY + dZ * dZ < blockHitX * blockHitX + blockHitY * blockHitY + blockHitZ * blockHitZ)
+				if(hit == null || hit.getType() != HitResult.Type.BLOCK || dX * dX + dY * dY + dZ * dZ < blockHitX * blockHitX + blockHitY * blockHitY + blockHitZ * blockHitZ)
 				{
 					useItem(usingLeft);
-					if(rand.nextInt(5) == 0)
+					if(random.nextInt(5) == 0)
 						usingLeft = !usingLeft;
 				}
 				//Otherwise, move closer
 				else
 				{
 					//If we have a target, move towards it and look at it
-					moveX = (float)(target.posX - posX);
-					moveZ = (float)(target.posZ - posZ);
+					moveX = (float)(target.getX() - getX());
+					moveZ = (float)(target.getZ() - getZ());
 					
 					float mag = (float)Math.sqrt(moveX * moveX + moveZ * moveZ);
 					
@@ -166,7 +160,7 @@ public class EntityAIMecha extends EntityMecha
 	
 	private boolean isBetterTarget(Entity currentTarget, double distToCurrentTarget, Entity potentialTarget, double distToPotentialTarget)
 	{
-		if(potentialTarget instanceof EntityPlayer && distToPotentialTarget < distToCurrentTarget && distToPotentialTarget < targetingRange * targetingRange)
+		if(potentialTarget instanceof Player && distToPotentialTarget < distToCurrentTarget && distToPotentialTarget < targetingRange * targetingRange)
 			return true;
 		return false;
 	}
@@ -184,17 +178,17 @@ public class EntityAIMecha extends EntityMecha
 	}
 	
 	@Override
-	public boolean attackEntityFrom(DamageSource damagesource, float i)
+	public boolean hurtServer(ServerLevel level, DamageSource damagesource, float i)
 	{
-		if(world.isRemote || isDead)
+		if(world.isClientSide() || isRemoved())
 			return true;
 
 		MechaType type = getMechaType();
 
-		if(damagesource.damageType.equals("player") && damagesource.getTrueSource().onGround && (getSeat(0) == null || getSeat(0).getControllingPassenger() == null))
+		if(damagesource.getMsgId().equals("player") && damagesource.getEntity() != null && damagesource.getEntity().onGround() && (getSeat(0) == null || getSeat(0).getControllingPassenger() == null))
 		{
 			return false;
 		}
-		else return super.attackEntityFrom(damagesource, i);
+		else return super.hurtServer(level, damagesource, i);
 	}
 }

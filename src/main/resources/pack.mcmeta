@@ -1,6 +1,8 @@
 {
   "pack": {
-    "pack_format": 3,
-    "description": "Flan's Mod Defaults"
+    "pack_format": 74,
+    "description": "Flan's Mod Defaults",
+    "min_format": 74,
+    "max_format": 74
   }
 }

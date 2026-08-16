@@ -1,145 +1,48 @@
 package com.flansmod.apocalypse.common.world;
 
-import java.util.Random;
+import net.minecraft.core.Holder;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.level.biome.Biome;
 
-import net.minecraft.block.material.Material;
-import net.minecraft.block.state.IBlockState;
-import net.minecraft.init.Blocks;
-import net.minecraft.world.World;
-import net.minecraft.world.biome.Biome;
-import net.minecraft.world.chunk.ChunkPrimer;
-import net.minecraftforge.common.BiomeManager;
-import net.minecraftforge.common.BiomeManager.BiomeEntry;
-import net.minecraftforge.common.BiomeManager.BiomeType;
+import com.flansmod.apocalypse.common.FlansModApocalypse;
 
-public class BiomeApocalypse extends Biome
+public class BiomeApocalypse
 {
-	public static Biome deepCanyon, canyon, desert, plateau, highPlateau;
-	public static Biome sulphurPits;
+	public static final ResourceKey<Biome> DEEP_CANYON_KEY = key("deepCanyon_apocalypse");
+	public static final ResourceKey<Biome> CANYON_KEY = key("canyon_apocalypse");
+	public static final ResourceKey<Biome> DESERT_KEY = key("desert_apocalypse");
+	public static final ResourceKey<Biome> PLATEAU_KEY = key("plateau_apocalypse");
+	public static final ResourceKey<Biome> HIGH_PLATEAU_KEY = key("highPlateau_apocalypse");
+	public static final ResourceKey<Biome> SULPHUR_PITS_KEY = key("sulphurPits_apocalypse");
+
+	public static Holder<Biome> deepCanyon, canyon, desert, plateau, highPlateau;
+	public static Holder<Biome> sulphurPits;
+	// Uppercase aliases kept for the 1.12.2-era call sites
+	public static Holder<Biome> DEEP_CANYON, CANYON, DESERT, PLATEAU, HIGH_PLATEAU, SULPHUR_PITS;
 	
 	public static void registerBiomes()
 	{
-		deepCanyon = new BiomeDesertCanyon((new Biome.BiomeProperties("Deep Canyon")).setWaterColor(6316128).setBaseHeight(-1.8F).setHeightVariation(0F).setTemperature(2F).setRainfall(0F).setRainDisabled());
-		canyon = new BiomeDesertCanyon((new Biome.BiomeProperties("Canyon")).setWaterColor(6316128).setBaseHeight(-1F).setHeightVariation(0F).setTemperature(2F).setRainfall(0F).setRainDisabled());
-		desert = new BiomeDesertCanyon((new Biome.BiomeProperties("Desert")).setWaterColor(6316128).setBaseHeight(0F).setHeightVariation(0F).setTemperature(2F).setRainfall(0F).setRainDisabled());
-		plateau = new BiomeDesertCanyon((new Biome.BiomeProperties("Plateau")).setWaterColor(6316128).setBaseHeight(1F).setHeightVariation(0F).setTemperature(2F).setRainfall(0F).setRainDisabled());
-		highPlateau = new BiomeDesertCanyon((new Biome.BiomeProperties("High Plateau")).setWaterColor(6316128).setBaseHeight(2.5F).setHeightVariation(0F).setTemperature(2F).setRainfall(0F).setRainDisabled());
+		deepCanyon = Holder.direct(BiomeDesertCanyon.create(-1.8F));
+		canyon = Holder.direct(BiomeDesertCanyon.create(-1F));
+		desert = Holder.direct(BiomeDesertCanyon.create(0F));
+		plateau = Holder.direct(BiomeDesertCanyon.create(1F));
+		highPlateau = Holder.direct(BiomeDesertCanyon.create(2.5F));
 		
-		sulphurPits = new BiomeSulphurPits((new Biome.BiomeProperties("Sulphur Pits")).setWaterColor(6316128).setBaseHeight(-1.8F).setHeightVariation(0F).setTemperature(2F).setRainfall(0F).setRainDisabled());
+		sulphurPits = Holder.direct(BiomeSulphurPits.create());
 		
-		deepCanyon.setRegistryName("deepCanyon_apocalypse");
-		canyon.setRegistryName("canyon_apocalypse");
-		desert.setRegistryName("desert_apocalypse");
-		plateau.setRegistryName("plateau_apocalypse");
-		highPlateau.setRegistryName("highPlateau_apocalypse");
-		sulphurPits.setRegistryName("sulphurPits_apocalypse");
-		
-		
-		//addBiomes(deepCanyon, canyon, desert, plateau, highPlateau, sulphurPits);
+		DEEP_CANYON = deepCanyon;
+		CANYON = canyon;
+		DESERT = desert;
+		PLATEAU = plateau;
+		HIGH_PLATEAU = highPlateau;
+		SULPHUR_PITS = sulphurPits;
+		// TODO APOCALYPSE: 26.1.2 has no runtime biome registry registration; biomes are
+		// direct holders used only by the apocalypse biome source
 	}
 	
-	private static void addBiomes(Biome... biomes)
+	private static ResourceKey<Biome> key(String name)
 	{
-		for(Biome biome : biomes)
-		{
-			BiomeManager.addBiome(BiomeType.DESERT, new BiomeEntry(biome, 1));
-			BiomeManager.removeSpawnBiome(biome);
-		}
+		return ResourceKey.create(net.minecraft.core.registries.Registries.BIOME, Identifier.fromNamespaceAndPath(FlansModApocalypse.MODID, name));
 	}
-	
-	public BiomeApocalypse(Biome.BiomeProperties properties)
-	{
-		super(properties);
-		
-		this.spawnableCreatureList.clear();
-		topBlock = Blocks.SAND.getStateFromMeta(1);
-		fillerBlock = Blocks.SAND.getStateFromMeta(1);
-		this.decorator.treesPerChunk = -999;
-		this.decorator.deadBushPerChunk = 1;
-		this.decorator.reedsPerChunk = 0;
-		this.decorator.cactiPerChunk = 0;
-		
-		this.decorator = new BiomeDecoratorApocalypse();
-	}
-	
-	@Override
-	public void genTerrainBlocks(World worldIn, Random p_180622_2_, ChunkPrimer p_180622_3_, int p_180622_4_, int p_180622_5_, double p_180622_6_)
-	{
-		this.generateBiomeTerrainSandy(worldIn, p_180622_2_, p_180622_3_, p_180622_4_, p_180622_5_, p_180622_6_);
-	}
-	
-	public final void generateBiomeTerrainSandy(World world, Random rand, ChunkPrimer primer, int x, int z, double p_180628_6_)
-	{
-		boolean flag = true;
-		IBlockState iblockstate = this.topBlock;
-		IBlockState iblockstate1 = this.fillerBlock;
-		int k = -1;
-		int l = (int)(p_180628_6_ / 3.0D + 3.0D + rand.nextDouble() * 0.25D);
-		int i1 = x & 15;
-		int j1 = z & 15;
-		
-		for(int k1 = 255; k1 >= 0; --k1)
-		{
-			if(k1 <= rand.nextInt(5))
-			{
-				primer.setBlockState(j1, k1, i1, Blocks.BEDROCK.getDefaultState());
-			}
-			else
-			{
-				IBlockState iblockstate2 = primer.getBlockState(j1, k1, i1);
-				
-				if(iblockstate2.getMaterial() == Material.AIR)
-				{
-					k = -1;
-				}
-				else if(iblockstate2.getBlock() == Blocks.STONE)
-				{
-					if(k == -1)
-					{
-						if(l <= 0)
-						{
-							iblockstate = null;
-							iblockstate1 = Blocks.STONE.getDefaultState();
-						}
-						else if(k1 >= 59 && k1 <= 64)
-						{
-							iblockstate = this.topBlock;
-							iblockstate1 = this.fillerBlock;
-						}
-						
-						k = l;
-						
-						if(k1 >= 62)
-						{
-							primer.setBlockState(j1, k1, i1, iblockstate);
-						}
-						//else if (k1 < 56 - l)
-						//{
-						//    iblockstate = null;
-						//    iblockstate1 = Blocks.STONE.getDefaultState();
-						//    primer.setBlockState(j1, k1, i1, Blocks.GRAVEL.getDefaultState());
-						//}
-						else
-						{
-							primer.setBlockState(j1, k1, i1, iblockstate1);
-						}
-					}
-					else if(k > 0)
-					{
-						--k;
-						primer.setBlockState(j1, k1, i1, iblockstate1);
-
-                        /*
-                        if (k == 0 && iblockstate1.getBlock() == Blocks.SAND)
-                        {
-                            k = rand.nextInt(4) + Math.max(0, k1 - 63);
-                            iblockstate1 = iblockstate1.getValue(BlockSand.VARIANT) == BlockSand.EnumType.RED_SAND ? Blocks.red_sandstone.getDefaultState() : Blocks.SANDstone.getDefaultState();
-                        }
-                        */
-					}
-				}
-			}
-		}
-	}
-	
 }

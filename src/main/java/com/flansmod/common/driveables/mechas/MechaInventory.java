@@ -2,17 +2,17 @@ package com.flansmod.common.driveables.mechas;
 
 import java.util.HashMap;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.inventory.IInventory;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.text.ITextComponent;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.Container;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.nbt.CompoundTag;
 
 import com.flansmod.common.guns.ItemBullet;
 import com.flansmod.common.guns.ItemGun;
+import com.flansmod.common.util.ItemStackUtil;
 
-public class MechaInventory implements IInventory
+public class MechaInventory implements Container
 {
 	public EntityMecha mecha;
 	public HashMap<EnumMechaSlotType, ItemStack> stacks;
@@ -23,61 +23,60 @@ public class MechaInventory implements IInventory
 		stacks = new HashMap<>();
 		for(EnumMechaSlotType type : EnumMechaSlotType.values())
 		{
-			stacks.put(type, null);
+			stacks.put(type, ItemStack.EMPTY.copy());
 		}
 	}
 	
-	public MechaInventory(EntityMecha m, NBTTagCompound tags)
+	public MechaInventory(EntityMecha m, CompoundTag tags)
 	{
 		this(m);
 		readFromNBT(tags);
 	}
 	
-	public void readFromNBT(NBTTagCompound tags)
+	public void readFromNBT(CompoundTag tags)
 	{
 		if(tags == null)
 			return;
 		for(EnumMechaSlotType type : EnumMechaSlotType.values())
 		{
-			stacks.put(type, new ItemStack(tags.getCompoundTag(type.toString())));
+			stacks.put(type, ItemStackUtil.readItemStack(tags, type.toString()));
 		}
 	}
 	
-	public NBTTagCompound writeToNBT(NBTTagCompound tags)
+	public CompoundTag writeToNBT(CompoundTag tags)
 	{
 		if(tags == null)
 			return null;
 		for(EnumMechaSlotType type : EnumMechaSlotType.values())
 		{
-			if(stacks.get(type) != null)
-				tags.setTag(type.toString(), stacks.get(type).writeToNBT(new NBTTagCompound()));
+			ItemStackUtil.writeItemStack(tags, type.toString(), stacks.get(type));
 		}
 		return tags;
 	}
 	
 	@Override
-	public int getSizeInventory()
+	public int getContainerSize()
 	{
 		return EnumMechaSlotType.values().length;
 	}
 	
 	@Override
-	public ItemStack getStackInSlot(int i)
+	public ItemStack getItem(int i)
 	{
 		return stacks.get(EnumMechaSlotType.values()[i]);
 	}
 	
-	public ItemStack getStackInSlot(EnumMechaSlotType e)
+	public ItemStack getItem(EnumMechaSlotType e)
 	{
 		return stacks.get(e);
 	}
 	
 	@Override
-	public ItemStack decrStackSize(int i, int j)
+	public ItemStack removeItem(int i, int j)
 	{
-		markDirty();
-		ItemStack slot = getStackInSlot(i);
-		if(slot == null)
+		setChanged();
+		ItemStack slot = getItem(i);
+		if(slot == null || slot.isEmpty())
 			return ItemStack.EMPTY.copy();
 		
 		int numToTake = Math.min(j, slot.getCount());
@@ -87,42 +86,50 @@ public class MechaInventory implements IInventory
 		if(slot.getCount() <= 0)
 			slot = ItemStack.EMPTY.copy();
 		
-		setInventorySlotContents(i, slot);
+		setItem(i, slot);
 		
 		return returnStack;
 	}
 	
 	@Override
-	public void setInventorySlotContents(int i, ItemStack itemstack)
+	public ItemStack removeItemNoUpdate(int i)
 	{
-		setInventorySlotContents(EnumMechaSlotType.values()[i], itemstack);
+		ItemStack stack = getItem(i);
+		setItem(i, ItemStack.EMPTY.copy());
+		return stack;
 	}
 	
-	public void setInventorySlotContents(EnumMechaSlotType e, ItemStack itemstack)
+	@Override
+	public void setItem(int i, ItemStack itemstack)
 	{
-		markDirty();
+		setItem(EnumMechaSlotType.values()[i], itemstack);
+	}
+	
+	public void setItem(EnumMechaSlotType e, ItemStack itemstack)
+	{
+		setChanged();
 		stacks.put(e, itemstack);
 	}
 	
 	@Override
-	public int getInventoryStackLimit()
+	public int getMaxStackSize()
 	{
 		return 64;
 	}
 	
 	@Override
-	public void markDirty()
+	public void setChanged()
 	{
 		if(mecha != null)
 			mecha.couldNotFindFuel = false;
 	}
 	
 	@Override
-	public boolean isItemValidForSlot(int i, ItemStack itemstack)
+	public boolean canPlaceItem(int i, ItemStack itemstack)
 	{
-		Item item = itemstack.getItem();
-		if(item == null)
+		if(itemstack == null || itemstack.isEmpty())
 			return true;
+		Item item = itemstack.getItem();
 		switch(EnumMechaSlotType.values()[i])
 		{
 			case leftTool: case rightTool: return item instanceof ItemGun || item instanceof ItemMechaAddon;
@@ -132,74 +139,19 @@ public class MechaInventory implements IInventory
 	}
 	
 	@Override
-	public String getName()
-	{
-		return "Mecha";
-	}
-	
-	@Override
-	public boolean hasCustomName()
-	{
-		return true;
-	}
-	
-	@Override
-	public ITextComponent getDisplayName()
-	{
-		return null;
-	}
-	
-	@Override
-	public void openInventory(EntityPlayer player)
-	{
-		
-	}
-	
-	@Override
-	public void closeInventory(EntityPlayer player)
-	{
-		
-	}
-	
-	@Override
-	public int getField(int id)
-	{
-		return 0;
-	}
-	
-	@Override
-	public void setField(int id, int value)
-	{
-		
-	}
-	
-	@Override
-	public int getFieldCount()
-	{
-		return 0;
-	}
-	
-	@Override
-	public void clear()
-	{
-		
-	}
-	
-	@Override
 	public boolean isEmpty()
 	{
 		return false;
 	}
 	
 	@Override
-	public ItemStack removeStackFromSlot(int index)
+	public void clearContent()
 	{
-		return ItemStack.EMPTY.copy();
 	}
 	
 	@Override
-	public boolean isUsableByPlayer(EntityPlayer player)
+	public boolean stillValid(Player player)
 	{
-		return mecha != null && player.getDistanceSq(mecha) <= 10D * 10D;
+		return mecha != null && player.distanceToSqr(mecha) <= 10D * 10D;
 	}
 }

@@ -4,44 +4,32 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.util.Random;
 
-import org.lwjgl.input.Mouse;
-import org.lwjgl.opengl.GL11;
-
-import net.minecraft.client.gui.inventory.GuiContainer;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.RenderHelper;
+import com.mojang.blaze3d.platform.NativeImage;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.DynamicTexture;
-import net.minecraft.entity.player.InventoryPlayer;
-import net.minecraft.init.Items;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.EnumHand;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.world.World;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 
-import com.flansmod.client.ClientProxy;
-import com.flansmod.client.handlers.FlansModResourceHandler;
-import com.flansmod.client.model.CustomItemRenderType;
-import com.flansmod.client.model.ModelAttachment;
-import com.flansmod.client.model.ModelDriveable;
-import com.flansmod.client.model.RenderGun;
 import com.flansmod.common.FlansMod;
-import com.flansmod.common.RotatedAxes;
-import com.flansmod.common.driveables.DriveableType;
 import com.flansmod.common.guns.Paintjob;
 import com.flansmod.common.network.PacketGunPaint;
 import com.flansmod.common.paintjob.ContainerPaintjobTable;
 import com.flansmod.common.paintjob.IPaintableItem;
 import com.flansmod.common.paintjob.PaintableType;
 import com.flansmod.common.paintjob.TileEntityPaintjobTable;
-import com.flansmod.common.types.EnumType;
-import com.flansmod.common.vector.Vector3f;
 
-public class GuiPaintjobTable extends GuiContainer
+public class GuiPaintjobTable extends AbstractContainerScreen<ContainerPaintjobTable>
 {
-	private static final ResourceLocation texture = new ResourceLocation("flansmod", "gui/paintjobTable.png");
-	private static final Random rand = new Random();
+	private static final Identifier texture = Identifier.fromNamespaceAndPath("flansmod", "gui/paintjobtable.png");
+	private static final Identifier dynamicTextureLocation = Identifier.fromNamespaceAndPath("flansmod", "custompaintjob");
 	
 	private static final int paletteSizeX = 18;
 	private static final int paletteSizeY = 4;
@@ -50,14 +38,12 @@ public class GuiPaintjobTable extends GuiContainer
 	
 	private Paintjob hoveringOver = null;
 	private int mouseX, mouseY;
-	private InventoryPlayer inventory;
+	private Inventory inventory;
 	
 	private boolean inCustomMode;
 	private float customModeTransitionTimer = 0.0f;
 	private float transitionSpeed = 0.9f;
 	private int prevMainPageX;
-	private RotatedAxes modelAxes = new RotatedAxes();
-	private RotatedAxes prevModelAxes = new RotatedAxes();
 	
 	private static int[][] paletteColours = new int[paletteSizeX][paletteSizeY];
 	private static int[] baseColours = new int[]{0x000000, 0xffffff, 0xff0000, 0xff5500, 0xffaa00, 0xffff00, 0xaaff00, 0x55ff00, 0x00ff00, 0x00ff55, 0x00ffaa, 0x00ffff, 0x00aaff, 0x0055ff, 0x0000ff, 0x5500ff, 0xaa00ff, 0xff00ff};
@@ -66,13 +52,10 @@ public class GuiPaintjobTable extends GuiContainer
 	private static int flatTextureWindowX = 300, flatTextureWindowY = 100;
 	private static boolean movingFlatTextureWindow = false;
 	
-	
-	//private static final int BYTES_PER_PIXEL = 4;
-	//private static int textureID = -1;
-	//private static BufferedImage currentTexture;
-	
 	private static DynamicTexture dynamicTexture;
 	private static int dynamicTextureX, dynamicTextureY;
+	
+	private boolean painting = false;
 	
 	static
 	{
@@ -124,22 +107,16 @@ public class GuiPaintjobTable extends GuiContainer
 		}
 	}
 	
-	public GuiPaintjobTable(InventoryPlayer inv, World w, TileEntityPaintjobTable te)
+	public GuiPaintjobTable(Inventory inv, Level w, TileEntityPaintjobTable te)
 	{
-		super(new ContainerPaintjobTable(inv, w, te));
+		super(new ContainerPaintjobTable(inv, w, te), inv, Component.literal(""), 224, 264);
 		inventory = inv;
-		xSize = 224;
-		ySize = 264;
-		
-
 	}
 	
 	@Override
-	public void updateScreen()
+	public void containerTick()
 	{
-		super.updateScreen();
-		
-		prevModelAxes = modelAxes.clone();
+		super.containerTick();
 		
 		if(inCustomMode)
 		{
@@ -148,23 +125,10 @@ public class GuiPaintjobTable extends GuiContainer
 		else
 		{
 			customModeTransitionTimer *= transitionSpeed;
-			modelAxes.rotateLocalYaw(2.5f);
 		}
 		
 		int xPos = GetMainPageX();
 		int dPos = xPos - prevMainPageX;
-		
-		for(int i = 0; i < 4 * 9 + 2; i++)
-		{
-			inventorySlots.getSlot(i).xPos += dPos;
-		}
-
-		if(movingFlatTextureWindow)
-		{
-			flatTextureWindowX = Mouse.getEventX() * this.width / this.mc.displayWidth - guiLeft;
-			flatTextureWindowY = this.height - Mouse.getEventY() * this.height / this.mc.displayHeight - 1 - guiTop;
-		}
-
 		prevMainPageX = xPos;
 	}
 	
@@ -198,141 +162,48 @@ public class GuiPaintjobTable extends GuiContainer
 		return GetCustomPageY() + flatTextureWindowY;
 	}
 	
-	private Vector3f GetRenderOrigin()
-	{
-		
-		return new Vector3f(100.0f, 64.0f, 100.0f);
-	}
-	
 	@Override
-	protected void drawGuiContainerForegroundLayer(int x, int y)
+	protected void extractLabels(GuiGraphicsExtractor extractor, int mouseX, int mouseY)
 	{
-		// Render main screen
+		// EntityRenderer main screen
 		if(customModeTransitionTimer <= 0.999f)
 		{
-			//int xOrigin = ((width - xSize) / 2)  + GetMainPageX();
-			//int yOrigin = ((height - ySize) / 2) + GetMainPageY();
-
-			fontRenderer.drawString("Inventory", GetMainPageX() + 8, GetMainPageY() + (ySize - 94) + 2, 0x404040);
-			fontRenderer.drawString("Paintjob Table", GetMainPageX() + 8, GetMainPageY() + 6, 0x404040);
+			extractor.text(font, "Inventory", GetMainPageX() + 8, GetMainPageY() + (imageHeight - 94) + 2, 0x404040);
+			extractor.text(font, "Paintjob Table", GetMainPageX() + 8, GetMainPageY() + 6, 0x404040);
 		}
 
-		// Render custom screen
+		// EntityRenderer custom screen
 		if(customModeTransitionTimer >= 0.001f)
 		{
-			int xOrigin = ((width - xSize) / 2) + GetCustomPageX() - 32;
-			int yOrigin = ((height - ySize) / 2) + GetCustomPageY();
+			int xOrigin = ((width - imageWidth) / 2) + GetCustomPageX() - 32;
+			int yOrigin = ((height - imageHeight) / 2) + GetCustomPageY();
 
-			fontRenderer.drawString("Confirm", xOrigin - 7, yOrigin + 169, 0x000000);
-			fontRenderer.drawString("Cancel", xOrigin - 6, yOrigin + 186, 0x000000);
-			fontRenderer.drawString("Inventory", xOrigin - 12, yOrigin + 203, 0x000000);
-		}
-
-		Vector3f renderOrigin = GetRenderOrigin();
-
-		ItemStack paintableStack = inventorySlots.getSlot(0).getStack();
-		if(paintableStack != null && paintableStack.getItem() instanceof IPaintableItem)
-		{
-			ItemStack tempStack = paintableStack.copy();
-			if(hoveringOver != null)
-				tempStack.setItemDamage(hoveringOver.ID);
-			PaintableType paintableType = ((IPaintableItem)paintableStack.getItem()).GetPaintableType();
-			EnumType eType = EnumType.getFromObject(paintableType);
-			if(paintableType.GetModel() != null)
-			{
-				GlStateManager.pushMatrix();
-				GlStateManager.color(1F, 1F, 1F, 1F);
-				
-				//GlStateManager.loadIdentity();
-
-				// Setup lighting
-				GlStateManager.disableLighting();
-				GlStateManager.pushMatrix();
-				GlStateManager.rotate(180F, 1.0F, 0.0F, 0.0F);
-				RenderHelper.enableStandardItemLighting();
-				GlStateManager.popMatrix();
-				GlStateManager.enableRescaleNormal();
-
-				//GlStateManager.translate(10f, 10f, -10f);
-				//GlStateManager.scale(100f, 100f, 100f);
-				GlStateManager.translate(renderOrigin.x, renderOrigin.y, renderOrigin.z);
-
-				GlStateManager.rotate(180, 1F, 0F, 0F);
-				//GlStateManager.rotate(20, 0F, 1F, 0F);
-				float scale = paintableType.GetRecommendedScale();
-				GlStateManager.scale(-scale, scale, scale);
-				
-				float dYaw = (modelAxes.getYaw() - prevModelAxes.getYaw());
-				while(dYaw > 180.0f) dYaw -= 360.0f;
-				while(dYaw < -180.0f) dYaw += 360.0f;
-				//GlStateManager.rotate(prevModelAxes.getYaw() + dYaw * RenderGun.smoothing, 0.0F, 1.0F, 0.0F);
-
-				Paintjob paintjob = paintableType.paintjobs.get(tempStack.getItemDamage());
-
-				if(inCustomMode)
-				{
-					bindWorkingTexture();
-				}
-
-				switch(eType)
-				{
-					case gun:
-					{
-						if(inCustomMode)
-							RenderGun.bindTextures = false;
-
-						ClientProxy.gunRenderer.renderItem(CustomItemRenderType.ENTITY, EnumHand.MAIN_HAND, tempStack);
-						RenderGun.bindTextures = true;
-						break;
-					}
-					case attachment:
-					{
-						if(!inCustomMode)
-							mc.renderEngine.bindTexture(FlansModResourceHandler.getPaintjobTexture(paintjob));
-						((ModelAttachment)paintableType.GetModel()).renderAttachment(0.0625f);
-						break;
-					}
-					case plane:
-					case vehicle:
-					case mecha:
-					{
-						if(!inCustomMode)
-							mc.renderEngine.bindTexture(FlansModResourceHandler.getPaintjobTexture(paintjob));
-						((ModelDriveable)paintableType.GetModel()).render((DriveableType)paintableType);
-						break;
-					}
-
-					default: break;
-				}
-				
-				GlStateManager.popMatrix();
-			}
+			extractor.text(font, "Confirm", xOrigin - 7, yOrigin + 169, 0x000000);
+			extractor.text(font, "Cancel", xOrigin - 6, yOrigin + 186, 0x000000);
+			extractor.text(font, "Inventory", xOrigin - 12, yOrigin + 203, 0x000000);
 		}
 	}
 	
 	@Override
-	protected void drawGuiContainerBackgroundLayer(float f, int i, int j)
+	public void extractBackground(GuiGraphicsExtractor extractor, int mouseX, int mouseY, float partialTick)
 	{
-		GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
-		GlStateManager.disableDepth();
-		
-		mc.renderEngine.bindTexture(texture);
+		super.extractBackground(extractor, mouseX, mouseY, partialTick);
 
 		int textureX = 512;
 		int textureY = 256;
 
-		// Render main screen
+		// EntityRenderer main screen
 		if(customModeTransitionTimer <= 0.999f)
 		{
-			int xOrigin = ((width - xSize) / 2) + GetMainPageX();
-			int yOrigin = ((height - ySize) / 2) + GetMainPageY();
+			int xOrigin = ((width - imageWidth) / 2) + GetMainPageX();
+			int yOrigin = ((height - imageHeight) / 2) + GetMainPageY();
 
 			// Gun render box
-			drawModalRectWithCustomSizedTexture(xOrigin, yOrigin, 0, 0, xSize, 114, textureX, textureY);
+			extractor.blit(RenderPipelines.GUI_TEXTURED, texture, xOrigin, yOrigin, 0F, 0F, imageWidth, 114, textureX, textureY);
 			// Inventory box
-			drawModalRectWithCustomSizedTexture(xOrigin, yOrigin + 122, 0, 114, xSize, 142, textureX, textureY);
+			extractor.blit(RenderPipelines.GUI_TEXTURED, texture, xOrigin, yOrigin + 122, 0F, 114F, imageWidth, 142, textureX, textureY);
 
-			ItemStack gunStack = inventorySlots.getSlot(0).getStack();
+			ItemStack gunStack = menu.getSlot(0).getItem();
 			if(gunStack != null && gunStack.getItem() instanceof IPaintableItem)
 			{
 				PaintableType gunType = ((IPaintableItem)gunStack.getItem()).GetPaintableType();
@@ -350,8 +221,8 @@ public class GuiPaintjobTable extends GuiContainer
 
 						Paintjob paintjob = gunType.paintjobs.get(9 * y + x);
 						ItemStack stack = gunStack.copy();
-						stack.setItemDamage(paintjob.ID);
-						itemRender.renderItemIntoGUI(stack, xOrigin + 8 + x * 18, yOrigin + 130 + y * 18);
+						stack.setDamageValue(paintjob.ID);
+						extractor.item(stack, xOrigin + 8 + x * 18, yOrigin + 130 + y * 18);
 					}
 				}
 			}
@@ -361,17 +232,17 @@ public class GuiPaintjobTable extends GuiContainer
 			{
 				int numDyes = hoveringOver.dyesNeeded.length;
 				//Only draw box if there are dyes needed
-				if(numDyes != 0 && !inventory.player.capabilities.isCreativeMode)
+				if(numDyes != 0 && !inventory.player.getAbilities().instabuild)
 				{
 					//Calculate which dyes we have in our inventory
 					boolean[] haveDyes = new boolean[numDyes];
 					for(int n = 0; n < numDyes; n++)
 					{
 						int amountNeeded = hoveringOver.dyesNeeded[n].getCount();
-						for(int s = 0; s < inventory.getSizeInventory(); s++)
+						for(int s = 0; s < inventory.getContainerSize(); s++)
 						{
-							ItemStack stack = inventory.getStackInSlot(s);
-							if(stack != null && stack.getItem() == Items.DYE && stack.getItemDamage() == hoveringOver.dyesNeeded[n].getItemDamage())
+							ItemStack stack = inventory.getItem(s);
+							if(stack != null && stack.getItem() == hoveringOver.dyesNeeded[n].getItem() && stack.getDamageValue() == hoveringOver.dyesNeeded[n].getDamageValue())
 							{
 								amountNeeded -= stack.getCount();
 							}
@@ -380,35 +251,31 @@ public class GuiPaintjobTable extends GuiContainer
 							haveDyes[n] = true;
 					}
 
-					GlStateManager.color(1F, 1F, 1F, 1F);
-					GlStateManager.disableLighting();
-					mc.renderEngine.bindTexture(texture);
-
-					int originX = mouseX + 6;
-					int originY = mouseY - 20;
+					int originX = this.mouseX + 6;
+					int originY = this.mouseY - 20;
 
 					//If we have only one, use the double ended slot
 					if(numDyes == 1)
 					{
-						drawModalRectWithCustomSizedTexture(originX, originY, (haveDyes[0] ? 379 : 356), 0, 22, 22, textureX, textureY);
+						extractor.blit(RenderPipelines.GUI_TEXTURED, texture, originX, originY, (haveDyes[0] ? 379 : 356), 0, 22, 22, textureX, textureY);
 					}
 					else
 					{
 						//First slot
-						drawModalRectWithCustomSizedTexture(originX, originY, 256, (haveDyes[0] ? 23 : 0), 20, 22, textureX, textureY);
+						extractor.blit(RenderPipelines.GUI_TEXTURED, texture, originX, originY, 256, (haveDyes[0] ? 23 : 0), 20, 22, textureX, textureY);
 						//Middle slots
 						for(int s = 1; s < numDyes - 1; s++)
 						{
-							drawModalRectWithCustomSizedTexture(originX + 2 + 18 * s, originY, 277, (haveDyes[s] ? 23 : 0), 18, 22, textureX, textureY);
+							extractor.blit(RenderPipelines.GUI_TEXTURED, texture, originX + 2 + 18 * s, originY, 277, (haveDyes[s] ? 23 : 0), 18, 22, textureX, textureY);
 						}
 						//Last slot
-						drawModalRectWithCustomSizedTexture(originX + 2 + 18 * (numDyes - 1), originY, 296, (haveDyes[numDyes - 1] ? 23 : 0), 20, 22, textureX, textureY);
+						extractor.blit(RenderPipelines.GUI_TEXTURED, texture, originX + 2 + 18 * (numDyes - 1), originY, 296, (haveDyes[numDyes - 1] ? 23 : 0), 20, 22, textureX, textureY);
 					}
 
 					for(int s = 0; s < numDyes; s++)
 					{
-						itemRender.renderItemIntoGUI(hoveringOver.dyesNeeded[s], originX + 3 + s * 18, originY + 3);
-						itemRender.renderItemOverlayIntoGUI(this.fontRenderer, hoveringOver.dyesNeeded[s], originX + 3 + s * 18, originY + 3, null);
+						extractor.item(hoveringOver.dyesNeeded[s], originX + 3 + s * 18, originY + 3);
+						extractor.itemDecorations(font, hoveringOver.dyesNeeded[s], originX + 3 + s * 18, originY + 3);
 					}
 				}
 			}
@@ -416,111 +283,75 @@ public class GuiPaintjobTable extends GuiContainer
 		}
 
 
-		// Render custom paintjob screen
+		// EntityRenderer custom paintjob screen
 		if(customModeTransitionTimer >= 0.001f)
 		{
-			mc.renderEngine.bindTexture(texture);
-
-			int xOrigin = ((width - xSize) / 2) + GetCustomPageX() - 32;
-			int yOrigin = ((height - ySize) / 2) + GetCustomPageY();
+			int xOrigin = ((width - imageWidth) / 2) + GetCustomPageX() - 32;
+			int yOrigin = ((height - imageHeight) / 2) + GetCustomPageY();
 
 			// Palette
-			drawModalRectWithCustomSizedTexture(xOrigin, yOrigin + 200, 224, 206, 288, 50, textureX, textureY);
-
-			GlStateManager.disableTexture2D();
+			extractor.blit(RenderPipelines.GUI_TEXTURED, texture, xOrigin, yOrigin + 200, 224, 206, 288, 50, textureX, textureY);
 
 			for(int x = 0; x < paletteSizeX; x++)
 			{
 				for(int y = 0; y < paletteSizeY; y++)
 				{
 					int colour = paletteColours[x][y];
-					float scale = 1.0f / 256.0f;
-					GlStateManager.color(scale * ((colour >> 16) & 0xff), scale * ((colour >> 8) & 0xff), scale * ((colour >> 0) & 0xff));
-
-					drawModalRectWithCustomSizedTexture(xOrigin + 8 + 9 * x, yOrigin + 200 + 8 + 9 * y, 0, 0, 7, 7, textureX, textureY);
+					extractor.fill(xOrigin + 8 + 9 * x, yOrigin + 200 + 8 + 9 * y, xOrigin + 15 + 9 * x, yOrigin + 207 + 9 * y, 0xff000000 | colour);
 				}
 			}
 
-			float scale = 1.0f / 256.0f;
-			float red = scale * ((currentColour >> 16) & 0xff);
-			float green = scale * ((currentColour >> 8) & 0xff);
-			float blue = scale * ((currentColour >> 0) & 0xff);
-
-			GlStateManager.color(red, green, blue);
-			drawModalRectWithCustomSizedTexture(xOrigin + 172, yOrigin + 208, 0, 0, 34, 34, textureX, textureY);
+			extractor.fill(xOrigin + 172, yOrigin + 208, xOrigin + 206, yOrigin + 242, 0xff000000 | currentColour);
 
 
 			// Slider bars
+			int red = (currentColour >> 16) & 0xff;
+			int green = (currentColour >> 8) & 0xff;
+			int blue = (currentColour >> 0) & 0xff;
+
 			for(int n = 0; n < componentBarLength; n++)
 			{
-				GlStateManager.color((float)n / componentBarLength, green, blue);
-				drawModalRectWithCustomSizedTexture(xOrigin + 212 + n, yOrigin + 208, 0, 0, 1, 10, textureX, textureY);
+				int barRed = (int)(0xff * n / componentBarLength);
+				extractor.fill(xOrigin + 212 + n, yOrigin + 208, xOrigin + 213 + n, yOrigin + 218, 0xff000000 | (barRed << 16) | (green << 8) | blue);
 			}
 			for(int n = 0; n < componentBarLength; n++)
 			{
-				GlStateManager.color(red, (float)n / componentBarLength, blue);
-				drawModalRectWithCustomSizedTexture(xOrigin + 212 + n, yOrigin + 220, 0, 0, 1, 10, textureX, textureY);
+				int barGreen = (int)(0xff * n / componentBarLength);
+				extractor.fill(xOrigin + 212 + n, yOrigin + 220, xOrigin + 213 + n, yOrigin + 230, 0xff000000 | (red << 16) | (barGreen << 8) | blue);
 			}
 			for(int n = 0; n < componentBarLength; n++)
 			{
-				GlStateManager.color(red, green, (float)n / componentBarLength);
-				drawModalRectWithCustomSizedTexture(xOrigin + 212 + n, yOrigin + 232, 0, 0, 1, 10, textureX, textureY);
+				int barBlue = (int)(0xff * n / componentBarLength);
+				extractor.fill(xOrigin + 212 + n, yOrigin + 232, xOrigin + 213 + n, yOrigin + 242, 0xff000000 | (red << 16) | (green << 8) | barBlue);
 			}
 
-			GlStateManager.enableTexture2D();
-
-			GlStateManager.color(1.0f, 1.0f, 1.0f);
 			// Sliders
-			drawModalRectWithCustomSizedTexture(xOrigin + 212 + (int)(red * componentBarLength), yOrigin + 207, 317, 21, 3, 12, textureX, textureY);
-			drawModalRectWithCustomSizedTexture(xOrigin + 212 + (int)(green * componentBarLength), yOrigin + 219, 317, 21, 3, 12, textureX, textureY);
-			drawModalRectWithCustomSizedTexture(xOrigin + 212 + (int)(blue * componentBarLength), yOrigin + 231, 317, 21, 3, 12, textureX, textureY);
+			extractor.blit(RenderPipelines.GUI_TEXTURED, texture, xOrigin + 212 + (int)(red * componentBarLength / 0xff), yOrigin + 207, 317, 21, 3, 12, textureX, textureY);
+			extractor.blit(RenderPipelines.GUI_TEXTURED, texture, xOrigin + 212 + (int)(green * componentBarLength / 0xff), yOrigin + 219, 317, 21, 3, 12, textureX, textureY);
+			extractor.blit(RenderPipelines.GUI_TEXTURED, texture, xOrigin + 212 + (int)(blue * componentBarLength / 0xff), yOrigin + 231, 317, 21, 3, 12, textureX, textureY);
 
 			for(int n = 0; n < 3; n++)
 			{
-				drawModalRectWithCustomSizedTexture(xOrigin + 290, yOrigin + 200 + 17 * n, 401, 0, 78, 16, textureX, textureY);
+				extractor.blit(RenderPipelines.GUI_TEXTURED, texture, xOrigin + 290, yOrigin + 200 + 17 * n, 401, 0, 78, 16, textureX, textureY);
 			}
 
 
 			int xFlatOrigin = GetFlatTextureWindowX();
 			int yFlatOrigin = GetFlatTextureWindowY();
 
-			if(dynamicTextureX == dynamicTextureY || true)// Default to this case. Just lose some texture
+			extractor.blit(RenderPipelines.GUI_TEXTURED, texture, xFlatOrigin, yFlatOrigin, 242, 54, 64 + 7, 152, textureX, textureY);
+			extractor.blit(RenderPipelines.GUI_TEXTURED, texture, xFlatOrigin + 64 + 7, yFlatOrigin, 242 + 270 - 64 - 7, 54, 64 + 7, 152, textureX, textureY);
+
+			if(dynamicTexture != null)
 			{
-				drawModalRectWithCustomSizedTexture(xFlatOrigin, yFlatOrigin, 242, 54, 64 + 7, 152, textureX, textureY);
-				drawModalRectWithCustomSizedTexture(xFlatOrigin + 64 + 7, yFlatOrigin, 242 + 270 - 64 - 7, 54, 64 + 7, 152, textureX, textureY);
-
-				bindWorkingTexture();
-
-				drawModalRectWithCustomSizedTexture(xFlatOrigin + 7, yFlatOrigin + 17, 0, 0, 128, 128, dynamicTextureX, dynamicTextureY);
+				extractor.blit(RenderPipelines.GUI_TEXTURED, dynamicTextureLocation, xFlatOrigin + 7, yFlatOrigin + 17, 0F, 0F, 128, 128, dynamicTextureX, dynamicTextureY);
 			}
-			//else if(dynamicTextureX == 2 * dynamicTextureY)
-			//{
-			//	drawModalRectWithCustomSizedTexture(xFlatOrigin, yFlatOrigin, 242, 54, 270, 152, textureX, textureY);
-			//
-			//	bindWorkingTexture();
-			//
-			//	drawModalRectWithCustomSizedTexture(xFlatOrigin + 7, yFlatOrigin + 17, 0, 0, 256, 128, dynamicTextureX, dynamicTextureY);
-			//}
 		}
-
-		GlStateManager.enableDepth();
-	}
-	
-	@Override
-	public void drawScreen(int mouseX, int mouseY, float partialTicks)
-	{
-		super.drawScreen(mouseX, mouseY, partialTicks);
-		renderHoveredToolTip(mouseX, mouseY);
 	}
 	
 	public static void copyImageToTexture()
 	{
-		dynamicTexture.updateDynamicTexture();
-	}
-
-	public void bindWorkingTexture()
-	{
-		mc.getTextureManager().bindTexture(mc.getTextureManager().getDynamicTextureLocation("customPaintjob", dynamicTexture));
+		dynamicTexture.upload();
 	}
 	
 	private void SetCustomMode(boolean active)
@@ -541,24 +372,33 @@ public class GuiPaintjobTable extends GuiContainer
 	
 	private void copyTextureFromGunToCustomTexture()
 	{
-		ItemStack gunStack = inventorySlots.getSlot(0).getStack();
+		ItemStack gunStack = menu.getSlot(0).getItem();
 		if(gunStack != null && gunStack.getItem() instanceof IPaintableItem)
 		{
 			PaintableType paintableType = ((IPaintableItem)gunStack.getItem()).GetPaintableType();
 
-			Paintjob paintjob = paintableType.getPaintjob(gunStack.getItemDamage());
+			Paintjob paintjob = paintableType.getPaintjob(gunStack.getDamageValue());
 
 			try
 			{
 				String imageLocation = "Flan/" + paintableType.contentPack + "/assets/flansmod/skins/" + paintjob.textureName + ".png";
 				BufferedImage bufferedImage = ImageIO.read(new File(imageLocation));
-				dynamicTexture = new DynamicTexture(bufferedImage);
+				NativeImage nativeImage = new NativeImage(bufferedImage.getWidth(), bufferedImage.getHeight(), false);
+				for(int x = 0; x < bufferedImage.getWidth(); x++)
+				{
+					for(int y = 0; y < bufferedImage.getHeight(); y++)
+					{
+						nativeImage.setPixel(x, y, bufferedImage.getRGB(x, y));
+					}
+				}
+				dynamicTexture = new DynamicTexture(() -> "customPaintjob", nativeImage);
 				dynamicTextureX = bufferedImage.getWidth();
 				dynamicTextureY = bufferedImage.getHeight();
+				Minecraft.getInstance().getTextureManager().register(dynamicTextureLocation, dynamicTexture);
 			}
 			catch(IOException e)
 			{
-				FlansMod.log.throwing(e);
+				FlansMod.log.error("Failed to load paintjob texture", e);
 			}
 
 			copyImageToTexture();
@@ -566,27 +406,25 @@ public class GuiPaintjobTable extends GuiContainer
 	}
 	
 	@Override
-	public void handleInput() throws IOException
+	public void mouseMoved(double mouseX, double mouseY)
 	{
-		super.handleInput();
-		
+		this.mouseX = (int)mouseX;
+		this.mouseY = (int)mouseY;
+
+		int mouseXInGUI = (int)mouseX - leftPos;
+		int mouseYInGUI = (int)mouseY - topPos;
+
 		if(inCustomMode)
 		{
-			mouseX = Mouse.getEventX() * this.width / this.mc.displayWidth;
-			mouseY = this.height - Mouse.getEventY() * this.height / this.mc.displayHeight - 1;
-
-			int mouseXInGUI = mouseX - guiLeft;
-			int mouseYInGUI = mouseY - guiTop;
-			
-			int flatTexOriginX = GetFlatTextureWindowX();
-			int flatTexOriginY = GetFlatTextureWindowY();
-
-			if(Mouse.isButtonDown(0))
+			if(painting)
 			{
+				int flatTexOriginX = GetFlatTextureWindowX();
+				int flatTexOriginY = GetFlatTextureWindowY();
+
 				int pixelX = mouseXInGUI + 64 - (flatTexOriginX + 7) - 4;
 				int pixelY = mouseYInGUI - (flatTexOriginY + 17) + 5;
 
-				if(pixelX >= 0 && pixelX < 128 && pixelY >= 0 && pixelY < 128)
+				if(pixelX >= 0 && pixelX < 128 && pixelY >= 0 && pixelY < 128 && dynamicTexture != null)
 				{
 					for(int i = -2; i < 2; i++)
 					{
@@ -599,59 +437,90 @@ public class GuiPaintjobTable extends GuiContainer
 							int px = Math.min(Math.max(0, pixelX + i), dynamicTextureX - 1);
 							int py = Math.min(Math.max(0, pixelY + j), dynamicTextureY - 1);
 
-							dynamicTexture.getTextureData()[px + py * dynamicTextureX] = 0xff000000 + currentColour;
+							dynamicTexture.getPixels().setPixel(px, py, 0xff000000 + currentColour);
 							copyImageToTexture();
 						}
 					}
 				}
 			}
-			
-			if(mouseXInGUI >= flatTexOriginX - 64 + 7 && mouseXInGUI <= flatTexOriginX + 64 + 14 && mouseYInGUI >= flatTexOriginY - 4 && mouseYInGUI <= flatTexOriginY + 6)
+
+			if(movingFlatTextureWindow)
 			{
-				movingFlatTextureWindow = Mouse.isButtonDown(0);
+				int flatTexOriginX = GetFlatTextureWindowX();
+				int flatTexOriginY = GetFlatTextureWindowY();
+				if(mouseXInGUI >= flatTexOriginX - 64 + 7 && mouseXInGUI <= flatTexOriginX + 64 + 14 && mouseYInGUI >= flatTexOriginY - 4 && mouseYInGUI <= flatTexOriginY + 6)
+				{
+					flatTextureWindowX = (int)mouseX - leftPos;
+					flatTextureWindowY = (int)mouseY - topPos;
+				}
+			}
+		}
+		else
+		{
+			hoveringOver = null;
+
+			ItemStack gunStack = menu.getSlot(0).getItem();
+			if(gunStack != null && gunStack.getItem() instanceof IPaintableItem)
+			{
+				PaintableType paintableType = ((IPaintableItem)gunStack.getItem()).GetPaintableType();
+				int numPaintjobs = paintableType.paintjobs.size();
+				int numRows = numPaintjobs / 9 + 1;
+
+				for(int j = 0; j < numRows; j++)
+				{
+					for(int i = 0; i < 9; i++)
+					{
+						if(9 * j + i >= numPaintjobs)
+							continue;
+
+						Paintjob paintjob = paintableType.paintjobs.get(9 * j + i);
+						int slotX = leftPos + GetMainPageX() + 7 + i * 18;
+						int slotY = topPos + GetMainPageY() + 129 + j * 18;
+						if(mouseX >= slotX && mouseX < slotX + 18 && mouseY >= slotY && mouseY < slotY + 18)
+							hoveringOver = paintjob;
+					}
+				}
 			}
 		}
 	}
 	
 	@Override
-	public void handleMouseInput() throws IOException
+	public boolean mouseClicked(MouseButtonEvent event, boolean bl)
 	{
-		super.handleMouseInput();
-		
-		if(Mouse.getEventButton() == 2 && Mouse.getEventButtonState())
+		super.mouseClicked(event, bl);
+		int x = (int)event.x();
+		int y = (int)event.y();
+		int button = event.button();
+
+		if(button == 2)
 		{
 			SetCustomMode(!inCustomMode);
 		}
 		
-		mouseX = Mouse.getEventX() * this.width / this.mc.displayWidth;
-		mouseY = this.height - Mouse.getEventY() * this.height / this.mc.displayHeight - 1;
-
-		int mouseXInGUI = mouseX - guiLeft;
-		int mouseYInGUI = mouseY - guiTop;
-		
-		hoveringOver = null;
+		int mouseXInGUI = x - leftPos;
+		int mouseYInGUI = y - topPos;
 		
 		if(inCustomMode)
 		{
 			int xOrigin = GetCustomPageX() - 32;
 			int yOrigin = GetCustomPageY();
 
-			for(int x = 0; x < paletteSizeX; x++)
+			for(int px = 0; px < paletteSizeX; px++)
 			{
-				for(int y = 0; y < paletteSizeY; y++)
+				for(int py = 0; py < paletteSizeY; py++)
 				{
-					if(mouseXInGUI >= xOrigin + 8 + 9 * x && mouseXInGUI < xOrigin + 15 + 9 * x && mouseYInGUI >= yOrigin + 208 + 9 * y && mouseYInGUI < yOrigin + 215 + 9 * y)
+					if(mouseXInGUI >= xOrigin + 8 + 9 * px && mouseXInGUI < xOrigin + 15 + 9 * px && mouseYInGUI >= yOrigin + 208 + 9 * py && mouseYInGUI < yOrigin + 215 + 9 * py)
 					{
-						switch(Mouse.getEventButton())
+						switch(button)
 						{
 							case 0: // Left click. Pick colour
 							{
-								currentColour = paletteColours[x][y];
+								currentColour = paletteColours[px][py];
 								break;
 							}
 							case 1: // Right click. Set colour from custom
 							{
-								paletteColours[x][y] = currentColour;
+								paletteColours[px][py] = currentColour;
 								break;
 							}
 						}
@@ -659,7 +528,7 @@ public class GuiPaintjobTable extends GuiContainer
 				}
 			}
 
-			if(Mouse.getEventButton() == 0 && Mouse.getEventButtonState())
+			if(button == 0)
 			{
 				if(mouseXInGUI >= xOrigin + 212 && mouseXInGUI < xOrigin + 212 + componentBarLength && mouseYInGUI >= yOrigin + 208 && mouseYInGUI < yOrigin + 218)
 				{
@@ -680,51 +549,51 @@ public class GuiPaintjobTable extends GuiContainer
 					currentColour |= (blue << 0);
 				}
 			}
+
+			int flatTexOriginX = GetFlatTextureWindowX();
+			int flatTexOriginY = GetFlatTextureWindowY();
+
+			if(button == 0)
+			{
+				int pixelX = mouseXInGUI + 64 - (flatTexOriginX + 7) - 4;
+				int pixelY = mouseYInGUI - (flatTexOriginY + 17) + 5;
+
+				if(pixelX >= 0 && pixelX < 128 && pixelY >= 0 && pixelY < 128)
+				{
+					painting = true;
+				}
+			}
+			
+			if(mouseXInGUI >= flatTexOriginX - 64 + 7 && mouseXInGUI <= flatTexOriginX + 64 + 14 && mouseYInGUI >= flatTexOriginY - 4 && mouseYInGUI <= flatTexOriginY + 6)
+			{
+				if(button == 0)
+					movingFlatTextureWindow = true;
+			}
 		}
 		else
 		{
-			ItemStack gunStack = inventorySlots.getSlot(0).getStack();
-			if(gunStack != null && gunStack.getItem() instanceof IPaintableItem)
-			{
-				PaintableType paintableType = ((IPaintableItem)gunStack.getItem()).GetPaintableType();
-				int numPaintjobs = paintableType.paintjobs.size();
-				int numRows = numPaintjobs / 9 + 1;
-
-				for(int j = 0; j < numRows; j++)
-				{
-					for(int i = 0; i < 9; i++)
-					{
-						if(9 * j + i >= numPaintjobs)
-							continue;
-
-						Paintjob paintjob = paintableType.paintjobs.get(9 * j + i);
-						ItemStack stack = gunStack.copy();
-						stack.getTagCompound().setString("Paint", paintjob.iconName);
-						int slotX = 7 + i * 18;
-						int slotY = 129 + j * 18;
-						if(mouseXInGUI >= slotX && mouseXInGUI < slotX + 18 && mouseYInGUI >= slotY && mouseYInGUI < slotY + 18)
-							hoveringOver = paintjob;
-					}
-				}
-			}
+			if(button != 0)
+				return true;
+			if(hoveringOver == null)
+				return true;
+			
+			FlansMod.getPacketHandler().sendToServer(new PacketGunPaint(hoveringOver.ID));
+			menu.clickPaintjob(hoveringOver.ID);
 		}
+		return true;
 	}
 	
 	@Override
-	protected void mouseClicked(int x, int y, int button) throws IOException
+	public boolean mouseReleased(MouseButtonEvent event)
 	{
-		super.mouseClicked(x, y, button);
-		if(button != 0)
-			return;
-		if(hoveringOver == null)
-			return;
-		
-		FlansMod.getPacketHandler().sendToServer(new PacketGunPaint(hoveringOver.ID));
-		((ContainerPaintjobTable)inventorySlots).clickPaintjob(hoveringOver.ID);
+		super.mouseReleased(event);
+		painting = false;
+		movingFlatTextureWindow = false;
+		return true;
 	}
 	
 	@Override
-	public boolean doesGuiPauseGame()
+	public boolean isPauseScreen()
 	{
 		return false;
 	}

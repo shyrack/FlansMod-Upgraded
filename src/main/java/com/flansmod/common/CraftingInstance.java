@@ -4,14 +4,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.inventory.IInventory;
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.Container;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.item.ItemStack;
 
 public class CraftingInstance
 {
 	//Input fields
-	public IInventory inventory;
+	public Container inventory;
 	public List<ItemStack> requiredStacks;
 	public List<ItemStack> outputStacks;
 	
@@ -19,16 +20,16 @@ public class CraftingInstance
 	public boolean craftingSuccessful;
 	
 	/**
-	 * The second IInventory is an empty one to copy into
+	 * The second AbstractContainerMenu is an empty one to copy into
 	 */
-	public CraftingInstance(IInventory i, List<ItemStack> in, List<ItemStack> out)
+	public CraftingInstance(Container i, List<ItemStack> in, List<ItemStack> out)
 	{
 		inventory = i;
 		requiredStacks = in;
 		outputStacks = out;
 	}
 	
-	public CraftingInstance(IInventory i, ArrayList<ItemStack> in, ItemStack out)
+	public CraftingInstance(Container i, ArrayList<ItemStack> in, ItemStack out)
 	{
 		this(i, in, Arrays.asList(out));
 	}
@@ -39,10 +40,10 @@ public class CraftingInstance
 		for(ItemStack check : requiredStacks)
 		{
 			int numMatchingStuff = 0;
-			for(int j = 0; j < inventory.getSizeInventory(); j++)
+			for(int j = 0; j < inventory.getContainerSize(); j++)
 			{
-				ItemStack stack = inventory.getStackInSlot(j);
-				if(stack != null && !stack.isEmpty() && stack.getItem() == check.getItem() && stack.getItemDamage() == check.getItemDamage())
+				ItemStack stack = inventory.getItem(j);
+				if(stack != null && !stack.isEmpty() && stack.getItem() == check.getItem() && stack.getDamageValue() == check.getDamageValue())
 				{
 					numMatchingStuff += stack.getCount();
 				}
@@ -55,7 +56,7 @@ public class CraftingInstance
 		return craftingSuccessful;
 	}
 	
-	public void craft(EntityPlayer player)
+	public void craft(Player player)
 	{
 		if(!craftingSuccessful)
 			return;
@@ -63,18 +64,18 @@ public class CraftingInstance
 		for(ItemStack remove : requiredStacks)
 		{
 			int amountLeft = remove.getCount();
-			for(int j = 0; j < inventory.getSizeInventory(); j++)
+			for(int j = 0; j < inventory.getContainerSize(); j++)
 			{
-				ItemStack stack = inventory.getStackInSlot(j);
-				if(amountLeft > 0 && stack != null && !stack.isEmpty() && stack.getItem() == remove.getItem() && stack.getItemDamage() == remove.getItemDamage())
+				ItemStack stack = inventory.getItem(j);
+				if(amountLeft > 0 && stack != null && !stack.isEmpty() && stack.getItem() == remove.getItem() && stack.getDamageValue() == remove.getDamageValue())
 				{
-					amountLeft -= inventory.decrStackSize(j, amountLeft).getCount();
+					amountLeft -= inventory.removeItem(j, amountLeft).getCount();
 				}
 			}
 		}
 		
 		for(ItemStack stack : outputStacks)
-			if(!player.inventory.addItemStackToInventory(stack))
-				player.dropItem(stack, false);
+			if(!player.getInventory().add(stack))
+				player.drop(stack, false);
 	}
 }

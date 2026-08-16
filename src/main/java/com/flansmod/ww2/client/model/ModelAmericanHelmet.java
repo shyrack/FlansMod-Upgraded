@@ -20,16 +20,16 @@ public class ModelAmericanHelmet extends ModelCustomArmour //Same as Filename
 	public ModelAmericanHelmet() //Same as Filename
 	{
 		headModel = new ModelRendererTurbo[10];
-		headModel[0] = new ModelRendererTurbo(this, 1, 1, textureX, textureY); // Box 0
-		headModel[1] = new ModelRendererTurbo(this, 41, 1, textureX, textureY); // Box 1
-		headModel[2] = new ModelRendererTurbo(this, 65, 1, textureX, textureY); // Box 2
-		headModel[3] = new ModelRendererTurbo(this, 121, 1, textureX, textureY); // Box 3
-		headModel[4] = new ModelRendererTurbo(this, 153, 1, textureX, textureY); // Box 15
-		headModel[5] = new ModelRendererTurbo(this, 1, 1, textureX, textureY); // Box 16
-		headModel[6] = new ModelRendererTurbo(this, 33, 1, textureX, textureY); // Box 11
-		headModel[7] = new ModelRendererTurbo(this, 177, 1, textureX, textureY); // Box 13
-		headModel[8] = new ModelRendererTurbo(this, 41, 1, textureX, textureY); // Box 14
-		headModel[9] = new ModelRendererTurbo(this, 73, 1, textureX, textureY); // Box 15
+		headModel[0] = new ModelRendererTurbo(null, 1, 1, textureX, textureY); // Box 0
+		headModel[1] = new ModelRendererTurbo(null, 41, 1, textureX, textureY); // Box 1
+		headModel[2] = new ModelRendererTurbo(null, 65, 1, textureX, textureY); // Box 2
+		headModel[3] = new ModelRendererTurbo(null, 121, 1, textureX, textureY); // Box 3
+		headModel[4] = new ModelRendererTurbo(null, 153, 1, textureX, textureY); // Box 15
+		headModel[5] = new ModelRendererTurbo(null, 1, 1, textureX, textureY); // Box 16
+		headModel[6] = new ModelRendererTurbo(null, 33, 1, textureX, textureY); // Box 11
+		headModel[7] = new ModelRendererTurbo(null, 177, 1, textureX, textureY); // Box 13
+		headModel[8] = new ModelRendererTurbo(null, 41, 1, textureX, textureY); // Box 14
+		headModel[9] = new ModelRendererTurbo(null, 73, 1, textureX, textureY); // Box 15
 		
 		headModel[0].addShapeBox(-4.5F, -6.5F, -4.5F, 9, 1, 9, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, -1F, 0F, 0F, -1F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 1F, 0F, 0F, 1F, 0F); // Box 0
 		headModel[0].setRotationPoint(0F, 0F, 0F);

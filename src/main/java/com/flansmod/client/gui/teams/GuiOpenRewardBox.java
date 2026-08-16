@@ -3,18 +3,17 @@ package com.flansmod.client.gui.teams;
 import java.util.ArrayList;
 import java.util.Random;
 
-import org.lwjgl.opengl.GL11;
-
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.audio.PositionedSoundRecord;
-import net.minecraft.client.gui.GuiButton;
-import net.minecraft.client.gui.ScaledResolution;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.SoundCategory;
-import net.minecraft.util.math.MathHelper;
-import net.minecraftforge.fml.client.FMLClientHandler;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.Mth;
+import net.minecraft.util.Util;
+import net.minecraft.world.item.ItemStack;
 
 import com.flansmod.client.handlers.FlansModResourceHandler;
 import com.flansmod.client.teams.ClientTeamsData;
@@ -38,7 +37,7 @@ public class GuiOpenRewardBox extends GuiTeamsBase
 	/**
 	 * The background image
 	 */
-	private static final ResourceLocation texture = new ResourceLocation("flansmod", "gui/OpenCrates.png");
+	private static final Identifier texture = Identifier.fromNamespaceAndPath("flansmod", "gui/opencrates.png");
 	private static final int WIDTH = 196, HEIGHT = 200;
 	private static final int WAITING_FOR_SERVER = -1;
 	private static int spinTime = 30, slowdownTime = 130;
@@ -51,7 +50,7 @@ public class GuiOpenRewardBox extends GuiTeamsBase
 	private EnumPageState state = EnumPageState.SPINNING;
 	private int timeLeftInState = spinTime;
 	private float spinner = 0.0f;
-	private GuiButton doneButton;
+	private Button doneButton;
 	
 	public void SetTarget(Paintjob paint)
 	{
@@ -67,28 +66,15 @@ public class GuiOpenRewardBox extends GuiTeamsBase
 	}
 	
 	@Override
-	public void initGui()
+	public void init()
 	{
-		super.initGui();
+		super.init();
 		
-		ScaledResolution scaledresolution = new ScaledResolution(mc);
-		int w = scaledresolution.getScaledWidth();
-		int h = scaledresolution.getScaledHeight();
-		guiOriginX = w / 2 - WIDTH / 2;
-		guiOriginY = h / 2 - HEIGHT / 2;
+		guiOriginX = width / 2 - WIDTH / 2;
+		guiOriginY = height / 2 - HEIGHT / 2;
 		
-		doneButton = new GuiButton(0, width / 2 - 20, guiOriginY + 170, 40, 20, "Done");
-		doneButton.enabled = false;
-		buttonList.add(doneButton);
-	}
-	
-	@Override
-	protected void actionPerformed(GuiButton button)
-	{
-		if(button.id == 0)
-		{
-			ClientTeamsData.OpenLandingPage();
-		}
+		doneButton = addRenderableWidget(Button.builder(Component.literal("Done"), b -> ClientTeamsData.OpenLandingPage()).bounds(width / 2 - 20, guiOriginY + 170, 40, 20).build());
+		doneButton.active = false;
 	}
 	
 	public GuiOpenRewardBox(RewardBox rewardBox)
@@ -112,9 +98,9 @@ public class GuiOpenRewardBox extends GuiTeamsBase
 	}
 	
 	@Override
-	public void updateScreen()
+	public void tick()
 	{
-		super.updateScreen();
+		super.tick();
 		
 		timeLeftInState--;
 		
@@ -134,7 +120,7 @@ public class GuiOpenRewardBox extends GuiTeamsBase
 			case READY_TO_SLOW_DOWN:
 			{
 				SimulateSpinner();
-				float difference = MathHelper.abs(spinner - target);
+				float difference = Mth.abs(spinner - target);
 				if(difference < 1.0f)
 				{
 					// We're here (ish). Fix the position and then spin round one last time, slowing down as we go.
@@ -150,15 +136,15 @@ public class GuiOpenRewardBox extends GuiTeamsBase
 				if(spinSpeed <= -Acceleration())
 				{
 					spinSpeed = 0.0f;
-					FMLClientHandler.instance().getClient().getSoundHandler().playSound(
-							new PositionedSoundRecord(FlansModResourceHandler.getSoundEvent("UnlockNotch"), SoundCategory.NEUTRAL, 1.0F, 2.0f,
-									(float)mc.player.posX, (float)mc.player.posY, (float)mc.player.posZ));
+					Minecraft.getInstance().getSoundManager().play(
+							new SimpleSoundInstance(FlansModResourceHandler.getSoundEvent("unlocknotch"), SoundSource.NEUTRAL, 1.0F, 2.0f,
+									Minecraft.getInstance().player.getRandom(), Minecraft.getInstance().player.getX(), Minecraft.getInstance().player.getY(), Minecraft.getInstance().player.getZ()));
 					SwitchToState(EnumPageState.STOPPED);
 				}
 				int timeInState = slowdownTime - timeLeftInState;
-				int preIndex = MathHelper.floor(spinner) % options.size();
+				int preIndex = Mth.floor(spinner) % options.size();
 				spinner = target + timeInState * InitialVelocity() + 0.5f * Acceleration() * timeInState * timeInState;
-				int postIndex = MathHelper.floor(spinner) % options.size();
+				int postIndex = Mth.floor(spinner) % options.size();
 				
 				
 				break;
@@ -167,7 +153,7 @@ public class GuiOpenRewardBox extends GuiTeamsBase
 			case STOPPED:
 			{
 				spinner = target;
-				doneButton.enabled = true;
+				doneButton.active = true;
 				break;
 			}
 			
@@ -178,9 +164,9 @@ public class GuiOpenRewardBox extends GuiTeamsBase
 	
 	private void SimulateSpinner()
 	{
-		int preIndex = MathHelper.floor(spinner) % options.size();
+		int preIndex = Mth.floor(spinner) % options.size();
 		spinner += spinSpeed;
-		int postIndex = MathHelper.floor(spinner) % options.size();
+		int postIndex = Mth.floor(spinner) % options.size();
 		
 		if(spinner > options.size())
 		{
@@ -204,32 +190,24 @@ public class GuiOpenRewardBox extends GuiTeamsBase
 	}
 	
 	@Override
-	public void drawScreen(int i, int j, float f)
+	public void extractRenderState(GuiGraphicsExtractor extractor, int mouseX, int mouseY, float partialTick)
 	{
-		int preIndex = MathHelper.floor(spinner) % options.size();
-		int postIndex = MathHelper.floor(spinner + spinSpeed * f) % options.size();
+		int preIndex = Mth.floor(spinner) % options.size();
+		int postIndex = Mth.floor(spinner + spinSpeed * partialTick) % options.size();
 		
-		if(preIndex != postIndex && Minecraft.getSystemTime() - timeOfLastSound >= 80)
+		if(preIndex != postIndex && Util.getMillis() - timeOfLastSound >= 80)
 		{
-			FMLClientHandler.instance().getClient().getSoundHandler().playSound(
-					new PositionedSoundRecord(FlansModResourceHandler.getSoundEvent("UnlockNotch"), SoundCategory.NEUTRAL, 0.5F, 1.0f,
-							(float)mc.player.posX, (float)mc.player.posY, (float)mc.player.posZ));
-			timeOfLastSound = Minecraft.getSystemTime();
+			Minecraft.getInstance().getSoundManager().play(
+					new SimpleSoundInstance(FlansModResourceHandler.getSoundEvent("unlocknotch"), SoundSource.NEUTRAL, 0.5F, 1.0f,
+							Minecraft.getInstance().player.getRandom(), Minecraft.getInstance().player.getX(), Minecraft.getInstance().player.getY(), Minecraft.getInstance().player.getZ()));
+			timeOfLastSound = Util.getMillis();
 		}
 		
 		
-		ScaledResolution scaledresolution = new ScaledResolution(mc);
-		int w = scaledresolution.getScaledWidth();
-		int h = scaledresolution.getScaledHeight();
-		drawDefaultBackground();
-		GlStateManager.enableBlend();
+		extractMenuBackground(extractor);
 		
-		GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
-		guiOriginX = w / 2 - WIDTH / 2;
-		guiOriginY = h / 2 - HEIGHT / 2;
-		
-		//Bind the background texture
-		mc.renderEngine.bindTexture(texture);
+		guiOriginX = width / 2 - WIDTH / 2;
+		guiOriginY = height / 2 - HEIGHT / 2;
 		
 		int textureX = 512;
 		int textureY = 256;
@@ -243,53 +221,50 @@ public class GuiOpenRewardBox extends GuiTeamsBase
 		}
 		
 		//Draw the background
-		drawModalRectWithCustomSizedTexture(guiOriginX, guiOriginY, 0, 0, WIDTH, HEIGHT, textureX, textureY);
+		extractor.blit(RenderPipelines.GUI_TEXTURED, texture, guiOriginX, guiOriginY, 0F, 0F, WIDTH, HEIGHT, textureX, textureY);
 		
-		int pixelOffset = ModuloHelper.modulo(MathHelper.floor(spinner * 18.0f), 18) - 18;
+		int pixelOffset = ModuloHelper.modulo(Mth.floor(spinner * 18.0f), 18) - 18;
 		
-		drawModalRectWithCustomSizedTexture(guiOriginX + 9, guiOriginY + 101, 239 + pixelOffset + 10, 101, 180, 18, textureX, textureY);
+		extractor.blit(RenderPipelines.GUI_TEXTURED, texture, guiOriginX + 9, guiOriginY + 101, 239 + pixelOffset + 10, 101, 180, 18, textureX, textureY);
 		
 		// Draw text
-		drawCenteredString(fontRenderer, "Reward Box", guiOriginX + 98, guiOriginY + 12, 0xffffff);
+		extractor.centeredText(font, "Reward Box", guiOriginX + 98, guiOriginY + 12, 0xffffff);
 		
 		for(int n = 0; n < 10; n++)
 		{
-			int index = MathHelper.floor(spinner) - 4 + n;
+			int index = Mth.floor(spinner) - 4 + n;
 			Paintjob paintjob = options.get(ModuloHelper.modulo(index, options.size()));
 			
-			ItemStack stack = new ItemStack(paintjob.parent.getItem(), 1, paintjob.ID);
-			drawSlotInventory(stack, guiOriginX + 18 - 18 - pixelOffset + 18 * n, guiOriginY + 102);
+			ItemStack stack = new ItemStack(paintjob.parent.getItem());
+			stack.setDamageValue(paintjob.ID);
+			drawSlotInventory(extractor, stack, guiOriginX + 18 - 18 - pixelOffset + 18 * n, guiOriginY + 102);
 		}
 		
 		for(int n = 0; n < 10; n++)
 		{
-			int index = MathHelper.floor(spinner) - 4 + n;
+			int index = Mth.floor(spinner) - 4 + n;
 			Paintjob paintjob = options.get(ModuloHelper.modulo(index, options.size()));
 			
-			DrawRarityBackground(paintjob.rarity, guiOriginX + 18 - 18 - pixelOffset + 18 * n, guiOriginY + 102);
+			DrawRarityBackground(extractor, paintjob.rarity, guiOriginX + 18 - 18 - pixelOffset + 18 * n, guiOriginY + 102);
 		}
 		
-		mc.renderEngine.bindTexture(texture);
-		GlStateManager.disableDepth();
-		drawModalRectWithCustomSizedTexture(guiOriginX + 0, guiOriginY + 93, 0, 93, 196, 34, textureX, textureY);
-		GlStateManager.enableDepth();
+		extractor.blit(RenderPipelines.GUI_TEXTURED, texture, guiOriginX + 0, guiOriginY + 93, 0, 93, 196, 34, textureX, textureY);
 		
-		int currentIndex = MathHelper.floor(spinner) % options.size();
-		ItemStack gunStack = new ItemStack(options.get(currentIndex).parent.item, 1, options.get(currentIndex).ID);
-		DrawGun(gunStack, guiOriginX + 98, guiOriginY + 65, 60.0f);
+		int currentIndex = Mth.floor(spinner) % options.size();
+		ItemStack gunStack = new ItemStack(options.get(currentIndex).parent.item);
+		gunStack.setDamageValue(options.get(currentIndex).ID);
+		DrawGun(extractor, gunStack, guiOriginX + 98, guiOriginY + 65, 60.0f);
 		
 		if(state == EnumPageState.STOPPED)
 		{
-			drawCenteredString(fontRenderer, "New paintjob unlocked!", guiOriginX + 98, guiOriginY + 130, 0xffffff);
-			drawCenteredString(fontRenderer, options.get(target).parent.name, guiOriginX + 98, guiOriginY + 142, 0xffffff);
-			drawCenteredString(fontRenderer, "\"" + options.get(target).iconName + "\"", guiOriginX + 98, guiOriginY + 154, 0xffffff);
+			extractor.centeredText(font, "New paintjob unlocked!", guiOriginX + 98, guiOriginY + 130, 0xffffff);
+			extractor.centeredText(font, options.get(target).parent.name, guiOriginX + 98, guiOriginY + 142, 0xffffff);
+			extractor.centeredText(font, "\"" + options.get(target).iconName + "\"", guiOriginX + 98, guiOriginY + 154, 0xffffff);
 		}
-		
-		super.drawScreen(i, j, f);
 	}
 	
 	@Override
-	public boolean doesGuiPauseGame()
+	public boolean isPauseScreen()
 	{
 		return false;
 	}

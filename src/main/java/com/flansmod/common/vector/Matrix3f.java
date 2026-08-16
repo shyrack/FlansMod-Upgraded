@@ -1,7 +1,7 @@
 package com.flansmod.common.vector;
 
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.Mth;
+import net.minecraft.world.phys.Vec3;
 
 public class Matrix3f
 {
@@ -34,15 +34,15 @@ public class Matrix3f
 		return Matrix3f.multMatrix(this, m);
 	}
 	
-	public Vec3d mult(Vec3d v)
+	public Vec3 mult(Vec3 v)
 	{
 		return Matrix3f.multVec(this, v);
 	}
 	
 	public static Matrix3f getMatrixRotX(float r)
 	{
-		float sn = MathHelper.sin(r);
-		float cs = MathHelper.cos(r);
+		float sn = Mth.sin(r);
+		float cs = Mth.cos(r);
 		
 		return new Matrix3f(new float[][]
 				{
@@ -54,8 +54,8 @@ public class Matrix3f
 	
 	public static Matrix3f getMatrixRotY(float r)
 	{
-		float sn = MathHelper.sin(r);
-		float cs = MathHelper.cos(r);
+		float sn = Mth.sin(r);
+		float cs = Mth.cos(r);
 		
 		return new Matrix3f(new float[][]
 				{
@@ -67,8 +67,8 @@ public class Matrix3f
 	
 	public static Matrix3f getMatrixRotZ(float r)
 	{
-		float sn = MathHelper.sin(r);
-		float cs = MathHelper.cos(r);
+		float sn = Mth.sin(r);
+		float cs = Mth.cos(r);
 		
 		return new Matrix3f(new float[][]
 				{
@@ -78,7 +78,7 @@ public class Matrix3f
 				});
 	}
 	
-	public static Vec3d multVec(Matrix3f m, Vec3d vec)
+	public static Vec3 multVec(Matrix3f m, Vec3 vec)
 	{
 		float[][] retMat = new float[3][3];
 		float[] retVec = new float[3];
@@ -90,7 +90,7 @@ public class Matrix3f
 			for(int sm = 0; sm < 3; sm++) retVec[i] += row[sm] * column[sm];
 		}
 		
-		return new Vec3d(retVec[0], retVec[1], retVec[2]);
+		return new Vec3(retVec[0], retVec[1], retVec[2]);
 	}
 	
 	public static Matrix3f multMatrix(Matrix3f m1, Matrix3f m2)

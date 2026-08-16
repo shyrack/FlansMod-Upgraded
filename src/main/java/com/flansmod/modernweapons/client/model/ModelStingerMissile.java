@@ -1,6 +1,6 @@
 package com.flansmod.modernweapons.client.model;
 
-import net.minecraft.entity.Entity;
+import net.minecraft.world.entity.Entity;
 
 import com.flansmod.client.model.ModelBullet;
 import com.flansmod.client.tmt.ModelRendererTurbo;
@@ -30,7 +30,7 @@ public class ModelStingerMissile extends ModelBullet
 	@Override
 	public void render(Entity entity, float f, float f1, float f2, float f3, float f4, float f5)
 	{
-		//GlStateManager.scale(0.5F, 0.5F, 0.5F);
+		//RenderSystem.scale(0.5F, 0.5F, 0.5F);
 		for(ModelRendererTurbo mrt : bulletModel)
 			mrt.render(f5);
 	}

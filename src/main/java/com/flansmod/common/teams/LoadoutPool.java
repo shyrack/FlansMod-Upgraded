@@ -2,7 +2,7 @@ package com.flansmod.common.teams;
 
 import java.util.ArrayList;
 
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.item.ItemStack;
 
 import com.flansmod.client.gui.teams.EnumLoadoutSlot;
 import com.flansmod.common.FlansMod;
@@ -183,8 +183,8 @@ public class LoadoutPool extends InfoType
 				else
 				{
 					stack.setCount(Integer.parseInt(split[2 * i + 4]));
-					if(stack.getItemDamage() == Short.MAX_VALUE)
-						stack.setItemDamage(0);
+					if(stack.getDamageValue() == Short.MAX_VALUE)
+						stack.setDamageValue(0);
 					entry.extraItems.add(stack);
 				}
 			}

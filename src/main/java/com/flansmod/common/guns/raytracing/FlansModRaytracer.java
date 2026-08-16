@@ -4,16 +4,17 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import net.minecraft.block.state.IBlockState;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.EnumHand;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.RayTraceResult;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.level.Level;
 import com.flansmod.client.debug.EntityDebugDot;
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.PlayerData;
@@ -32,7 +33,7 @@ import com.flansmod.common.vector.Vector3f;
 public class FlansModRaytracer
 {
 	
-	public static List<BulletHit> Raytrace(World world, Entity playerToIgnore, boolean canHitSelf, Entity entityToIgnore, Vector3f origin, Vector3f motion, int pingOfShooter, Float gunPenetration)
+	public static List<BulletHit> Raytrace(Level world, Entity playerToIgnore, boolean canHitSelf, Entity entityToIgnore, Vector3f origin, Vector3f motion, int pingOfShooter, Float gunPenetration)
 	{
 		//Create a list for all bullet hits
 		List<BulletHit> hits = new ArrayList<>();
@@ -40,9 +41,8 @@ public class FlansModRaytracer
 		float speed = motion.length();
 		
 		//Iterate over all entities
-		for(int i = 0; i < world.loadedEntityList.size(); i++)
+		for(Entity obj : world.getEntities((Entity)null, new net.minecraft.world.phys.AABB(origin.x - 1000, origin.y - 1000, origin.z - 1000, origin.x + 1000, origin.y + 1000, origin.z + 1000), entity -> true))
 		{
-			Entity obj = world.loadedEntityList.get(i);
 			boolean shouldDoNormalHitDetect = true;
 			//Get driveables
 			if(obj instanceof EntityDriveable)
@@ -54,7 +54,7 @@ public class FlansModRaytracer
 					continue;
 				
 				//If this bullet is within the driveable's detection range
-				if(driveable.getDistanceSq(origin.x, origin.y, origin.z) <= (driveable.getDriveableType().bulletDetectionRadius + speed) * (driveable.getDriveableType().bulletDetectionRadius + speed))
+				if(driveable.distanceToSqr(origin.x, origin.y, origin.z) <= (driveable.getDriveableType().bulletDetectionRadius + speed) * (driveable.getDriveableType().bulletDetectionRadius + speed))
 				{
 					//Raytrace the bullet
 					ArrayList<BulletHit> driveableHits = driveable.attackFromBullet(origin, motion);
@@ -62,14 +62,14 @@ public class FlansModRaytracer
 				}
 			}
 			//Get players
-			else if(obj instanceof EntityPlayer)
+			else if(obj instanceof Player)
 			{
-				EntityPlayer player = (EntityPlayer)obj;
+				Player player = (Player)obj;
 				PlayerData data = PlayerHandler.getPlayerData(player);
 				shouldDoNormalHitDetect = false;
 				if(data != null)
 				{
-					if(player.isDead || data.team == Team.spectators)
+					if(player.isRemoved() || data.team == Team.spectators)
 					{
 						continue;
 					}
@@ -102,37 +102,20 @@ public class FlansModRaytracer
 			{
 				Entity entity = obj;
 				if(entity != entityToIgnore && entity != playerToIgnore
-						&& !entity.isDead
-						&& (entity instanceof EntityLivingBase || entity instanceof EntityAAGun || entity instanceof EntityGrenade))
+						&& !entity.isRemoved()
+						&& (entity instanceof LivingEntity || entity instanceof EntityAAGun || entity instanceof EntityGrenade))
 				{
-					RayTraceResult mop = entity.getEntityBoundingBox().calculateIntercept(origin.toVec3(), new Vec3d(origin.x + motion.x, origin.y + motion.y, origin.z + motion.z));
-					if(mop != null)
+					java.util.Optional<Vec3> intercept = entity.getBoundingBox().clip(origin.toVec3(), new Vec3(origin.x + motion.x, origin.y + motion.y, origin.z + motion.z));
+					if(intercept.isPresent())
 					{
-						Entity[] parts = entity.getParts();
+						Vec3 mop = intercept.get();
 						boolean hit = true;
-						// If parts exist, the intercepted part is calculated and used instead of the whole entity.
-						// If no part is intercepted, the entity itself is not hit
-						if(parts != null)
-						{
-							hit = false;
-							for(Entity part : parts)
-							{
-								RayTraceResult result = part.getEntityBoundingBox().calculateIntercept(origin.toVec3(), new Vec3d(origin.x + motion.x, origin.y + motion.y, origin.z + motion.z));
-								if(result != null)
-								{
-									mop = result;
-									entity = part;
-									hit = true;
-									break;
-								}
-							}
-						}
 						
 						if(hit)
 						{
-							Vec3d hitPoint = new Vec3d(mop.hitVec.x - origin.x, mop.hitVec.y - origin.y, mop.hitVec.z - origin.z);
+							Vec3 hitPoint = new Vec3(mop.x - origin.x, mop.y - origin.y, mop.z - origin.z);
 							if (FlansMod.DEBUG)
-								world.spawnEntity(new EntityDebugDot(world, new Vector3f(mop.hitVec), 1000, 1.0f, 0f, 0f));
+								((net.minecraft.server.level.ServerLevel)world).addFreshEntity(new EntityDebugDot(world, new Vector3f(mop), 1000, 1.0f, 0f, 0f));
 							
 							float hitLambda = 1F;
 							if(motion.x != 0F)
@@ -145,17 +128,17 @@ public class FlansModRaytracer
 								hitLambda = -hitLambda;
 							
 							hits.add(new EntityHit(entity, hitLambda));
-							//raytraceBlock(world, mop.hitVec, motion, hits);
+							//raytraceBlock(world, mop, motion, hits);
 						}
 					}
 				}
 			}
 		}
 		
-		Vec3d mot = new Vector3f(motion).toVec3();
+		Vec3 mot = new Vector3f(motion).toVec3();
 		mot = mot.normalize();
 		mot = mot.scale(0.5d);
-		hits = raytraceBlock(world, origin.toVec3(), new Vec3d(0, 0, 0), motion, mot, hits, gunPenetration, null);
+		hits = raytraceBlock(world, origin.toVec3(), new Vec3(0, 0, 0), motion, mot, hits, gunPenetration, null);
 		
 		//We hit something
 		if(!hits.isEmpty())
@@ -169,27 +152,28 @@ public class FlansModRaytracer
 	}
 	
 	private static List<BulletHit> raytraceBlock(
-			World world,
-			Vec3d posVec,
-			Vec3d previousHit,
+			Level world,
+			Vec3 posVec,
+			Vec3 previousHit,
 			Vector3f motion,
-			Vec3d normalized_motion,
+			Vec3 normalized_motion,
 			List<BulletHit> hits,
 			Float penetration,
 			BlockPos oldPos)
 	{
 		//Ray trace the bullet by comparing its next position to its current position
-		Vec3d nextPosVec = new Vec3d(posVec.x + motion.x, posVec.y + motion.y, posVec.z + motion.z);
+		Vec3 nextPosVec = new Vec3(posVec.x + motion.x, posVec.y + motion.y, posVec.z + motion.z);
 
-		RayTraceResult hit = world.rayTraceBlocks(posVec, nextPosVec, false, true, true);
+		HitResult hit = world.clip(new net.minecraft.world.level.ClipContext(posVec, nextPosVec, net.minecraft.world.level.ClipContext.Block.COLLIDER, net.minecraft.world.level.ClipContext.Fluid.NONE, net.minecraft.world.phys.shapes.CollisionContext.empty()));
 		
-		if(hit != null)
+		if(hit != null && hit.getType() == HitResult.Type.BLOCK)
 		{
-			Vec3d hitVec = hit.hitVec.subtract(posVec);
+			BlockHitResult blockHit = (BlockHitResult)hit;
+			Vec3 hitVec = blockHit.getLocation().subtract(posVec);
 			hitVec = hitVec.add(previousHit);
 			
-			BlockPos pos = hit.getBlockPos();
-			IBlockState blockState = world.getBlockState(hit.getBlockPos());
+			BlockPos pos = blockHit.getBlockPos();
+			BlockState blockState = world.getBlockState(blockHit.getBlockPos());
 			
 			if (!pos.equals(oldPos))
 			{
@@ -206,7 +190,7 @@ public class FlansModRaytracer
 				if(lambda < 0)
 					lambda = -lambda;
 
-				hits.add(new BlockHit(hit, lambda, blockState));
+				hits.add(new BlockHit(blockHit, lambda, blockState));
 				penetration -= ShotHandler.getBlockPenetrationDecrease(blockState, pos, world);
 			}
 			
@@ -214,7 +198,7 @@ public class FlansModRaytracer
 			{
 				hits = raytraceBlock(
 						world,
-						hit.hitVec.add(normalized_motion),
+						blockHit.getLocation().add(normalized_motion),
 						hitVec.add(normalized_motion),
 						motion,
 						normalized_motion,
@@ -226,21 +210,21 @@ public class FlansModRaytracer
 		return hits;
 	}
 	
-	public static Vector3f GetPlayerMuzzlePosition(EntityPlayer player, EnumHand hand)
+	public static Vector3f GetPlayerMuzzlePosition(Player player, InteractionHand hand)
 	{
 		PlayerSnapshot snapshot = new PlayerSnapshot(player);
 		
-		ItemStack itemstack = hand == EnumHand.OFF_HAND ? player.getHeldItemOffhand() : player.getHeldItemMainhand();
+		ItemStack itemstack = hand == InteractionHand.OFF_HAND ? player.getOffhandItem() : player.getMainHandItem();
 		
 		if(itemstack.getItem() instanceof ItemGun)
 		{
 			GunType gunType = ((ItemGun)itemstack.getItem()).GetType();
 			AttachmentType barrelType = gunType.getBarrel(itemstack);
 			
-			return Vector3f.add(new Vector3f(player.posX, player.posY, player.posZ), snapshot.GetMuzzleLocation(gunType, barrelType, hand), null);
+			return Vector3f.add(new Vector3f(player.getX(), player.getY(), player.getZ()), snapshot.GetMuzzleLocation(gunType, barrelType, hand), null);
 		}
 		
-		return new Vector3f(player.getPositionEyes(0.0f));
+		return new Vector3f(player.getEyePosition(0.0f));
 	}
 	
 	public static abstract class BulletHit implements Comparable<BulletHit>
@@ -270,10 +254,10 @@ public class FlansModRaytracer
 	
 	public static class BlockHit extends BulletHit
 	{
-		private RayTraceResult raytraceResult;
-		private IBlockState blockstate;
+		private HitResult raytraceResult;
+		private BlockState blockstate;
 		
-		public BlockHit(RayTraceResult mop, Float f, IBlockState blockstate)
+		public BlockHit(HitResult mop, Float f, BlockState blockstate)
 		{
 			super(f);
 			raytraceResult = mop;
@@ -286,12 +270,12 @@ public class FlansModRaytracer
 			return null;
 		}
 		
-		public IBlockState getIBlockState()
+		public BlockState getIBlockState()
 		{
 			return blockstate;
 		}
 		
-		public RayTraceResult getRayTraceResult()
+		public HitResult getRayTraceResult()
 		{
 			return raytraceResult;
 		}

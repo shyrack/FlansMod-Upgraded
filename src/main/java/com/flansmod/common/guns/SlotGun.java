@@ -1,22 +1,23 @@
 package com.flansmod.common.guns;
 
-import net.minecraft.inventory.IInventory;
-import net.minecraft.inventory.Slot;
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.Container;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
 
 public class SlotGun extends Slot
 {
 	private int slotID;
 	private SlotGun gunSlot;
 	
-	public SlotGun(IInventory inventory, int i, int x, int y, SlotGun s)
+	public SlotGun(Container inventory, int i, int x, int y, SlotGun s)
 	{
 		super(inventory, i, x, y);
 		slotID = i;
 		gunSlot = s;
 	}
 	
-	public boolean isItemValid(ItemStack stack)
+	@Override
+	public boolean mayPlace(ItemStack stack)
 	{
 		if(stack == null)
 			return false;
@@ -24,7 +25,7 @@ public class SlotGun extends Slot
 			return true;
 		switch(slotID)
 		{
-			case 0: return (stack.getItem() instanceof ItemGun && !((ItemGun)stack.getItem()).GetType().deployable && stack.getTagCompound() != null);
+			case 0: return (stack.getItem() instanceof ItemGun && !((ItemGun)stack.getItem()).GetType().deployable && GunUtil.hasTag(stack));
 			case 1: return (canAttachToCurrentGun(stack) && ((ItemAttachment)stack.getItem()).type.type == EnumAttachmentType.barrel);
 			case 2: return (canAttachToCurrentGun(stack) && ((ItemAttachment)stack.getItem()).type.type == EnumAttachmentType.sights);
 			case 3: return (canAttachToCurrentGun(stack) && ((ItemAttachment)stack.getItem()).type.type == EnumAttachmentType.stock);
@@ -35,10 +36,10 @@ public class SlotGun extends Slot
 	
 	public boolean canAttachToCurrentGun(ItemStack stack)
 	{
-		if(stack == null || !(stack.getItem() instanceof ItemAttachment) || !gunSlot.getHasStack() || !(gunSlot.getStack().getItem() instanceof ItemGun))
+		if(stack == null || !(stack.getItem() instanceof ItemAttachment) || !gunSlot.hasItem() || !(gunSlot.getItem().getItem() instanceof ItemGun))
 			return false;
 		AttachmentType attachmentType = ((ItemAttachment)stack.getItem()).type;
-		GunType gunType = ((ItemGun)gunSlot.getStack().getItem()).GetType();
+		GunType gunType = ((ItemGun)gunSlot.getItem().getItem()).GetType();
 
 		if(gunType.allowAllAttachments || gunType.allowedAttachments.contains(attachmentType))
 		{

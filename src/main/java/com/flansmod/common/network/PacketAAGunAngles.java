@@ -1,10 +1,9 @@
 package com.flansmod.common.network;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
 
 import com.flansmod.common.guns.EntityAAGun;
 
@@ -20,13 +19,13 @@ public class PacketAAGunAngles extends PacketBase
 	
 	public PacketAAGunAngles(EntityAAGun entity)
 	{
-		entityID = entity.getEntityId();
+		entityID = entity.getId();
 		gunYaw = entity.gunYaw;
 		gunPitch = entity.gunPitch;
 	}
 	
 	@Override
-	public void encodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void encodeInto(ByteBuf data)
 	{
 		data.writeInt(entityID);
 		data.writeFloat(gunYaw);
@@ -34,7 +33,7 @@ public class PacketAAGunAngles extends PacketBase
 	}
 	
 	@Override
-	public void decodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void decodeInto(ByteBuf data)
 	{
 		entityID = data.readInt();
 		gunYaw = data.readFloat();
@@ -42,15 +41,15 @@ public class PacketAAGunAngles extends PacketBase
 	}
 	
 	@Override
-	public void handleServerSide(EntityPlayerMP playerEntity)
+	public void handleServerSide(ServerPlayer playerEntity)
 	{
 		
 	}
 	
 	@Override
-	public void handleClientSide(EntityPlayer clientPlayer)
+	public void handleClientSide(Player clientPlayer)
 	{
-		Entity entity = clientPlayer.world.getEntityByID(entityID);
+		Entity entity = clientPlayer.level().getEntity(entityID);
 		if(entity instanceof EntityAAGun)
 		{
 			EntityAAGun aa = (EntityAAGun)entity;

@@ -1,35 +1,17 @@
 package com.flansmod.common.enchantments;
 
-import net.minecraft.enchantment.Enchantment;
-import net.minecraft.enchantment.EnchantmentDamage;
-import net.minecraft.enchantment.Enchantment.Rarity;
-import net.minecraft.inventory.EntityEquipmentSlot;
+import net.minecraft.core.HolderSet;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.EquipmentSlotGroup;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.enchantment.Enchantment;
 
-public class EnchantmentLumberjack extends Enchantment
+public class EnchantmentLumberjack
 {
-	protected EnchantmentLumberjack() 
+	public static Enchantment build(Identifier id, HolderSet<Item> supportedItems)
 	{
-		super(Rarity.COMMON, EnchantmentModule.OFF_HAND, new EntityEquipmentSlot[] { EntityEquipmentSlot.OFFHAND } );
+		return Enchantment.enchantment(
+				Enchantment.definition(supportedItems, 3, 2, Enchantment.constantCost(5), Enchantment.constantCost(25), 10, EquipmentSlotGroup.OFFHAND))
+				.build(id);
 	}
-	
-	@Override
-    public int getMaxLevel()
-    {
-        return 3;
-    }
-	
-	@Override
-    public boolean canApplyTogether(Enchantment ench)
-    {
-        if(ench instanceof EnchantmentSharpshooter)
-        	return false;
-        
-        if(ench instanceof EnchantmentLumberjack)
-        	return false;
-        
-        if(ench instanceof EnchantmentDuelist)
-        	return false;
-        
-        return true;
-    }
 }

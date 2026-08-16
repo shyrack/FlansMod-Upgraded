@@ -3,17 +3,17 @@ package com.flansmod.common.teams;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.minecraft.client.model.ModelBase;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.world.World;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import com.flansmod.client.model.ModelBase;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.Level;
 
 import com.flansmod.common.FlansMod;
+import com.flansmod.common.util.FlansModUtil;
 import com.flansmod.common.guns.AttachmentType;
 import com.flansmod.common.guns.GunType;
+import com.flansmod.common.guns.GunUtil;
 import com.flansmod.common.guns.ItemGun;
 import com.flansmod.common.guns.Paintjob;
 import com.flansmod.common.types.InfoType;
@@ -100,9 +100,9 @@ public class PlayerClass extends InfoType implements IPlayerClass
 		{
 			if(split[1].equals("None"))
 				return;
-			for(Item item : FlansMod.armourItems)
+			for(ItemTeamArmour item : FlansMod.armourItems)
 			{
-				ArmourType armour = ((ItemTeamArmour)item).type;
+				ArmourType armour = item.type;
 				if(armour != null && armour.shortName.equals(split[1]))
 					hat = new ItemStack(item);
 			}
@@ -111,9 +111,9 @@ public class PlayerClass extends InfoType implements IPlayerClass
 		{
 			if(split[1].equals("None"))
 				return;
-			for(Item item : FlansMod.armourItems)
+			for(ItemTeamArmour item : FlansMod.armourItems)
 			{
-				ArmourType armour = ((ItemTeamArmour)item).type;
+				ArmourType armour = item.type;
 				if(armour != null && armour.shortName.equals(split[1]))
 					chest = new ItemStack(item);
 			}
@@ -122,9 +122,9 @@ public class PlayerClass extends InfoType implements IPlayerClass
 		{
 			if(split[1].equals("None"))
 				return;
-			for(Item item : FlansMod.armourItems)
+			for(ItemTeamArmour item : FlansMod.armourItems)
 			{
-				ArmourType armour = ((ItemTeamArmour)item).type;
+				ArmourType armour = item.type;
 				if(armour != null && armour.shortName.equals(split[1]))
 					legs = new ItemStack(item);
 			}
@@ -133,9 +133,9 @@ public class PlayerClass extends InfoType implements IPlayerClass
 		{
 			if(split[1].equals("None"))
 				return;
-			for(Item item : FlansMod.armourItems)
+			for(ItemTeamArmour item : FlansMod.armourItems)
 			{
-				ArmourType armour = ((ItemTeamArmour)item).type;
+				ArmourType armour = item.type;
 				if(armour != null && armour.shortName.equals(split[1]))
 					shoes = new ItemStack(item);
 			}
@@ -160,10 +160,9 @@ public class PlayerClass extends InfoType implements IPlayerClass
 				int amount = 1;
 				int damage = 0;
 				String[] itemNames = split[1].split("\\+");
-				for(Object object : Item.REGISTRY)
+				for(Item item : net.minecraft.core.registries.BuiltInRegistries.ITEM)
 				{
-					Item item = (Item)object;
-					if(item != null && (item.getTranslationKey().equals(itemNames[0]) || item.getTranslationKey().split("\\.").length > 1 && item.getTranslationKey().split("\\.")[1].equals(itemNames[0])))
+					if(item != null && (item.getDescriptionId().equals(itemNames[0]) || item.getDescriptionId().split("\\.").length > 1 && item.getDescriptionId().split("\\.")[1].equals(itemNames[0])))
 						matchingItem = item;
 				}
 				for(InfoType type : InfoType.infoTypes.values())
@@ -184,12 +183,12 @@ public class PlayerClass extends InfoType implements IPlayerClass
 				{
 					damage = Integer.parseInt(split[3]);
 				}
-				ItemStack stack = new ItemStack(matchingItem, amount, damage);
+				ItemStack stack = new ItemStack(matchingItem, amount);
 				if(itemNames.length > 1 && matchingItem instanceof ItemGun)
 				{
 					GunType gunType = ((ItemGun)matchingItem).GetType();
-					NBTTagCompound tags = new NBTTagCompound();
-					NBTTagCompound attachmentTags = new NBTTagCompound();
+					CompoundTag tags = new CompoundTag();
+					CompoundTag attachmentTags = new CompoundTag();
 					int genericID = 0;
 					for(int i = 0; i < itemNames.length - 1; i++)
 					{
@@ -210,28 +209,27 @@ public class PlayerClass extends InfoType implements IPlayerClass
 								case generic: tagName = "generic_" + genericID++;
 									break;
 							}
-							NBTTagCompound specificAttachmentTags = new NBTTagCompound();
-							new ItemStack(attachment.item).writeToNBT(specificAttachmentTags);
-							attachmentTags.setTag(tagName, specificAttachmentTags);
+							CompoundTag specificAttachmentTags = new CompoundTag();
+							GunUtil.stackToTag(specificAttachmentTags, new ItemStack(attachment.item));
+							attachmentTags.put(tagName, specificAttachmentTags);
 						}
 						//Maybe it was a paintjob
 						else
 						{
 							Paintjob paintjob = gunType.getPaintjob(itemNames[i + 1]);
 							if(paintjob != null)
-								tags.setString("Paint", paintjob.iconName);
+								tags.putString("Paint", paintjob.iconName);
 						}
 					}
-					tags.setTag("attachments", attachmentTags);
-					stack.setTagCompound(tags);
+					tags.put("attachments", attachmentTags);
+					FlansModUtil.setItemTag(stack, tags);
 				}
 				startingItems.add(stack);
 			}
 		}
 		catch(Exception e)
 		{
-			FlansMod.log.error("Interpreting player class file failed.");
-			FlansMod.log.throwing(e);
+			FlansMod.log.error("Interpreting player class file failed.", e);
 		}
 	}
 	
@@ -243,9 +241,9 @@ public class PlayerClass extends InfoType implements IPlayerClass
 	/*
 	 * Edit 29/01/2021 - I think this may be a legacy concern. ItemStack now references an Item, not an item ID. Moving back to the PostRead step
 	@Override
-	public void onWorldLoad(World world)
+	public void onWorldLoad(Level world)
 	{
-		if(world != null && world.isRemote)
+		if(world != null && world.isClientSide)
 			return;
 		try
 		{
@@ -257,10 +255,9 @@ public class PlayerClass extends InfoType implements IPlayerClass
 				int amount = 1;
 				int damage = 0;
 				String[] itemNames = split[1].split("\\+");
-				for(Object object : Item.REGISTRY)
+				for(Item item : net.minecraft.core.registries.BuiltInRegistries.ITEM)
 				{
-					Item item = (Item)object;
-					if(item != null && (item.getTranslationKey().equals(itemNames[0]) || item.getTranslationKey().split("\\.").length > 1 && item.getTranslationKey().split("\\.")[1].equals(itemNames[0])))
+					if(item != null && (item.getDescriptionId().equals(itemNames[0]) || item.getDescriptionId().split("\\.").length > 1 && item.getDescriptionId().split("\\.")[1].equals(itemNames[0])))
 						matchingItem = item;
 				}
 				for(InfoType type : InfoType.infoTypes.values())
@@ -281,12 +278,12 @@ public class PlayerClass extends InfoType implements IPlayerClass
 				{
 					damage = Integer.parseInt(split[3]);
 				}
-				ItemStack stack = new ItemStack(matchingItem, amount, damage);
+				ItemStack stack = new ItemStack(matchingItem, amount);
 				if(itemNames.length > 1 && matchingItem instanceof ItemGun)
 				{
 					GunType gunType = ((ItemGun)matchingItem).GetType();
-					NBTTagCompound tags = new NBTTagCompound();
-					NBTTagCompound attachmentTags = new NBTTagCompound();
+					CompoundTag tags = new CompoundTag();
+					CompoundTag attachmentTags = new CompoundTag();
 					int genericID = 0;
 					for(int i = 0; i < itemNames.length - 1; i++)
 					{
@@ -307,20 +304,20 @@ public class PlayerClass extends InfoType implements IPlayerClass
 								case generic: tagName = "generic_" + genericID++;
 									break;
 							}
-							NBTTagCompound specificAttachmentTags = new NBTTagCompound();
-							new ItemStack(attachment.item).writeToNBT(specificAttachmentTags);
-							attachmentTags.setTag(tagName, specificAttachmentTags);
+							CompoundTag specificAttachmentTags = new CompoundTag();
+							GunUtil.stackToTag(specificAttachmentTags, new ItemStack(attachment.item));
+							attachmentTags.put(tagName, specificAttachmentTags);
 						}
 						//Maybe it was a paintjob
 						else
 						{
 							Paintjob paintjob = gunType.getPaintjob(itemNames[i + 1]);
 							if(paintjob != null)
-								tags.setString("Paint", paintjob.iconName);
+								tags.putString("Paint", paintjob.iconName);
 						}
 					}
-					tags.setTag("attachments", attachmentTags);
-					stack.setTagCompound(tags);
+					tags.put("attachments", attachmentTags);
+					FlansModUtil.setItemTag(stack, tags);
 				}
 				startingItems.add(stack);
 			}
@@ -349,7 +346,6 @@ public class PlayerClass extends InfoType implements IPlayerClass
 	}
 	
 	@Override
-	@SideOnly(Side.CLIENT)
 	public ModelBase GetModel()
 	{
 		return null;

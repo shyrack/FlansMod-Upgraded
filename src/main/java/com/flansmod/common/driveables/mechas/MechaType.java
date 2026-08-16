@@ -2,9 +2,9 @@ package com.flansmod.common.driveables.mechas;
 
 import java.util.ArrayList;
 
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.world.World;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.Level;
 
 import com.flansmod.client.model.ModelMecha;
 import com.flansmod.common.FlansMod;
@@ -244,8 +244,8 @@ public class MechaType extends DriveableType
 	}
 	
 	@Override
-	public EntityDriveable createDriveable(World world, double x, double y, double z, DriveableData data)
+	public EntityDriveable createDriveable(Level world, double x, double y, double z, DriveableData data)
 	{
-		return new EntityMecha(world, x, y, z, this, data, new NBTTagCompound());
+		return new EntityMecha(world, x, y, z, this, data, new CompoundTag());
 	}
 }

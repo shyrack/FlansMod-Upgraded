@@ -1,114 +1,108 @@
 package com.flansmod.apocalypse.common.blocks;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.ITileEntityProvider;
-import net.minecraft.block.material.Material;
-import net.minecraft.block.state.IBlockState;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.init.Blocks;
-import net.minecraft.item.ItemStack;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.math.AxisAlignedBB;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.world.IBlockAccess;
-import net.minecraft.world.World;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.EntityBlock;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.core.Direction;
+import net.minecraft.world.phys.shapes.VoxelShape;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.core.BlockPos;
+import net.minecraft.util.Mth;
+import net.minecraft.world.level.Level;
+import net.minecraft.server.level.ServerLevel;
 
 import com.flansmod.apocalypse.common.FlansModApocalypse;
-import com.flansmod.apocalypse.common.entity.EntitySkullBoss;
 import com.flansmod.apocalypse.common.entity.EntityTeleporter;
 import com.flansmod.apocalypse.common.world.buildings.WorldGenBossPillar;
 
-public class BlockPowerCube extends Block implements ITileEntityProvider
+public class BlockPowerCube extends Block implements EntityBlock
 {
-	public BlockPowerCube(Material material)
+	public BlockPowerCube()
 	{
-		super(material);
+		this(BlockBehaviour.Properties.of().noOcclusion().strength(3F, 5F));
+	}
+
+	public BlockPowerCube(BlockBehaviour.Properties properties)
+	{
+		super(properties);
 	}
 
 	@Override
-	public TileEntity createNewTileEntity(World worldIn, int meta)
+	public BlockEntity newBlockEntity(BlockPos pos, BlockState state)
 	{
-		return new TileEntityPowerCube();
-	}
-
-	public boolean shouldSideBeRendered(IBlockAccess iblockaccess, int i, int j, int k, int l)
-	{
-		return false;
-	}
-	
-	@Override
-	public boolean canPlaceBlockAt(World world, BlockPos pos)
-	{
-		return world.getBlockState(pos.add(0, -1, 0)).isSideSolid(world, pos.add(0, -1, 0), EnumFacing.UP);
-	}
-	
-	
-	@Override
-	public boolean isOpaqueCube(IBlockState state)
-	{
-		return false;
-	}
-
-	protected static final AxisAlignedBB AABB = new AxisAlignedBB(0.0D, 0.0D, 0.0D, 1.0D, 1.0D, 1.0D);
-
-	@Override
-	public AxisAlignedBB getBoundingBox(IBlockState state, IBlockAccess source, BlockPos pos)
-	{
-		return AABB;
+		return new TileEntityPowerCube(pos, state);
 	}
 
 	@Override
-	public void onBlockPlacedBy(World world, BlockPos pos, IBlockState state, EntityLivingBase placer, ItemStack stack)
+	public boolean canSurvive(BlockState state, net.minecraft.world.level.LevelReader world, BlockPos pos)
 	{
-		for(int i = 0; i < 2; i++)
+		return world.getBlockState(pos.below()).isSolid() || world.getBlockState(pos.below()).canOcclude();
+	}
+
+	@Override
+	public VoxelShape getShape(BlockState state, net.minecraft.world.level.BlockGetter world, BlockPos pos, net.minecraft.world.phys.shapes.CollisionContext context)
+	{
+		return Shapes.block();
+	}
+
+	@Override
+	public void setPlacedBy(Level world, BlockPos pos, BlockState state, LivingEntity placer, ItemStack stack)
+	{
+		if(!world.isClientSide())
 		{
-			for(int j = 0; j < 2; j++)
+			for(int i = 0; i < 2; i++)
 			{
-				if((world.provider.getDimension() == FlansModApocalypse.dimensionID || world.provider.getDimension() == 0) && isPortal(world, pos.add(-3 * i, 0, -3 * j)))
+				for(int j = 0; j < 2; j++)
 				{
-					world.spawnEntity(new EntityTeleporter(world, pos.add(-3 * i, 0, -3 * j)));
+					if((world.dimension() == FlansModApocalypse.APOCALYPSE_DIMENSION_KEY || world.dimension() == Level.OVERWORLD) && isPortal(world, pos.offset(-3 * i, 0, -3 * j)))
+					{
+						((ServerLevel)world).addFreshEntity(new EntityTeleporter(world, pos.offset(-3 * i, 0, -3 * j)));
+					}
 				}
 			}
-		}
-		
-		final int checkY = MathHelper.floor(WorldGenBossPillar.kPillarMaxHeight + 1);
-		final int checkXZ = MathHelper.floor(WorldGenBossPillar.kPillarInnerEdge + 1);
-		
-		if(world.provider.getDimension() == FlansModApocalypse.dimensionID &&
-		   world.getBlockState(pos.down()).getBlock() == Blocks.BEDROCK)
-		{
-			if(Math.abs(pos.getX()) == checkXZ &&
-			   Math.abs(pos.getZ()) == checkXZ)
+			
+			final int checkY = Mth.floor(WorldGenBossPillar.kPillarMaxHeight + 1);
+			final int checkXZ = Mth.floor(WorldGenBossPillar.kPillarInnerEdge + 1);
+			
+			if(world.dimension() == FlansModApocalypse.APOCALYPSE_DIMENSION_KEY &&
+			   world.getBlockState(pos.below()).getBlock() == Blocks.BEDROCK)
 			{
-				boolean allPresent = true;
-						
-				for(int i = 0; i < 2; i++)
-					for(int k = 0; k < 2; k++)
-						if(world.getBlockState(new BlockPos(checkXZ * (i == 0 ? 1 : -1), pos.getY(), checkXZ * (k == 0 ? 1 : -1))).getBlock() != this)
-							allPresent = false;
-				
-				if(allPresent)
+				if(Math.abs(pos.getX()) == checkXZ &&
+				   Math.abs(pos.getZ()) == checkXZ)
 				{
-					FlansModApocalypse.INSTANCE.TriggerBossFight(world, placer);
-					
+					boolean allPresent = true;
+							
 					for(int i = 0; i < 2; i++)
 						for(int k = 0; k < 2; k++)
-							world.destroyBlock(new BlockPos(checkXZ * (i == 0 ? 1 : -1), pos.getY(), checkXZ * (k == 0 ? 1 : -1)), false);
+							if(world.getBlockState(new BlockPos(checkXZ * (i == 0 ? 1 : -1), pos.getY(), checkXZ * (k == 0 ? 1 : -1))).getBlock() != this)
+								allPresent = false;
+					
+					if(allPresent)
+					{
+						FlansModApocalypse.INSTANCE.TriggerBossFight(world, placer);
+						
+						for(int i = 0; i < 2; i++)
+							for(int k = 0; k < 2; k++)
+								world.destroyBlock(new BlockPos(checkXZ * (i == 0 ? 1 : -1), pos.getY(), checkXZ * (k == 0 ? 1 : -1)), false);
+					}
 				}
 			}
 		}
 	}
 	
-	private boolean isPortal(World world, BlockPos pos)
+	private boolean isPortal(Level world, BlockPos pos)
 	{
-		if(world.getBlockState(pos).getBlock() != FlansModApocalypse.blockPowerCube || world.getBlockState(pos.add(3, 0, 0)).getBlock() != FlansModApocalypse.blockPowerCube
-				|| world.getBlockState(pos.add(0, 0, 3)).getBlock() != FlansModApocalypse.blockPowerCube || world.getBlockState(pos.add(3, 0, 3)).getBlock() != FlansModApocalypse.blockPowerCube)
+		if(world.getBlockState(pos).getBlock() != FlansModApocalypse.blockPowerCube || world.getBlockState(pos.offset(3, 0, 0)).getBlock() != FlansModApocalypse.blockPowerCube
+				|| world.getBlockState(pos.offset(0, 0, 3)).getBlock() != FlansModApocalypse.blockPowerCube || world.getBlockState(pos.offset(3, 0, 3)).getBlock() != FlansModApocalypse.blockPowerCube)
 			return false;
 		for(int i = 0; i < 2; i++)
 			for(int j = 0; j < 2; j++)
-				if(world.getBlockState(pos.add(i * 3, -1, j * 3)).getBlock() != Blocks.OBSIDIAN || world.getBlockState(pos.add(1 + i, -1, 1 + j)).getBlock() != Blocks.OBSIDIAN)
+				if(world.getBlockState(pos.offset(i * 3, -1, j * 3)).getBlock() != Blocks.OBSIDIAN || world.getBlockState(pos.offset(1 + i, -1, 1 + j)).getBlock() != Blocks.OBSIDIAN)
 					return false;
 		return true;
 	}

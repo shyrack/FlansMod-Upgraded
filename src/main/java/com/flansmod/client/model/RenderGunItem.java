@@ -1,54 +1,53 @@
 package com.flansmod.client.model;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.RenderItem;
-import net.minecraft.client.renderer.entity.Render;
-import net.minecraft.client.renderer.entity.RenderEntityItem;
-import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.entity.item.EntityItem;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.EnumHand;
-import net.minecraftforge.fml.client.registry.IRenderFactory;
+import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.entity.EntityRenderer;
+import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.world.item.ItemStack;
 
+import com.flansmod.common.EntityItemCustomRender;
 import com.flansmod.common.guns.ItemGun;
 
-public class RenderGunItem extends RenderEntityItem
+public class RenderGunItem extends EntityRenderer<EntityItemCustomRender, RenderGunItem.State>
 {
-	private RenderGun gunRenderer;
-	
-	public RenderGunItem(RenderManager renderManager, RenderItem renderItem)
+	public static class State extends EntityRenderState
 	{
-		super(renderManager, renderItem);
-		this.gunRenderer = new RenderGun();
+		public ItemStack stack = ItemStack.EMPTY;
+		public float yaw;
+		public float partialTick;
 	}
-	
+
+	public RenderGunItem(EntityRendererProvider.Context context)
+	{
+		super(context);
+	}
+
 	@Override
-	public void doRender(EntityItem entity, double x, double y, double z, float entityYaw, float partialTicks)
+	public State createRenderState()
 	{
-		ItemStack stack = entity.getItem();
-		
-		if(stack.getItem() instanceof ItemGun && ((ItemGun)stack.getItem()).GetType().model != null)
-		{
-			GlStateManager.pushMatrix();
-			GlStateManager.translate(x, y + 0.25D, z);
-			GlStateManager.rotate(entity.ticksExisted + partialTicks, 0F, 1F, 0F);
-			
-			gunRenderer.renderItem(CustomItemRenderType.ENTITY, EnumHand.MAIN_HAND, stack);
-			GlStateManager.popMatrix();
-		}
-		else
-		{
-			super.doRender(entity, x, y, z, partialTicks, partialTicks);
-		}
+		return new State();
 	}
-	
-	public static class Factory implements IRenderFactory<EntityItem>
+
+	@Override
+	public void extractRenderState(EntityItemCustomRender entity, State state, float partialTick)
 	{
-		@Override
-		public Render<EntityItem> createRenderFor(RenderManager manager)
+		super.extractRenderState(entity, state, partialTick);
+		state.stack = entity.getItem();
+		state.yaw = entity.tickCount;
+		state.partialTick = partialTick;
+	}
+
+	@Override
+	public void submit(State state, PoseStack pose, SubmitNodeCollector collector, CameraRenderState camera)
+	{
+		ItemStack stack = state.stack;
+
+		if(stack.getItem() instanceof ItemGun && ((ItemGun)stack.getItem()).GetType() != null && ((ItemGun)stack.getItem()).GetType().model != null)
 		{
-			return new RenderGunItem(manager, Minecraft.getMinecraft().getRenderItem());
+			RenderGun.renderGunItem(collector, pose, stack, state.lightCoords, state.yaw, state.partialTick);
 		}
 	}
 }

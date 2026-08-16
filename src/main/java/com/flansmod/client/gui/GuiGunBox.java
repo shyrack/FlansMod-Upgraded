@@ -1,16 +1,17 @@
 package com.flansmod.client.gui;
 
-import java.io.IOException;
-
-import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.gui.GuiButton;
-import net.minecraft.client.gui.inventory.GuiContainer;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.RenderHelper;
-import net.minecraft.client.renderer.RenderItem;
-import net.minecraft.entity.player.InventoryPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.ResourceLocation;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.ItemStack;
+import org.lwjgl.glfw.GLFW;
 
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.guns.GunType;
@@ -23,19 +24,18 @@ import com.flansmod.common.guns.boxes.GunBoxType.GunBoxPage;
 import com.flansmod.common.network.PacketBuyWeapon;
 import com.flansmod.common.types.InfoType;
 
-public class GuiGunBox extends GuiContainer
+public class GuiGunBox extends AbstractContainerScreen<ContainerGunBox>
 {
 	private static final int numCategories = 4;
 	/**
 	 * Texture location
 	 */
-	private static final ResourceLocation texture = new ResourceLocation("flansmod", "gui/weaponBoxNew.png");
+	private static final Identifier texture = Identifier.fromNamespaceAndPath("flansmod", "gui/weaponboxnew.png");
 	/**
 	 * Texture sizes
 	 */
 	private final int textureX = 512, textureY = 256;
-	private InventoryPlayer inventory;
-	private static RenderItem itemRenderer;
+	private Inventory inventory;
 	private GunBoxType type;
 	private int pageScroller;
 	private GunBoxPage currentPage;
@@ -44,25 +44,23 @@ public class GuiGunBox extends GuiContainer
 	private int guiOriginX;
 	private int guiOriginY;
 	private int scroll;
-	private GuiButton craftLeft, craftRight, categoryLeft, categoryRight;
-	private GuiButton[] categories = new GuiButton[numCategories];
+	private Button craftLeft, craftRight, categoryLeft, categoryRight;
+	private Button[] categories = new Button[numCategories];
 	
-	public GuiGunBox(InventoryPlayer inventory, GunBoxType type)
+	public GuiGunBox(Inventory inventory, GunBoxType type)
 	{
-		super(new ContainerGunBox(inventory));
+		super(new ContainerGunBox(inventory), inventory, Component.literal(""), 256, 256);
 		this.inventory = inventory;
 		this.type = type;
 		pageScroller = 0;
 		
 		currentPage = type.pages.get(0);
-		
-		xSize = ySize = 256;
 	}
 	
 	@Override
-	public void updateScreen()
+	public void containerTick()
 	{
-		super.updateScreen();
+		super.containerTick();
 		scroll++;
 		
 		if(craftLeft != null && craftRight != null)
@@ -73,12 +71,12 @@ public class GuiGunBox extends GuiContainer
 			
 			if(currentEntry != null)
 			{
-				craftLeft.enabled = currentEntry.canCraft(inventory, false);
+				craftLeft.active = currentEntry.canCraft(inventory, false);
 			}
 			
 			if(currentSubEntry != null)
 			{
-				craftRight.enabled = currentSubEntry.canCraft(inventory, false);
+				craftRight.active = currentSubEntry.canCraft(inventory, false);
 			}
 		}
 		
@@ -87,52 +85,47 @@ public class GuiGunBox extends GuiContainer
 
 	
 	@Override
-	public void initGui()
+	public void init()
 	{
-		super.initGui();
-		itemRenderer = mc.getRenderItem();
+		super.init();
 		
-		craftLeft = new GuiButton(0, width / 2 - 119, height / 2 + 15, 87, 20, "Craft");
+		craftLeft = addRenderableWidget(Button.builder(Component.literal("Craft"), b -> actionPerformed(0)).bounds(width / 2 - 119, height / 2 + 15, 87, 20).build());
 		craftLeft.visible = false;
-		buttonList.add(craftLeft);
 		
-		craftRight = new GuiButton(1, width / 2 + 33, height / 2 + 15, 87, 20, "Craft");
+		craftRight = addRenderableWidget(Button.builder(Component.literal("Craft"), b -> actionPerformed(1)).bounds(width / 2 + 33, height / 2 + 15, 87, 20).build());
 		craftRight.visible = false;
-		buttonList.add(craftRight);
 
-		categoryLeft = new GuiButton(2, width / 2 - 119, height / 2 - 122, 20, 20, "<");
-		categoryLeft.enabled = false;
-		buttonList.add(categoryLeft);
+		categoryLeft = addRenderableWidget(Button.builder(Component.literal("<"), b -> actionPerformed(2)).bounds(width / 2 - 119, height / 2 - 122, 20, 20).build());
+		categoryLeft.active = false;
 		
-		categoryRight = new GuiButton(3, width / 2 + 99, height / 2 - 122, 20, 20, ">");
-		categoryRight.enabled = type.pages.size() > (pageScroller + 1) * numCategories;
-		buttonList.add(categoryRight);
+		categoryRight = addRenderableWidget(Button.builder(Component.literal(">"), b -> actionPerformed(3)).bounds(width / 2 + 99, height / 2 - 122, 20, 20).build());
+		categoryRight.active = type.pages.size() > (pageScroller + 1) * numCategories;
 		
 		for(int i = 0; i < numCategories; i++)
 		{
+			final int category = i;
 			if(pageScroller * numCategories + i < type.pages.size())
 			{
-				categories[i] = new GuiButton(4 + i, width / 2 - numCategories * 30 + i * 60, height / 2 - 100, 60, 20, type.pages.get(pageScroller * numCategories + i).name);
-				buttonList.add(categories[i]);
+				categories[i] = addRenderableWidget(Button.builder(Component.literal(type.pages.get(pageScroller * numCategories + i).name), b -> actionPerformed(4 + category))
+						.bounds(width / 2 - numCategories * 30 + i * 60, height / 2 - 100, 60, 20).build());
 			}
 			else
 			{
-				categories[i] = new GuiButton(4 + i, width / 2 - numCategories * 30 + i * 60, height / 2 - 100, 60, 20, "NONE");
+				categories[i] = addRenderableWidget(Button.builder(Component.literal("NONE"), b -> actionPerformed(4 + category))
+						.bounds(width / 2 - numCategories * 30 + i * 60, height / 2 - 100, 60, 20).build());
 				categories[i].visible = false;
-				buttonList.add(categories[i]);
 			}
 		}
 
 	}
 	
-	@Override
-	protected void actionPerformed(GuiButton button)
+	private void actionPerformed(int id)
 	{
 		if(categories == null)
 		{
 			return;
 		}
-		switch(button.id)
+		switch(id)
 		{
 			case 0: //Left
 				FlansMod.getPacketHandler().sendToServer(new PacketBuyWeapon(type, currentEntry.type));
@@ -149,36 +142,34 @@ public class GuiGunBox extends GuiContainer
 					pageScroller++;
 				break;
 			default:
-				currentPage = type.pages.get(pageScroller * numCategories + button.id - 4);
+				currentPage = type.pages.get(pageScroller * numCategories + id - 4);
 				currentEntry = currentPage.entries.size() == 0 ? null : currentPage.entries.get(0);
 				currentSubEntry = currentEntry == null ? null : (currentEntry.childEntries.size() == 0 ? null : currentEntry.childEntries.get(0));
 
 		}
 		
-		categoryLeft.enabled = pageScroller > 0;
-		categoryRight.enabled = type.pages.size() > (pageScroller + 1) * numCategories;
+		categoryLeft.active = pageScroller > 0;
+		categoryRight.active = type.pages.size() > (pageScroller + 1) * numCategories;
 		
 		for(int i = 0; i < numCategories; i++)
 		{
 			if(pageScroller * numCategories + i < type.pages.size())
 			{
 				categories[i].visible = true;
-				categories[i].displayString = type.pages.get(pageScroller * numCategories + i).name;
+				categories[i].setMessage(Component.literal(type.pages.get(pageScroller * numCategories + i).name));
 			}
 			else categories[i].visible = false;
 		}
 	}
 	
 	@Override
-	protected void drawGuiContainerBackgroundLayer(float f, int i1, int j1)
+	public void extractBackground(GuiGraphicsExtractor extractor, int mouseX, int mouseY, float partialTick)
 	{
-		GlStateManager.color(1F, 1F, 1F, 1F);
-		mc.renderEngine.bindTexture(texture);
-
-		int originX = guiOriginX = (width - xSize) / 2;
-		int originY = guiOriginY = (height - ySize) / 2;
+		super.extractBackground(extractor, mouseX, mouseY, partialTick);
+		int originX = guiOriginX = leftPos;
+		int originY = guiOriginY = topPos;
 		
-		drawModalRectWithCustomSizedTexture(originX, originY, 0, 0, xSize, ySize, textureX, textureY);
+		extractor.blit(RenderPipelines.GUI_TEXTURED, texture, originX, originY, 0F, 0F, imageWidth, imageHeight, textureX, textureY);
 		
 		if(currentPage != null)
 		{
@@ -186,9 +177,9 @@ public class GuiGunBox extends GuiContainer
 			{
 				int currentEntryIndex = currentPage.entries.indexOf(currentEntry);
 				
-				//Render sub entry selection boxes
-				drawModalRectWithCustomSizedTexture(originX + 130, originY + 54, 290, 4, 24, 112, textureX, textureY);
-				drawModalRectWithCustomSizedTexture(originX + 95, originY + 57 + currentEntryIndex * 22, 318, 28, 38, 18, textureX, textureY);
+				//EntityRenderer sub entry selection boxes
+				extractor.blit(RenderPipelines.GUI_TEXTURED, texture, originX + 130, originY + 54, 290F, 4F, 24, 112, textureX, textureY);
+				extractor.blit(RenderPipelines.GUI_TEXTURED, texture, originX + 95, originY + 57 + currentEntryIndex * 22, 318F, 28F, 38, 18, textureX, textureY);
 				
 				//Loop twice for bg texture and item
 				for(int i = 0; i < 5; i++)
@@ -196,30 +187,30 @@ public class GuiGunBox extends GuiContainer
 					if(i >= currentEntry.childEntries.size())
 						break;
 					GunBoxEntry subEntry = currentEntry.childEntries.get(i);
-					drawModalRectWithCustomSizedTexture(originX + 133, originY + 57 + i * 22, 319, 8, 18, 18, textureX, textureY);
+					extractor.blit(RenderPipelines.GUI_TEXTURED, texture, originX + 133, originY + 57 + i * 22, 319F, 8F, 18, 18, textureX, textureY);
 				}
 				
 				if(currentSubEntry != null)
 				{
 					int currentSubEntryIndex = currentEntry.childEntries.indexOf(currentSubEntry);
-					// Render right panel thing
-					drawModalRectWithCustomSizedTexture(originX + 132, originY + 55 + currentSubEntryIndex * 22, 327, 48, 29, 22, textureX, textureY);
+					// EntityRenderer right panel thing
+					extractor.blit(RenderPipelines.GUI_TEXTURED, texture, originX + 132, originY + 55 + currentSubEntryIndex * 22, 327F, 48F, 29, 22, textureX, textureY);
 					
 					
-					//Render right panel bg
-					renderPanelBackground(currentSubEntry, originX + 161, originY + 57);
+					//EntityRenderer right panel bg
+					renderPanelBackground(extractor, currentSubEntry, originX + 161, originY + 57);
 				}
 				
-				//Render left panel for bg 
-				renderPanelBackground(currentEntry, originX + 8, originY + 57);
+				//EntityRenderer left panel for bg 
+				renderPanelBackground(extractor, currentEntry, originX + 8, originY + 57);
 
-				//Render left panel detail
-				renderPanelForeground(currentEntry, originX + 8, originY + 57);
+				//EntityRenderer left panel detail
+				renderPanelForeground(extractor, currentEntry, originX + 8, originY + 57);
 
 				if(currentSubEntry != null)
 				{
-					//Render right panel detail
-					renderPanelForeground(currentSubEntry, originX + 161, originY + 57);
+					//EntityRenderer right panel detail
+					renderPanelForeground(extractor, currentSubEntry, originX + 161, originY + 57);
 				}
 				
 				
@@ -228,43 +219,36 @@ public class GuiGunBox extends GuiContainer
 					if(i >= currentEntry.childEntries.size())
 						break;
 					GunBoxEntry subEntry = currentEntry.childEntries.get(i);
-					renderInfoType(subEntry.type, originX + 134, originY + 58 + i * 22);
+					renderInfoType(extractor, subEntry.type, originX + 134, originY + 58 + i * 22);
 				}
 			}
 			
-			//Render options
+			//EntityRenderer options
 			for(int i = 0; i < 5; i++)
 			{
 				if(i >= currentPage.entries.size())
 					break;
 				GunBoxEntryTopLevel entry = currentPage.entries.get(i);
 
-				renderInfoType(entry.type, originX + 106, originY + 58 + i * 22);
+				renderInfoType(extractor, entry.type, originX + 106, originY + 58 + i * 22);
 			}
 		}
-		int stringWidth = mc.fontRenderer.getStringWidth(type.name);
-		mc.fontRenderer.drawString(type.name, originX + xSize / 2 - stringWidth / 2, originY + 8, 0x00000000);
-		mc.fontRenderer.drawString(type.name, originX + xSize / 2 - stringWidth / 2 + 1, originY + 7, 0xffffffff);
+		int stringWidth = font.width(type.name);
+		extractor.text(font, type.name, originX + imageWidth / 2 - stringWidth / 2, originY + 8, 0x00000000);
+		extractor.text(font, type.name, originX + imageWidth / 2 - stringWidth / 2 + 1, originY + 7, 0xffffffff);
 	}
 	
-	@Override
-	public void drawScreen(int mouseX, int mouseY, float partialTicks)
-	{
-		super.drawScreen(mouseX, mouseY, partialTicks);
-		renderHoveredToolTip(mouseX, mouseY);
-	}
-	
-	private void renderInfoType(InfoType type, int x, int y)
+	private void renderInfoType(GuiGraphicsExtractor extractor, InfoType type, int x, int y)
 	{
 		if(type == null)
 		{
 			//FlansMod.log.warn("Null type when rendering!");
 			return;
 		}
-		drawSlotInventory(new ItemStack(type.item), x, y);
+		drawSlotInventory(extractor, new ItemStack(type.item), x, y);
 	}
 	
-	private void renderPanelBackground(GunBoxEntry entry, int x, int y)
+	private void renderPanelBackground(GuiGraphicsExtractor extractor, GunBoxEntry entry, int x, int y)
 	{
 		int numParts = entry.requiredParts.size();
 		
@@ -274,9 +258,9 @@ public class GuiGunBox extends GuiContainer
 		for(int i = 0; i < numPartsOnLine1; i++)
 		{
 			if(entry.haveEnoughOf(inventory, entry.requiredParts.get(i)))
-				drawModalRectWithCustomSizedTexture(x + 5 + 20 * i, y + 64, 294, 142, 18, 18, textureX, textureY);
+				extractor.blit(RenderPipelines.GUI_TEXTURED, texture, x + 5 + 20 * i, y + 64, 294F, 142F, 18, 18, textureX, textureY);
 			else 
-				drawModalRectWithCustomSizedTexture(x + 5 + 20 * i, y + 64, 276, 142, 18, 18, textureX, textureY);
+				extractor.blit(RenderPipelines.GUI_TEXTURED, texture, x + 5 + 20 * i, y + 64, 276F, 142F, 18, 18, textureX, textureY);
 		}
 		
 		//if(numPartsOnLine1 > 0)
@@ -285,13 +269,12 @@ public class GuiGunBox extends GuiContainer
 		//	drawModalRectWithCustomSizedTexture(x + 5, y + 64, 276, 122, 18 + 20 * (numPartsOnLine2 - 1), 18, textureX, textureY);
 	}
 	
-	private void renderPanelForeground(GunBoxEntry entry, int x, int y)
+	private void renderPanelForeground(GuiGraphicsExtractor extractor, GunBoxEntry entry, int x, int y)
 	{
 		if(entry == null || entry.type == null)
 		{
 			return;
 		}
-		FontRenderer fr = mc.fontRenderer;
 		
 		String bufferLine = "";
 		String bufferLine2 = "";
@@ -305,68 +288,68 @@ public class GuiGunBox extends GuiContainer
 				bufferLine2 += aBufferArray + " ";
 		}
 
-		fr.drawString(bufferLine, x + 5, y + 5, 0x00000000);
-		fr.drawString(bufferLine2, x + 5, y + 15, 0x00000000);
+		extractor.text(font, bufferLine, x + 5, y + 5, 0x00000000);
+		extractor.text(font, bufferLine2, x + 5, y + 15, 0x00000000);
 		
 		if(entry.type instanceof GunType)
 		{
 			GunType gun = (GunType)entry.type;
 			
-			fr.drawString("Damage: ", x + 5, y + 25, 0x00000000);
+			extractor.text(font, "Damage: ", x + 5, y + 25, 0x00000000);
 			String tempString = "" + gun.damage;
-			fr.drawString(tempString, x + 85 - fr.getStringWidth(tempString), y + 25, 0x00000000);
+			extractor.text(font, tempString, x + 85 - font.width(tempString), y + 25, 0x00000000);
 			
-			fr.drawString("Spread: ", x + 5, y + 35, 0x00000000);
+			extractor.text(font, "Spread: ", x + 5, y + 35, 0x00000000);
 			tempString = "" + gun.bulletSpread;
-			fr.drawString(tempString, x + 85 - fr.getStringWidth(tempString), y + 35, 0x00000000);
+			extractor.text(font, tempString, x + 85 - font.width(tempString), y + 35, 0x00000000);
 
 			if(gun.shootDelay > 0)
 			{
-				fr.drawString("RoF: ", x + 5, y + 45, 0x00000000);
+				extractor.text(font, "RoF: ", x + 5, y + 45, 0x00000000);
 				tempString = String.format("%.0f RPM", 60f * 20f / gun.shootDelay);
-				fr.drawString(tempString, x + 85 - fr.getStringWidth(tempString), y + 45, 0x00000000);
+				extractor.text(font, tempString, x + 85 - font.width(tempString), y + 45, 0x00000000);
 			}
 		}
 		else if(entry.type instanceof ShootableType)
 		{
 			ShootableType gun = (ShootableType)entry.type;
 			
-			fr.drawString("No. Rounds: ", x + 5, y + 25, 0x00000000);
+			extractor.text(font, "No. Rounds: ", x + 5, y + 25, 0x00000000);
 			String tempString = "" + gun.roundsPerItem;
-			fr.drawString(tempString, x + 85 - fr.getStringWidth(tempString), y + 25, 0x00000000);
+			extractor.text(font, tempString, x + 85 - font.width(tempString), y + 25, 0x00000000);
 			
 			if(gun.numBullets > 1)
 			{
-				fr.drawString("Pellets: ", x + 5, y + 35, 0x00000000);
+				extractor.text(font, "Pellets: ", x + 5, y + 35, 0x00000000);
 				tempString = "" + gun.numBullets;
-				fr.drawString(tempString, x + 85 - fr.getStringWidth(tempString), y + 35, 0x00000000);
+				extractor.text(font, tempString, x + 85 - font.width(tempString), y + 35, 0x00000000);
 			}
 			else if(gun.fireRadius > 0f)
 			{
-				fr.drawString("Creates Fire", x + 5, y + 35, 0x00000000);
+				extractor.text(font, "Creates Fire", x + 5, y + 35, 0x00000000);
 			}			
 			else if(gun.explosionRadius > 0f)
 			{
-				fr.drawString("Explosion: ", x + 5, y + 35, 0x00000000);
+				extractor.text(font, "Explosion: ", x + 5, y + 35, 0x00000000);
 				tempString = "" + gun.explosionRadius;
-				fr.drawString(tempString, x + 85 - fr.getStringWidth(tempString), y + 35, 0x00000000);
+				extractor.text(font, tempString, x + 85 - font.width(tempString), y + 35, 0x00000000);
 			}
 			
 			if(gun.damageVsDriveable > 1.0f)
 			{
-				fr.drawString("Anti-Tank: ", x + 5, y + 45, 0x00000000);
+				extractor.text(font, "Anti-Tank: ", x + 5, y + 45, 0x00000000);
 				tempString = String.format("x%.0f", gun.damageVsDriveable);
-				fr.drawString(tempString, x + 85 - fr.getStringWidth(tempString), y + 45, 0x00000000);
+				extractor.text(font, tempString, x + 85 - font.width(tempString), y + 45, 0x00000000);
 			}
 			else if(gun.damageVsLiving > 1.0f)
 			{
-				fr.drawString("Anti-Person: ", x + 5, y + 45, 0x00000000);
+				extractor.text(font, "Anti-Person: ", x + 5, y + 45, 0x00000000);
 				tempString = String.format("x%.0f", gun.damageVsLiving);
-				fr.drawString(tempString, x + 85 - fr.getStringWidth(tempString), y + 45, 0x00000000);
+				extractor.text(font, tempString, x + 85 - font.width(tempString), y + 45, 0x00000000);
 			}
 		}
 		
-		fr.drawString("Cost", x + 5, y + 55, 0x00000000);
+		extractor.text(font, "Cost", x + 5, y + 55, 0x00000000);
 		
 		int numParts = entry.requiredParts.size();
 		
@@ -375,7 +358,7 @@ public class GuiGunBox extends GuiContainer
 		
 		for(int i = 0; i < numPartsOnLine1; i++)
 		{
-			drawSlotInventory(entry.requiredParts.get(i), x + 6 + 20 * i, y + 65);
+			drawSlotInventory(extractor, entry.requiredParts.get(i), x + 6 + 20 * i, y + 65);
 		}
 		//for(int i = 0; i < numPartsOnLine2; i++)
 		//{
@@ -383,22 +366,21 @@ public class GuiGunBox extends GuiContainer
 		//}
 	}
 
-	private void drawSlotInventory(ItemStack itemstack, int i, int j)
+	private void drawSlotInventory(GuiGraphicsExtractor extractor, ItemStack itemstack, int i, int j)
 	{
 		if(itemstack == null || itemstack.isEmpty())
 			return;
-		RenderHelper.enableGUIStandardItemLighting();
-		
-		itemRenderer.renderItemIntoGUI(itemstack, i, j);
-		itemRenderer.renderItemOverlayIntoGUI(fontRenderer, itemstack, i, j, null);
+		extractor.item(itemstack, i, j);
+		extractor.itemDecorations(font, itemstack, i, j);
 	}
 
 	@Override
-	protected void mouseClicked(int i, int j, int k) throws IOException
+	public boolean mouseClicked(MouseButtonEvent event, boolean bl)
 	{
-		super.mouseClicked(i, j, k);
-		int m = i - guiOriginX;
-		int n = j - guiOriginY;
+		super.mouseClicked(event, bl);
+		int m = (int)event.x() - guiOriginX;
+		int n = (int)event.y() - guiOriginY;
+		int k = event.button();
 		if(k == 0 || k == 1)
 		{
 			if(currentPage != null)
@@ -424,20 +406,22 @@ public class GuiGunBox extends GuiContainer
 				}
 			}
 		}
+		return true;
 	}
 
 	
 	@Override
-	protected void keyTyped(char c, int i)
+	public boolean keyPressed(KeyEvent event)
 	{
-		if(i == 1 || i == mc.gameSettings.keyBindInventory.getKeyCode())
+		if(event.key() == GLFW.GLFW_KEY_ESCAPE || Minecraft.getInstance().options.keyInventory.matches(event))
 		{
-			mc.player.closeScreen();
+			Minecraft.getInstance().setScreen(null);
 		}
+		return true;
 	}
 
 	@Override
-	public boolean doesGuiPauseGame()
+	public boolean isPauseScreen()
 	{
 		return false;
 	}

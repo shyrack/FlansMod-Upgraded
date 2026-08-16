@@ -4,19 +4,17 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-import net.minecraft.client.model.ModelBase;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.nbt.NBTTagList;
-import net.minecraftforge.fml.common.FMLCommonHandler;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import com.flansmod.client.model.ModelBase;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.nbt.CompoundTag;
 
 import com.flansmod.client.model.ModelDefaultMuzzleFlash;
 import com.flansmod.client.model.ModelGun;
 import com.flansmod.client.model.ModelMG;
 import com.flansmod.client.model.ModelMuzzleFlash;
 import com.flansmod.common.FlansMod;
+import com.flansmod.common.guns.GunUtil;
+import com.flansmod.common.util.FlansModUtil;
 import com.flansmod.common.paintjob.PaintableType;
 import com.flansmod.common.types.TypeFile;
 import com.flansmod.common.vector.Vector3f;
@@ -219,10 +217,8 @@ public class GunType extends PaintableType implements IScope
 	/**
 	 * The deployable model
 	 */
-	@SideOnly(Side.CLIENT)
 	public ModelMG deployableModel;
 	
-	@SideOnly(Side.CLIENT)
 	public ModelMuzzleFlash muzzleFlashModel;
 	/**
 	 * The deployable model's texture
@@ -256,7 +252,6 @@ public class GunType extends PaintableType implements IScope
 	 * For guns with 3D models
 	 */
 	//TODO properly separate the data
-	//@SideOnly(Side.CLIENT)
 	public ModelGun model;
 	
 	//Attachment settings
@@ -310,14 +305,13 @@ public class GunType extends PaintableType implements IScope
 		gunList.add(this);
 		guns.put(shortName.hashCode(), this);
 		
-		if(FMLCommonHandler.instance().getSide() == Side.CLIENT)
+		if(FlansMod.isClient())
 		{
 			checkMF();
 		}
 
 	}
 	
-	@SideOnly(Side.CLIENT)
 	private void checkMF()
 	{
 		if(muzzleFlashModel == null)
@@ -429,15 +423,15 @@ public class GunType extends PaintableType implements IScope
 			}
 			else if(split[0].equals("Deployable"))
 				deployable = split[1].equals("True");
-			else if(FMLCommonHandler.instance().getSide().isClient() && deployable && split[0].equals("DeployedModel"))
+			else if(FlansMod.isClient() && deployable && split[0].equals("DeployedModel"))
 			{
 				deployableModel = FlansMod.proxy.loadModel(split[1], shortName, ModelMG.class);
 			}
-			else if(FMLCommonHandler.instance().getSide().isClient() && (split[0].equals("Model")))
+			else if(FlansMod.isClient() && (split[0].equals("Model")))
 			{
 				model = FlansMod.proxy.loadModel(split[1], shortName, ModelGun.class);
 			}
-			else if(FMLCommonHandler.instance().getSide().isClient() && (split[0].equals("MuzzleFlashModel")))
+			else if(FlansMod.isClient() && (split[0].equals("MuzzleFlashModel")))
 			{
 				muzzleFlashModel = FlansMod.proxy.loadModel(split[1], shortName, ModelMuzzleFlash.class);
 			}
@@ -535,8 +529,7 @@ public class GunType extends PaintableType implements IScope
 		}
 		catch(Exception e)
 		{
-			FlansMod.log.error("Reading gun file failed.");
-			FlansMod.log.throwing(e);
+			FlansMod.log.error("Reading gun file failed.", e);
 		}
 	}
 	
@@ -610,8 +603,7 @@ public class GunType extends PaintableType implements IScope
 	{
 		checkForTags(gun);
 		ArrayList<AttachmentType> attachments = new ArrayList<>();
-		NBTTagCompound attachmentTags = gun.getTagCompound().getCompoundTag("attachments");
-		NBTTagList genericsList = attachmentTags.getTagList("generics", (byte)10); //TODO : Check this 10 is correct
+		CompoundTag attachmentTags = GunUtil.getTag(gun).getCompoundOrEmpty("attachments");
 		for(int i = 0; i < numGenericAttachmentSlots; i++)
 		{
 			appendToList(gun, "generic_" + i, attachments);
@@ -690,7 +682,7 @@ public class GunType extends PaintableType implements IScope
 	public AttachmentType getAttachment(ItemStack gun, String name)
 	{
 		checkForTags(gun);
-		return AttachmentType.getFromNBT(gun.getTagCompound().getCompoundTag("attachments").getCompoundTag(name));
+		return AttachmentType.getFromNBT(GunUtil.getTag(gun).getCompoundOrEmpty("attachments").getCompoundOrEmpty(name));
 	}
 	
 	/**
@@ -699,7 +691,7 @@ public class GunType extends PaintableType implements IScope
 	public ItemStack getAttachmentItemStack(ItemStack gun, String name)
 	{
 		checkForTags(gun);
-		return new ItemStack(gun.getTagCompound().getCompoundTag("attachments").getCompoundTag(name));
+		return GunUtil.stackFromTag(GunUtil.getTag(gun).getCompoundOrEmpty("attachments").getCompoundOrEmpty(name));
 	}
 	
 	/**
@@ -708,22 +700,22 @@ public class GunType extends PaintableType implements IScope
 	private void checkForTags(ItemStack gun)
 	{
 		//If the gun has no tags, give it some
-		if(!gun.hasTagCompound())
+		if(!GunUtil.hasTag(gun))
 		{
-			gun.setTagCompound(new NBTTagCompound());
+			GunUtil.setTag(gun, new CompoundTag());
 		}
 		//If the gun has no attachment tags, give it some
-		if(!gun.getTagCompound().hasKey("attachments"))
+		if(!GunUtil.getTag(gun).contains("attachments"))
 		{
-			NBTTagCompound attachmentTags = new NBTTagCompound();
+			CompoundTag attachmentTags = new CompoundTag();
 			for(int i = 0; i < numGenericAttachmentSlots; i++)
-				attachmentTags.setTag("generic_" + i, new NBTTagCompound());
-			attachmentTags.setTag("barrel", new NBTTagCompound());
-			attachmentTags.setTag("scope", new NBTTagCompound());
-			attachmentTags.setTag("stock", new NBTTagCompound());
-			attachmentTags.setTag("grip", new NBTTagCompound());
+				attachmentTags.put("generic_" + i, new CompoundTag());
+			attachmentTags.put("barrel", new CompoundTag());
+			attachmentTags.put("scope", new CompoundTag());
+			attachmentTags.put("stock", new CompoundTag());
+			attachmentTags.put("grip", new CompoundTag());
 			
-			gun.getTagCompound().setTag("attachments", attachmentTags);
+			GunUtil.getTag(gun).put("attachments", attachmentTags);
 		}
 	}
 	
@@ -863,7 +855,6 @@ public class GunType extends PaintableType implements IScope
 	}
 	
 	@Override
-	@SideOnly(Side.CLIENT)
 	public ModelBase GetModel()
 	{
 		return model;

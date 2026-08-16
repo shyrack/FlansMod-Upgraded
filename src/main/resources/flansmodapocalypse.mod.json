@@ -1,0 +1,31 @@
+{
+    "schemaVersion": 1,
+    "id": "flansmodapocalypse",
+    "version": "${apocalypse_version}",
+    "name": "Flan's Mod: Apocalypse",
+    "description": "The Flan's Mod apocalyptic dimension.",
+    "authors": [
+        "jamioflan"
+    ],
+    "contact": {
+        "homepage": "https://www.flansmod.com"
+    },
+    "license": "CC BY-NC-SA 3.0",
+    "icon": "assets/flansmodapocalypse/icon.png",
+    "environment": "*",
+    "entrypoints": {
+        "main": [
+            "com.flansmod.apocalypse.common.FlansModApocalypse"
+        ],
+        "client": [
+            "com.flansmod.apocalypse.client.FlansModApocalypseClient"
+        ]
+    },
+    "depends": {
+        "flansmod": ">=5.10.0",
+        "fabricloader": ">=0.19.3",
+        "minecraft": "~26.1.2",
+        "java": ">=25",
+        "fabric-api": ">=0.152.1"
+    }
+}

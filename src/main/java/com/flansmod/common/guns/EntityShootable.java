@@ -1,12 +1,16 @@
 package com.flansmod.common.guns;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.world.World;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.level.Level;
 
 public abstract class EntityShootable extends Entity
 {
-	public EntityShootable(World w)
+	protected Level world;
+
+	public EntityShootable(EntityType<?> type, Level world)
 	{
-		super(w);
+		super(type, world);
+		this.world = level();
 	}
 }

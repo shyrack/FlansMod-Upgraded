@@ -1,46 +1,35 @@
 package com.flansmod.apocalypse.common.entity;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.EnumCreatureAttribute;
-import net.minecraft.entity.IEntityLivingData;
-import net.minecraft.entity.IRangedAttackMob;
-import net.minecraft.entity.SharedMonsterAttributes;
-import net.minecraft.entity.ai.EntityAIAttackMelee;
-import net.minecraft.entity.ai.EntityAIAttackRangedBow;
-import net.minecraft.entity.ai.EntityAIAvoidEntity;
-import net.minecraft.entity.ai.EntityAIFleeSun;
-import net.minecraft.entity.ai.EntityAIHurtByTarget;
-import net.minecraft.entity.ai.EntityAILookIdle;
-import net.minecraft.entity.ai.EntityAINearestAttackableTarget;
-import net.minecraft.entity.ai.EntityAIRestrictSun;
-import net.minecraft.entity.ai.EntityAISwimming;
-import net.minecraft.entity.ai.EntityAIWander;
-import net.minecraft.entity.ai.EntityAIWanderAvoidWater;
-import net.minecraft.entity.ai.EntityAIWatchClosest;
-import net.minecraft.entity.monster.AbstractSkeleton;
-import net.minecraft.entity.monster.EntityIronGolem;
-import net.minecraft.entity.monster.EntityMob;
-import net.minecraft.entity.passive.EntityAnimal;
-import net.minecraft.entity.passive.EntityWolf;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Items;
-import net.minecraft.init.SoundEvents;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.SoundEvent;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.SpawnGroupData;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.entity.monster.RangedAttackMob;
+import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
+import net.minecraft.world.entity.ai.goal.RangedBowAttackGoal;
+import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
+import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
+import net.minecraft.world.entity.animal.Animal;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.DifficultyInstance;
-import net.minecraft.world.EnumDifficulty;
-import net.minecraft.world.World;
+import net.minecraft.world.Difficulty;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelAccessor;
+import net.minecraft.world.level.ServerLevelAccessor;
 
 import com.flansmod.common.FlansMod;
-import com.flansmod.common.driveables.EntityDriveable;
+import com.flansmod.common.ModEntities;
 import com.flansmod.common.guns.AttachmentType;
 import com.flansmod.common.guns.BulletType;
 import com.flansmod.common.guns.FireableGun;
 import com.flansmod.common.guns.FiredShot;
 import com.flansmod.common.guns.GunType;
+import com.flansmod.common.guns.GunUtil;
 import com.flansmod.common.guns.ItemGun;
 import com.flansmod.common.guns.ItemShootable;
 import com.flansmod.common.guns.ShootableType;
@@ -48,10 +37,13 @@ import com.flansmod.common.guns.ShotHandler;
 import com.flansmod.common.network.PacketPlaySound;
 import com.flansmod.common.vector.Vector3f;
 
-public class EntityFlansModShooter extends AbstractSkeleton
+// TODO APOCALYPSE: 1.12.2 extended AbstractSkeleton; 26.1.2 has a package-private abstract
+// getStepSound() there that cannot be implemented outside its package, so Monster is used instead
+public class EntityFlansModShooter extends Monster implements RangedAttackMob
 {
+	protected Level world;
 	
-	public class EntityAIAttackRangedGun extends EntityAIAttackRangedBow<EntityFlansModShooter>
+	public class EntityAIAttackRangedGun extends RangedBowAttackGoal<EntityFlansModShooter>
 	{
 		private EntityFlansModShooter entity;
 		
@@ -61,17 +53,16 @@ public class EntityFlansModShooter extends AbstractSkeleton
 		}
 		
 		@Override
-	    protected boolean isBowInMainhand()
+	    protected boolean isHoldingBow()
 	    {
-	        return !entity.getHeldItemMainhand().isEmpty() 
-	        	&& entity.getHeldItemMainhand().getItem() instanceof ItemGun;
+	        return !entity.getMainHandItem().isEmpty() 
+	        	&& entity.getMainHandItem().getItem() instanceof ItemGun;
 	    }
 
 	}
 	
-	//private EntityAIAttackRangedBow aiArrowAttack = new EntityAIAttackRangedBow(this, 1.0D, 20, 70.0F);
 	private EntityAIAttackRangedGun shooterShoot;
-    private EntityAIAttackMelee shooterMelee;
+    private MeleeAttackGoal shooterMelee;
 	public ItemStack[] ammoStacks;
 	public float shootDelay = 0;
 	public float minigunSpeed = 0.0F;
@@ -80,118 +71,96 @@ public class EntityFlansModShooter extends AbstractSkeleton
 	public boolean shouldPlayWarmupSound = true;
 	private int soundDelay = 0;
 	
-	public EntityFlansModShooter(World world)
+	public EntityFlansModShooter(EntityType<? extends Monster> type, Level world)
 	{
-		super(world);
-		ammoStacks = new ItemStack[0];
-		//tasks.addTask(1, new EntityAISwimming(this));
-		//tasks.addTask(4, new EntityAIWander(this, 1.0D));
-		//tasks.addTask(6, new EntityAIWatchClosest(this, EntityPlayer.class, 8.0F));
-		//tasks.addTask(6, new EntityAILookIdle(this));
-		//targetTasks.addTask(1, new EntityAIHurtByTarget(this, false));
-		//targetTasks.addTask(2, new EntityAINearestAttackableTarget(this, EntityPlayer.class, true));
-		//targetTasks.addTask(3, new EntityAINearestAttackableTarget(this, EntityIronGolem.class, true));
+		super(type, world);
+		this.world = level();
+	}
 
-		if(world != null && !world.isRemote)
-		{
-		//	tasks.addTask(4, this.aiArrowAttack);
-		}
-		else
-		{
-			setRenderDistanceWeight(200D);
-		}
+public EntityFlansModShooter(Level world)
+	{
+		this(ModEntities.FLANSMOD_SHOOTER, world);
+		ammoStacks = new ItemStack[0];
+
+		this.setPersistenceRequired();
 	}
 	
+	public static AttributeSupplier.Builder createAttributes()
+	{
+		return Monster.createMonsterAttributes()
+				.add(Attributes.FOLLOW_RANGE, 80D)
+				.add(Attributes.MOVEMENT_SPEED, 0.25D);
+	}
 	
-    protected void initEntityAI()
+    @Override
+    protected void registerGoals()
     {
-        super.initEntityAI();
-        this.targetTasks.addTask(4, new EntityAINearestAttackableTarget(this, EntityAnimal.class, true));
-        this.targetTasks.addTask(5, new EntityAINearestAttackableTarget(this, EntitySkullDrone.class, true));
+        super.registerGoals();
+        this.targetSelector.addGoal(4, new NearestAttackableTargetGoal(this, Animal.class, true));
+        this.targetSelector.addGoal(5, new NearestAttackableTargetGoal(this, EntitySkullDrone.class, true));
     }
 	
-	
 	@Override
-	public void onUpdate()
+	public void tick()
 	{
-		super.onUpdate();
+		super.tick();
 		if(shootDelay > 0)
 			shootDelay--;
 	}
 	
 	@Override
-    public EnumCreatureAttribute getCreatureAttribute()
-    {
-        return EnumCreatureAttribute.UNDEFINED;
-    }
-	
-	// Hack to prevent skeleton burning. What is the point in AbstractSkeleton if its always undead and weak to sunlight eh?
-	@Override
-    public float getBrightness()
-    {
-		return 0.0F;
-    }
-	
-	@Override
-	protected void applyEntityAttributes()
+	public SpawnGroupData finalizeSpawn(ServerLevelAccessor level, DifficultyInstance difficulty, EntitySpawnReason reason, SpawnGroupData data)
 	{
-		super.applyEntityAttributes();
-		this.getEntityAttribute(SharedMonsterAttributes.FOLLOW_RANGE).setBaseValue(80D);
-		this.getEntityAttribute(SharedMonsterAttributes.MOVEMENT_SPEED).setBaseValue(0.25D);
-	}
-	
-	@Override
-	public IEntityLivingData onInitialSpawn(DifficultyInstance difficulty, IEntityLivingData data)
-	{
-		data = super.onInitialSpawn(difficulty, data);
+		data = super.finalizeSpawn(level, difficulty, reason, data);
 
-		//this.tasks.addTask(4, this.aiArrowAttack);
-		this.setEquipmentBasedOnDifficulty(difficulty);
-		this.setEnchantmentBasedOnDifficulty(difficulty);
-
-		this.setCanPickUpLoot(this.rand.nextFloat() < 0.55F * difficulty.getClampedAdditionalDifficulty());
+		this.reassessWeaponGoal();
+		this.setCanPickUpLoot(this.random.nextFloat() < 0.55F * difficulty.getSpecialMultiplier());
 
 		return data;
 	}
 
-	@Override
-    public void setCombatTask()
+    public void reassessWeaponGoal()
     {
 		if(shooterShoot == null || shooterMelee == null)
 		{
 			shooterShoot = new EntityAIAttackRangedGun(this, 1.0D, 20, 15.0F);
-			shooterMelee = new EntityAIAttackMelee(this, 1.2D, false);
+			shooterMelee = new MeleeAttackGoal(this, 1.2D, false);
 		}
 		
-        if (this.world != null && !this.world.isRemote)
+        if (this.world != null && !this.world.isClientSide())
         {
-            this.tasks.removeTask(this.shooterMelee);
-            this.tasks.removeTask(this.shooterShoot);
-            ItemStack itemstack = this.getHeldItemMainhand();
+            this.goalSelector.removeGoal(this.shooterMelee);
+            this.goalSelector.removeGoal(this.shooterShoot);
+            ItemStack itemstack = this.getMainHandItem();
 
             if (itemstack.getItem() instanceof ItemGun)
             {
                 int i = 10;
 
-                if (this.world.getDifficulty() != EnumDifficulty.HARD)
+                if (this.world.getDifficulty() != Difficulty.HARD)
                 {
                     i = 20;
                 }
 
-                this.shooterShoot.setAttackCooldown(i);
-                this.tasks.addTask(4, this.shooterShoot);
+                this.shooterShoot.setMinAttackInterval(i);
+                this.goalSelector.addGoal(4, this.shooterShoot);
             }
             else
             {
-                this.tasks.addTask(4, this.shooterMelee);
+                this.goalSelector.addGoal(4, this.shooterMelee);
             }
         }
     }
+	
+	public void setCombatTask()
+	{
+		reassessWeaponGoal();
+	}
 
 	@Override
-	public void attackEntityWithRangedAttack(EntityLivingBase entity, float range)
+	public void performRangedAttack(LivingEntity entity, float range)
 	{
-		ItemStack stack = getHeldItemMainhand();
+		ItemStack stack = getMainHandItem();
 		if(stack != null && stack.getItem() instanceof ItemGun)
 		{
 			ItemGun item = (ItemGun)stack.getItem();
@@ -212,13 +181,12 @@ public class EntityFlansModShooter extends AbstractSkeleton
 			if(type.useLoopingSounds && loopedSoundDelay <= 0 && minigunSpeed > 0.1F && !reloading)
 			{
 				loopedSoundDelay = shouldPlayWarmupSound ? type.warmupSoundLength : type.loopedSoundLength;
-				PacketPlaySound.sendSoundPacket(posX, posY, posZ, FlansMod.soundRange, dimension, shouldPlayWarmupSound ? type.warmupSound : type.loopedSound, false);
+				PacketPlaySound.sendSoundPacket(getX(), getY(), getZ(), FlansMod.soundRange, GunUtil.getDimensionId(world), shouldPlayWarmupSound ? type.warmupSound : type.loopedSound, false);
 				shouldPlayWarmupSound = false;
 			}
 			
 			if(shouldShoot)
 			{
-				//player.inventory.setInventorySlotContents(player.inventory.currentItem, tryToShoot(itemstack, type, world, player, false));
 				int damage = 0;
 				//Check all gun's slots for a valid bullet to shoot
 				int bulletID = 0;
@@ -226,7 +194,7 @@ public class EntityFlansModShooter extends AbstractSkeleton
 				for(; bulletID < type.numAmmoItemsInGun; bulletID++)
 				{
 					ItemStack checkingStack = item.getBulletItemStack(stack, bulletID);
-					if(checkingStack != null && !checkingStack.isEmpty() && checkingStack.getItemDamage() < checkingStack.getMaxDamage())
+					if(checkingStack != null && !checkingStack.isEmpty() && checkingStack.getDamageValue() < checkingStack.getMaxDamage())
 					{
 						bulletStack = checkingStack;
 						break;
@@ -246,7 +214,7 @@ public class EntityFlansModShooter extends AbstractSkeleton
 						
 						//Play reload sound
 						if(type.reloadSound != null)
-							PacketPlaySound.sendSoundPacket(posX, posY, posZ, FlansMod.soundRange, dimension, type.reloadSound, true);
+							PacketPlaySound.sendSoundPacket(getX(), getY(), getZ(), FlansMod.soundRange, GunUtil.getDimensionId(world), type.reloadSound, true);
 					}
 				}
 				//A bullet stack was found, so try shooting with it
@@ -255,8 +223,8 @@ public class EntityFlansModShooter extends AbstractSkeleton
 					//Shoot
 					shoot(stack, type, world, bulletStack, this, false, entity);
 					//Damage the bullet item
-					damage = bulletStack.getItemDamage() + 1;
-					bulletStack.setItemDamage(damage);
+					damage = bulletStack.getDamageValue() + 1;
+					bulletStack.setDamageValue(damage);
 					
 					//Update the stack in the gun
 					item.setBulletItemStack(stack, bulletStack, bulletID);
@@ -289,7 +257,7 @@ public class EntityFlansModShooter extends AbstractSkeleton
 	/**
 	 * Reload method. Called automatically when firing with an empty clip
 	 */
-	public boolean reload(ItemStack gunStack, GunType gunType, World world, Entity entity, boolean creative, boolean forceReload)
+	public boolean reload(ItemStack gunStack, GunType gunType, Level world, Entity entity, boolean creative, boolean forceReload)
 	{
 		ItemGun item = ((ItemGun)gunType.item);
 		//Deployable guns cannot be reloaded in the inventory
@@ -307,7 +275,7 @@ public class EntityFlansModShooter extends AbstractSkeleton
 			ItemStack bulletStack = item.getBulletItemStack(gunStack, i);
 			
 			//If there is no magazine, if the magazine is empty or if this is a forced reload
-			if(bulletStack == null || bulletStack.isEmpty() || bulletStack.getItemDamage() == bulletStack.getMaxDamage() || forceReload)
+			if(bulletStack == null || bulletStack.isEmpty() || bulletStack.getDamageValue() == bulletStack.getMaxDamage() || forceReload)
 			{
 				//Iterate over all inventory slots and find the magazine / bullet item with the most bullets
 				int bestSlot = -1;
@@ -317,7 +285,7 @@ public class EntityFlansModShooter extends AbstractSkeleton
 					ItemStack searchingStack = ammoStacks[j];
 					if(searchingStack != null && searchingStack.getItem() instanceof ItemShootable && gunType.isCorrectAmmo(((ItemShootable)(searchingStack.getItem())).type))
 					{
-						int bulletsInThisSlot = searchingStack.getMaxDamage() - searchingStack.getItemDamage();
+						int bulletsInThisSlot = searchingStack.getMaxDamage() - searchingStack.getDamageValue();
 						if(bulletsInThisSlot > bulletsInBestSlot)
 						{
 							bestSlot = j;
@@ -358,7 +326,7 @@ public class EntityFlansModShooter extends AbstractSkeleton
 	/**
 	 * Method for shooting to avoid repeated code
 	 */
-	private void shoot(ItemStack stack, GunType gunType, World world, ItemStack bulletStack, Entity entity, boolean left, EntityLivingBase target)
+	private void shoot(ItemStack stack, GunType gunType, Level world, ItemStack bulletStack, Entity entity, boolean left, LivingEntity target)
 	{
 		ShootableType bullet = ((ItemShootable)bulletStack.getItem()).type;
 		// Play a sound if the previous sound has finished
@@ -366,18 +334,17 @@ public class EntityFlansModShooter extends AbstractSkeleton
 		{
 			AttachmentType barrel = gunType.getBarrel(stack);
 			boolean silenced = barrel != null && barrel.silencer;
-			//world.playSoundAtEntity(entityplayer, type.shootSound, 10F, type.distortSound ? 1.0F / (world.rand.nextFloat() * 0.4F + 0.8F) : 1.0F);
-			PacketPlaySound.sendSoundPacket(posX, posY, posZ, FlansMod.soundRange, dimension, gunType.shootSound, gunType.distortSound, silenced);
+			PacketPlaySound.sendSoundPacket(getX(), getY(), getZ(), FlansMod.soundRange, GunUtil.getDimensionId(world), gunType.shootSound, gunType.distortSound, silenced);
 			soundDelay = gunType.shootSoundLength;
 		}
-		if(!world.isRemote)
+		if(!world.isClientSide())
 		{
 			float inaccuracy = 0.5F;
 			
 			// Spawn the bullet entities
-			Vector3f origin = new Vector3f(posX, posY + getEyeHeight(), posZ);
-			Vector3f direction = new Vector3f(target.posX - posX, (target.posY + target.getEyeHeight()) - (posY + getEyeHeight()), target.posZ - posZ).normalise(null);
-			Vector3f.add(direction, new Vector3f(rand.nextFloat() * direction.x * inaccuracy, rand.nextFloat() * direction.y * inaccuracy, rand.nextFloat() * direction.z * inaccuracy), direction);
+			Vector3f origin = new Vector3f(getX(), getY() + getEyeHeight(), getZ());
+			Vector3f direction = new Vector3f(target.getX() - getX(), (target.getY() + target.getEyeHeight()) - (getY() + getEyeHeight()), target.getZ() - getZ()).normalise(null);
+			Vector3f.add(direction, new Vector3f(random.nextFloat() * direction.x * inaccuracy, random.nextFloat() * direction.y * inaccuracy, random.nextFloat() * direction.z * inaccuracy), direction);
 			
 			FireableGun fireableGun = new FireableGun(gunType, gunType.getDamage(stack), gunType.getSpread(stack), gunType.getBulletSpeed(stack), gunType.getSpreadPattern(stack));
 			
@@ -399,31 +366,11 @@ public class EntityFlansModShooter extends AbstractSkeleton
 	}
 	
 	@Override
-	protected boolean canDespawn()
+	public boolean checkSpawnRules(LevelAccessor level, EntitySpawnReason reason)
 	{
-		return false;
-	}
-	
-	@Override
-	protected boolean isValidLightLevel()
-	{
-		return true;
+		return level.getDifficulty() != Difficulty.PEACEFUL;
 	}
 
-	@Override
-	public boolean getCanSpawnHere()
-	{
-		return this.world.getDifficulty() != EnumDifficulty.PEACEFUL;
-	}
-
-	@Override
-	public void setSwingingArms(boolean swingingArms)
-	{
-	}
-	
-	@Override
-	protected SoundEvent getStepSound() 
-	{
-		return SoundEvents.ENTITY_ZOMBIE_VILLAGER_STEP;
-	}
+	// TODO APOCALYPSE: 1.12.2 overrode getCreatureAttribute/getBrightness/isValidLightLevel/getStepSound/setSwingingArms;
+	// these hooks no longer exist in 26.1.2 and were dropped
 }

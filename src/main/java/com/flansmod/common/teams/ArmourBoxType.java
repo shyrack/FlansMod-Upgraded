@@ -3,11 +3,7 @@ package com.flansmod.common.teams;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import net.minecraft.block.Block;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemBlock;
-import net.minecraft.item.ItemStack;
-import net.minecraftforge.registries.IForgeRegistry;
+import net.minecraft.world.item.ItemStack;
 
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.guns.boxes.BoxType;
@@ -81,22 +77,8 @@ public class ArmourBoxType extends BoxType
 		}
 		catch(Exception e)
 		{
-			FlansMod.log.error("Reading gun box file failed : " + shortName);
-			FlansMod.log.throwing(e);
+			FlansMod.log.error("Reading gun box file failed : " + shortName, e);
 		}
-	}
-	
-	@Override
-	public void registerItem(IForgeRegistry<Item> registry)
-	{
-		item = new ItemBlock(block).setRegistryName(shortName + "_item");
-		registry.register(item);
-	}
-	
-	@Override
-	public void registerBlock(IForgeRegistry<Block> registry)
-	{
-		registry.register(block);
 	}
 	
 	/**

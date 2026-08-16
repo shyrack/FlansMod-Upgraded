@@ -4,12 +4,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-import net.minecraft.block.Block;
-import net.minecraft.entity.player.InventoryPlayer;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemBlock;
-import net.minecraft.item.ItemStack;
-import net.minecraftforge.registries.IForgeRegistry;
+import net.minecraft.world.Container;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Block;
 
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.types.InfoType;
@@ -103,24 +103,10 @@ public class GunBoxType extends BoxType
 		}
 		catch(Exception e)
 		{
-			FlansMod.log.error("Reading gun box file failed : " + shortName);
-			FlansMod.log.throwing(e);
+			FlansMod.log.error("Reading gun box file failed : " + shortName, e);
 		}
 	}
 	
-	@Override
-	public void registerItem(IForgeRegistry<Item> registry)
-	{
-		item = new ItemBlock(block).setRegistryName(shortName + "_item");
-		registry.register(item);
-	}
-	
-	@Override
-	public void registerBlock(IForgeRegistry<Block> registry)
-	{
-		registry.register(block);
-	}
-
 	private List<ItemStack> getRecipe(String[] split)
 	{
 		List<ItemStack> recipe = new ArrayList<>();
@@ -150,113 +136,6 @@ public class GunBoxType extends BoxType
 		}
 		return null;
 	}
-	
-	/* Reimported from old code
-	@Override
-	public void addRecipe(Item par1Item)
-	{
-		if (smeltableFrom != null)
-		{
-			GameRegistry.addSmelting(getRecipeElement(smeltableFrom, 0), new ItemStack(item), 0.0F);
-		}
-		if (recipeLine == null)
-			return;
-		try
-		{
-			if (!shapeless)
-			{
-				// Fix oversized recipes
-				int rows = 3;
-				// First column
-				if (((String) recipe[0]).charAt(0) == ' ' && ((String) recipe[1]).charAt(0) == ' ' && ((String) recipe[2]).charAt(0) == ' ')
-				{
-					for (int i = 0; i < 3; i++)
-						recipe[i] = ((String) recipe[i]).substring(1);
-					// New first column
-					if (((String) recipe[0]).charAt(0) == ' ' && ((String) recipe[1]).charAt(0) == ' ' && ((String) recipe[2]).charAt(0) == ' ')
-					{
-						for (int i = 0; i < 3; i++)
-							recipe[i] = ((String) recipe[i]).substring(1);
-					}
-				}
-				// Last column
-				int last = ((String) recipe[0]).length() - 1;
-				if (((String) recipe[0]).charAt(last) == ' ' && ((String) recipe[1]).charAt(last) == ' ' && ((String) recipe[2]).charAt(last) == ' ')
-				{
-					for (int i = 0; i < 3; i++)
-						recipe[i] = ((String) recipe[i]).substring(0, last);
-					// New last column
-					last--;
-					if (((String) recipe[0]).charAt(last) == ' ' && ((String) recipe[1]).charAt(last) == ' ' && ((String) recipe[2]).charAt(last) == ' ')
-					{
-						for (int i = 0; i < 3; i++)
-							recipe[i] = ((String) recipe[i]).substring(0, 0);
-					}
-				}
-				// Top row
-				if (recipe[0].equals(" ") || recipe[0].equals("  ") || recipe[0].equals("   "))
-				{
-					Object[] newRecipe = new Object[recipe.length - 1];
-					newRecipe[0] = recipe[1];
-					newRecipe[1] = recipe[2];
-					recipe = newRecipe;
-					rows--;
-					// Next top row
-					if (recipe[0].equals(" ") || recipe[0].equals("  ") || recipe[0].equals("   "))
-					{
-						Object[] newRecipe1 = new Object[recipe.length - 1];
-						newRecipe1[0] = recipe[1];
-						recipe = newRecipe1;
-						rows--;
-					}
-				}
-				// Bottom row
-				if (recipe[rows - 1].equals(" ") || recipe[rows - 1].equals("  ") || recipe[rows - 1].equals("   "))
-				{
-					Object[] newRecipe = new Object[recipe.length - 1];
-					newRecipe[0] = recipe[0];
-					newRecipe[1] = recipe[1];
-					recipe = newRecipe;
-					rows--;
-					// Next bottom row
-					if (recipe[rows - 1].equals(" ") || recipe[rows - 1].equals("  ") || recipe[rows - 1].equals("   "))
-					{
-						Object[] newRecipe1 = new Object[recipe.length - 1];
-						newRecipe1[0] = recipe[0];
-						recipe = newRecipe1;
-						rows--;
-					}
-				}
-				for (int i = 0; i < (recipeLine.length - 1) / 2; i++)
-				{
-					recipe[i * 2 + rows] = recipeLine[i * 2 + 1].charAt(0);
-					// Split ID with . and if it contains a second part, use it
-					// as damage value.
-					if (recipeLine[i * 2 + 2].contains("."))
-						recipe[i * 2 + rows + 1] = getRecipeElement(recipeLine[i * 2 + 2].split("\\.")[0], Integer.valueOf(recipeLine[i * 2 + 2].split("\\.")[1]));
-					else
-						recipe[i * 2 + rows + 1] = getRecipeElement(recipeLine[i * 2 + 2], 0);
-				}
-				GameRegistry.addRecipe(new ItemStack(block, recipeOutput, 0), recipe);
-			} else
-			{
-				recipe = new Object[recipeLine.length - 1];
-				for (int i = 0; i < (recipeLine.length - 1); i++)
-				{
-					if (recipeLine[i + 1].contains("."))
-						recipe[i] = getRecipeElement(recipeLine[i + 1].split("\\.")[0], Integer.valueOf(recipeLine[i + 1].split("\\.")[1]));
-					else
-						recipe[i] = getRecipeElement(recipeLine[i + 1], 0);
-				}
-				GameRegistry.addShapelessRecipe(new ItemStack(block, recipeOutput, 0), recipe);
-			}
-		} catch (Exception e)
-		{
-			FlansMod.log("Failed to add recipe for : " + shortName);
-			FlansMod.log.throwing(e);
-		}
-	}
-	*/
 	
 	/**
 	 * Represents a page in the gun box
@@ -303,29 +182,29 @@ public class GunBoxType extends BoxType
 			this.requiredParts = requiredParts;
 		}
 		
-		public boolean haveEnoughOf(InventoryPlayer inv, ItemStack stackNeeded)
+		public boolean haveEnoughOf(Container inv, ItemStack stackNeeded)
 		{
 			//Create a temporary copy of the player inventory for backup purposes
-			InventoryPlayer temporaryInventory = new InventoryPlayer(null);
-			for(int i = 0; i < inv.getSizeInventory(); i++)
+			Inventory temporaryInventory = new Inventory(null, null);
+			for(int i = 0; i < inv.getContainerSize(); i++)
 			{
-				temporaryInventory.setInventorySlotContents(i, inv.getStackInSlot(i).copy());
+				temporaryInventory.setItem(i, inv.getItem(i).copy());
 			}
 			
 			return haveEnoughOf(temporaryInventory, stackNeeded, false);
 		}
 		
-		private boolean haveEnoughOf(InventoryPlayer temporaryInventory, ItemStack stackNeeded, boolean takeItems)
+		private boolean haveEnoughOf(Container temporaryInventory, ItemStack stackNeeded, boolean takeItems)
 		{
 			//The total amount of items found that match this recipe stack
 			int totalAmountFound = 0;
 			//Iterate over the temporary inventory
-			for(int m = 0; m < temporaryInventory.getSizeInventory(); m++)
+			for(int m = 0; m < temporaryInventory.getContainerSize(); m++)
 			{
 				//Get the stack in each slot
-				ItemStack stackInSlot = temporaryInventory.getStackInSlot(m).copy();
+				ItemStack stackInSlot = temporaryInventory.getItem(m).copy();
 				//If the stack is what we want
-				if(stackInSlot.getItem() == stackNeeded.getItem() && stackInSlot.getItemDamage() == stackNeeded.getItemDamage())
+				if(stackInSlot.getItem() == stackNeeded.getItem() && stackInSlot.getDamageValue() == stackNeeded.getDamageValue())
 				{
 					//Work out the amount to take from the stack
 					int amountFound = Math.min(stackInSlot.getCount(), stackNeeded.getCount() - totalAmountFound);
@@ -335,7 +214,7 @@ public class GunBoxType extends BoxType
 					if(stackInSlot.getCount() <= 0)
 						stackInSlot = ItemStack.EMPTY.copy();
 					//Put the modified stack back in the inventory
-					temporaryInventory.setInventorySlotContents(m, stackInSlot);
+					temporaryInventory.setItem(m, stackInSlot);
 					//Increase the amount found counter
 					totalAmountFound += amountFound;
 					//If we have enough, stop looking
@@ -346,13 +225,13 @@ public class GunBoxType extends BoxType
 			return totalAmountFound >= stackNeeded.getCount();
 		}
 		
-		public boolean canCraft(InventoryPlayer inv, boolean takeItems)
+		public boolean canCraft(Container inv, boolean takeItems)
 		{
 			//Create a temporary copy of the player inventory for backup purposes
-			InventoryPlayer temporaryInventory = new InventoryPlayer(null);
-			for(int i = 0; i < inv.getSizeInventory(); i++)
+			Inventory temporaryInventory = new Inventory(null, null);
+			for(int i = 0; i < inv.getContainerSize(); i++)
 			{
-				temporaryInventory.setInventorySlotContents(i, inv.getStackInSlot(i).copy());
+				temporaryInventory.setItem(i, inv.getItem(i).copy());
 			}
 
 			//This becomes false if some recipe element is not found on the player
@@ -370,7 +249,8 @@ public class GunBoxType extends BoxType
 			
 			if(canCraft && takeItems)
 			{
-				inv.copyInventory(temporaryInventory);
+				for(int i = 0; i < inv.getContainerSize(); i++)
+					inv.setItem(i, temporaryInventory.getItem(i));
 			}
 			
 			return canCraft;

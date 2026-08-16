@@ -1,8 +1,7 @@
 package com.flansmod.modernweapons.client.model;
 
-import net.minecraft.client.model.ModelBase;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.entity.Entity;
+import com.flansmod.client.model.ModelBase;
+import net.minecraft.world.entity.Entity;
 
 import com.flansmod.client.tmt.ModelRendererTurbo;
 
@@ -30,7 +29,9 @@ public class ModelRPGRocket extends ModelBase
 	@Override
 	public void render(Entity entity, float f, float f1, float f2, float f3, float f4, float f5)
 	{
-		GlStateManager.scale(0.5F, 0.5F, 0.5F);
+		com.flansmod.client.model.ModelRenderer.RenderContext rpgCtx = com.flansmod.client.model.ModelRenderer.getRenderContext();
+		if(rpgCtx != null && rpgCtx.poseStack != null)
+			rpgCtx.poseStack.scale(0.5F, 0.5F, 0.5F);
 		for(ModelRendererTurbo mrt : bulletModel)
 			mrt.render(f5);
 	}

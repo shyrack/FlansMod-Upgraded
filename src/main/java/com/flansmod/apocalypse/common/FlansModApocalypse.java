@@ -1,82 +1,72 @@
 package com.flansmod.apocalypse.common;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.material.Material;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.init.Blocks;
-import net.minecraft.init.Items;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemBlock;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.crafting.IRecipe;
-import net.minecraft.item.crafting.Ingredient;
-import net.minecraft.item.crafting.ShapedRecipes;
-import net.minecraft.item.crafting.ShapelessRecipes;
-import net.minecraft.util.NonNullList;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.DimensionType;
-import net.minecraft.world.World;
-import net.minecraft.world.biome.Biome;
-import net.minecraftforge.common.DimensionManager;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.common.config.Configuration;
-import net.minecraftforge.event.RegistryEvent;
-import net.minecraftforge.event.terraingen.DecorateBiomeEvent;
-import net.minecraftforge.event.terraingen.InitMapGenEvent.EventType;
-import net.minecraftforge.event.terraingen.PopulateChunkEvent;
-import net.minecraftforge.fluids.Fluid;
-import net.minecraftforge.fluids.FluidRegistry;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.common.Mod.EventHandler;
-import net.minecraftforge.fml.common.Mod.Instance;
-import net.minecraftforge.fml.common.SidedProxy;
-import net.minecraftforge.fml.common.event.FMLInitializationEvent;
-import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
-import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.common.registry.EntityEntry;
-import net.minecraftforge.fml.common.registry.EntityRegistry;
-import net.minecraftforge.fml.common.registry.GameRegistry;
+import net.minecraft.core.Holder;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.dimension.BuiltinDimensionTypes;
+import net.minecraft.world.level.dimension.DimensionType;
+import net.minecraft.world.level.dimension.LevelStem;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.material.MapColor;
+import net.minecraft.world.level.material.PushReaction;
+import net.minecraft.world.entity.LivingEntity;
+import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.fabric.api.object.builder.v1.entity.FabricDefaultAttributeRegistry;
 
 import com.flansmod.apocalypse.common.blocks.BlockPowerCube;
 import com.flansmod.apocalypse.common.blocks.BlockStatic;
 import com.flansmod.apocalypse.common.blocks.BlockSulphur;
 import com.flansmod.apocalypse.common.blocks.BlockSulphuricAcid;
 import com.flansmod.apocalypse.common.blocks.TileEntityPowerCube;
-import com.flansmod.apocalypse.common.entity.EntityAIMecha;
 import com.flansmod.apocalypse.common.entity.EntitySkullDrone;
 import com.flansmod.apocalypse.common.entity.EntityFakePlayer;
 import com.flansmod.apocalypse.common.entity.EntityFlyByPlane;
 import com.flansmod.apocalypse.common.entity.EntityNukeDrop;
 import com.flansmod.apocalypse.common.entity.EntitySkullBoss;
+import com.flansmod.apocalypse.common.entity.EntitySkuller;
 import com.flansmod.apocalypse.common.entity.EntitySurvivor;
 import com.flansmod.apocalypse.common.entity.EntityTeleporter;
+import com.flansmod.apocalypse.common.entity.EntityFlansModShooter;
 import com.flansmod.apocalypse.common.world.BiomeApocalypse;
-import com.flansmod.apocalypse.common.world.WorldProviderApocalypse;
-import com.flansmod.apocalypse.common.world.buildings.WorldGenAbandonedPortal;
+import com.flansmod.apocalypse.common.world.BiomeProviderApocalypse;
+import com.flansmod.apocalypse.common.world.ChunkProviderApocalypse;
 import com.flansmod.apocalypse.common.world.buildings.WorldGenBossPillar;
 import com.flansmod.common.BlockItemHolder;
+import com.flansmod.common.Configuration;
 import com.flansmod.common.CreativeTabFlan;
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.IFlansModContentProvider;
 import com.flansmod.common.ItemHolderType;
+import com.flansmod.common.ModEntities;
 import com.flansmod.common.enchantments.GloveType;
 import com.flansmod.common.enchantments.ItemGlove;
 import com.flansmod.common.parts.PartType;
 
-@Mod(modid = FlansModApocalypse.MODID, name = "Flan's Mod: Apocalypse", version = FlansModApocalypse.VERSION, acceptableRemoteVersions = "@ALLOWED_VERSIONS_APOCALYPSE@", dependencies = "required-after:" + FlansMod.MODID)
-//, guiFactory = "com.flansmod.client.gui.config.ModGuiFactory")
-public class FlansModApocalypse implements IFlansModContentProvider
+public class FlansModApocalypse implements ModInitializer, IFlansModContentProvider
 {
 	//Core mod stuff
 	public static boolean DEBUG = false;
 	public static final String MODID = "flansmodapocalypse";
-	public static final String VERSION = "@VERSION_APOCALYPSE@";
+	public static final String MOD_ID = MODID;
+	public static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger("flansmodapocalypse");
+	public static final String VERSION = "5.10.0";
 	
-	@Instance(MODID)
 	public static FlansModApocalypse INSTANCE;
-	@SidedProxy(clientSide = "com.flansmod.apocalypse.client.ClientProxyApocalypse", serverSide = "com.flansmod.apocalypse.common.CommonProxyApocalypse")
 	public static CommonProxyApocalypse proxy;
 	
 	//Config options
@@ -113,17 +103,16 @@ public class FlansModApocalypse implements IFlansModContentProvider
 	 */
 	public static TeleportOption OPTION = TeleportOption.PLACER_ONLY;
 	
-	public static int dimensionID;
 	public static DimensionType APOCALYPSE_DIM = null;
+	public static final ResourceKey<DimensionType> APOCALYPSE_DIM_TYPE_KEY = ResourceKey.create(Registries.DIMENSION_TYPE, Identifier.fromNamespaceAndPath(MODID, "apocalypse"));
+	public static final ResourceKey<Level> APOCALYPSE_DIMENSION_KEY = ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath(MODID, "apocalypse"));
+	public static final ResourceKey<LevelStem> APOCALYPSE_LEVEL_STEM_KEY = ResourceKey.create(Registries.LEVEL_STEM, Identifier.fromNamespaceAndPath(MODID, "apocalypse"));
 	public static FlansModLootGenerator lootGenerator;
 	
 	//Custom apoclypse defined items and blocks
 	public static Item sulphur;
 	public static Block blockSulphur;
-	public static Fluid sulphuricAcid;
 	public static Block blockSulphuricAcid;
-	public static ResourceLocation sulphuricAcidStill = new ResourceLocation("flansmodapocalypse", "blocks/sulphuricAcidStill"),
-			sulphuricAcidFlowing = new ResourceLocation("flansmodapocalypse", "blocks/sulphuricAcidFlowing");
 	public static Block blockLabStone;
 	public static Block blockPowerCube;
 	
@@ -136,118 +125,75 @@ public class FlansModApocalypse implements IFlansModContentProvider
 	
 	public static ItemGlove nukraniumGauntlet;
 	
-	static
+	public static BlockEntityType<TileEntityPowerCube> POWER_CUBE_BE;
+	
+	private static <T extends Block> T registerBlock(String name, java.util.function.Function<net.minecraft.world.level.block.state.BlockBehaviour.Properties, T> factory)
 	{
-		FluidRegistry.enableUniversalBucket();
+		Identifier id = Identifier.fromNamespaceAndPath(MODID, name);
+		ResourceKey<Block> key = ResourceKey.create(net.minecraft.core.registries.BuiltInRegistries.BLOCK.key(), id);
+		T block = factory.apply(net.minecraft.world.level.block.state.BlockBehaviour.Properties.of().setId(key));
+		return Registry.register(net.minecraft.core.registries.BuiltInRegistries.BLOCK, key, block);
 	}
 	
-	@SubscribeEvent
-	public void registerItems(RegistryEvent.Register<Item> event)
+	private static Item registerItem(String name, java.util.function.Function<net.minecraft.world.item.Item.Properties, Item> factory)
 	{
-		event.getRegistry().register(sulphur);
-		event.getRegistry().register(itemBlockLabStone);
-		event.getRegistry().register(itemBlockSulphur);
-		event.getRegistry().register(itemBlockPowerCube);
+		Identifier id = Identifier.fromNamespaceAndPath(MODID, name);
+		ResourceKey<Item> key = ResourceKey.create(net.minecraft.core.registries.BuiltInRegistries.ITEM.key(), id);
+		Item item = factory.apply(new Item.Properties().setId(key));
+		return Registry.register(net.minecraft.core.registries.BuiltInRegistries.ITEM, key, item);
 	}
 	
-	@SubscribeEvent
-	public void registerBlocks(RegistryEvent.Register<Block> event)
+	@Override
+	public void onInitialize()
 	{
-		event.getRegistry().register(blockSulphur);
-		event.getRegistry().register(blockSulphuricAcid);
-		event.getRegistry().register(blockLabStone);
-		event.getRegistry().register(blockPowerCube);
-	}
-	
-	@SubscribeEvent
-	public void registerBiomes(RegistryEvent.Register<Biome> event)
-	{
-		BiomeApocalypse.registerBiomes();
-		event.getRegistry().register(BiomeApocalypse.deepCanyon);
-		event.getRegistry().register(BiomeApocalypse.canyon);
-		event.getRegistry().register(BiomeApocalypse.desert);
-		event.getRegistry().register(BiomeApocalypse.plateau);
-		event.getRegistry().register(BiomeApocalypse.highPlateau);
-		event.getRegistry().register(BiomeApocalypse.sulphurPits);
-	}
-	
-	@SubscribeEvent
-	public void registerRecipes(RegistryEvent.Register<IRecipe> event)
-	{
-		NonNullList<Ingredient> ingredients = NonNullList.create();
-		ingredients.add(Ingredient.fromItem(ItemBlock.getItemFromBlock(Blocks.SAND)));
-		ingredients.add(Ingredient.fromStacks(new ItemStack(sulphur)));
-		
-		event.getRegistry().register(new ShapelessRecipes("FlansModApocalypse", new ItemStack(Items.GUNPOWDER), ingredients).setRegistryName("GunpowderFromSulphur"));
-		
-		ingredients = NonNullList.create();
-		for(int i = 0; i < 4; i++)
-			ingredients.add(Ingredient.fromItem(ItemBlock.getItemFromBlock((Blocks.OBSIDIAN))));
-		ingredients.add(Ingredient.fromItem(Items.END_CRYSTAL));
-		for(int i = 0; i < 4; i++)
-			ingredients.add(Ingredient.fromItem(ItemBlock.getItemFromBlock((Blocks.OBSIDIAN))));
-
-		event.getRegistry().register(new ShapedRecipes(MODID, 3, 3, ingredients, new ItemStack(itemBlockPowerCube)).setRegistryName("PowerCubeCrafting"));
-	}
-	
-	@EventHandler
-	public void preInit(FMLPreInitializationEvent event)
-	{
-		MinecraftForge.EVENT_BUS.register(this);
+		INSTANCE = this;
 		
 		//Load config
-		configFile = new Configuration(event.getSuggestedConfigurationFile());
+		configFile = new Configuration(new java.io.File(FlansMod.gameDirectory, "config/flansmodapocalypse.cfg"));
 		syncConfig();
 		
 		//Custom apoclypse defined items and blocks
 		
 		//Sulphur block and item
-		// TODO: [1.12] .setStepSound(Block.soundTypeSand)
-		blockSulphur = new BlockSulphur().setTranslationKey("blocksulphur").setRegistryName("blocksulphur").setCreativeTab(tabApocalypse);
-		sulphur = new Item().setTranslationKey("flansulphur").setRegistryName("flansulphur").setCreativeTab(tabApocalypse);
+		blockSulphur = registerBlock("blocksulphur", p -> new BlockSulphur(p.mapColor(MapColor.SAND).sound(net.minecraft.world.level.block.SoundType.SAND).strength(0.5F)));
+		sulphur = registerItem("flansulphur", Item::new);
 		
-		itemBlockSulphur = new ItemBlock(blockSulphur).setTranslationKey("blocksulphur").setRegistryName("blocksulphur").setCreativeTab(tabApocalypse);
+		itemBlockSulphur = registerItem("blocksulphur", p -> new BlockItem(blockSulphur, p));
 		
 		//Sulphuric acid
-		sulphuricAcid = new Fluid("sulphuricacid", sulphuricAcidStill, sulphuricAcidFlowing).setTemperature(300).setViscosity(800);
-		if(FluidRegistry.registerFluid(sulphuricAcid))
-		{
-			blockSulphuricAcid = new BlockSulphuricAcid(sulphuricAcid, Material.WATER).setTranslationKey("blocksulphuricacid").setRegistryName("blocksulphuricacid").setCreativeTab(tabApocalypse);
-			sulphuricAcid.setBlock(blockSulphuricAcid);
-			sulphuricAcid.setUnlocalizedName(blockSulphuricAcid.getTranslationKey());
-			FluidRegistry.addBucketForFluid(sulphuricAcid);
-		}
-		else
-		{
-			sulphuricAcid = FluidRegistry.getFluid("sulphuricacid");
-			blockSulphuricAcid = sulphuricAcid.getBlock();
-		}
+		// TODO APOCALYPSE: 1.12.2 was a Forge fluid; now a plain damaging block
+		blockSulphuricAcid = registerBlock("blocksulphuricacid", p -> new BlockSulphuricAcid(p.mapColor(MapColor.COLOR_YELLOW).noCollision().strength(100.0F)));
 		
 		//Laboratory Stone
-		blockLabStone = new BlockStatic(Material.ROCK).setHardness(3F).setResistance(5F).setTranslationKey("blocklabstone").setRegistryName("blocklabstone").setCreativeTab(tabApocalypse);
-		itemBlockLabStone = new ItemBlock(blockLabStone).setTranslationKey("blocklabstone").setRegistryName("blocklabstone").setCreativeTab(tabApocalypse);
+		blockLabStone = registerBlock("blocklabstone", p -> new BlockStatic(p.mapColor(MapColor.STONE).strength(3F, 5F)));
+		itemBlockLabStone = registerItem("blocklabstone", p -> new BlockItem(blockLabStone, p));
 		
 		//Power Cube
-		blockPowerCube = new BlockPowerCube(Material.CIRCUITS).setTranslationKey("blockpowercube").setRegistryName("blockpowercube").setHardness(3F).setResistance(5F).setCreativeTab(tabApocalypse);
-		itemBlockPowerCube = new ItemBlock(blockPowerCube).setTranslationKey("blockpowercube").setRegistryName("blockpowercube").setCreativeTab(tabApocalypse);
-		GameRegistry.registerTileEntity(TileEntityPowerCube.class, new ResourceLocation("flansmodapocalypse:powercube"));
+		blockPowerCube = registerBlock("blockpowercube", p -> new BlockPowerCube(p.noOcclusion().strength(3F, 5F)));
+		itemBlockPowerCube = registerItem("blockpowercube", p -> new BlockItem(blockPowerCube, p));
 		
-		proxy.preInit(event);
-	}
-	
-	@EventHandler
-	public void init(FMLInitializationEvent event)
-	{
-		proxy.init(event);
-		dimensionID = DimensionManager.getNextFreeDimId();
-		APOCALYPSE_DIM = DimensionType.register("Apocalypse", "_apocalypse", dimensionID, WorldProviderApocalypse.class, false);
-		DimensionManager.registerDimension(dimensionID, APOCALYPSE_DIM);
+		POWER_CUBE_BE = Registry.register(net.minecraft.core.registries.BuiltInRegistries.BLOCK_ENTITY_TYPE, Identifier.fromNamespaceAndPath(MODID, "powercube"),
+				net.fabricmc.fabric.api.object.builder.v1.block.entity.FabricBlockEntityTypeBuilder.create(TileEntityPowerCube::new, blockPowerCube).build());
+		
+		//Biomes
+		BiomeApocalypse.registerBiomes();
+		
+		//Entities (registered in ModEntities.init() by the main FlansMod entrypoint)
+		FabricDefaultAttributeRegistry.register(ModEntities.SURVIVOR, EntityFlansModShooter.createAttributes());
+		FabricDefaultAttributeRegistry.register(ModEntities.FLANSMOD_SHOOTER, EntityFlansModShooter.createAttributes());
+		FabricDefaultAttributeRegistry.register(ModEntities.SKULLER, EntitySkuller.createAttributes());
+		FabricDefaultAttributeRegistry.register(ModEntities.SKULL_DRONE, EntitySkullDrone.createAttributes());
+		FabricDefaultAttributeRegistry.register(ModEntities.SKULL_BOSS, EntitySkullBoss.createAttributes());
+		
+		//Set up proxy
+		proxy = FlansMod.isClient() ? new com.flansmod.apocalypse.client.ClientProxyApocalypse() : new CommonProxyApocalypse();
+		proxy.preInit();
+		proxy.init();
 		
 		//Grab references to apocalypse specific items and blocks here:
 		if(ItemHolderType.getItemHolder("flanSkeleton") != null)
 		{
 			skeleton = ItemHolderType.getItemHolder("flanSkeleton").block;
-			skeleton.setCreativeTab(tabApocalypse);
 		}
 		else
 		{
@@ -256,7 +202,6 @@ public class FlansModApocalypse implements IFlansModContentProvider
 		if(ItemHolderType.getItemHolder("flanSkeleton2") != null)
 		{
 			slumpedSkeleton = ItemHolderType.getItemHolder("flanSkeleton2").block;
-			slumpedSkeleton.setCreativeTab(tabApocalypse);
 		}
 		else
 		{
@@ -265,7 +210,6 @@ public class FlansModApocalypse implements IFlansModContentProvider
 		if(ItemHolderType.getItemHolder("flanGunRack") != null)
 		{
 			gunRack = ItemHolderType.getItemHolder("flanGunRack").block;
-			gunRack.setCreativeTab(tabApocalypse);
 		}
 		else
 		{
@@ -274,11 +218,11 @@ public class FlansModApocalypse implements IFlansModContentProvider
 		
 		//Put ai chip in apocalypse tab
 		if(PartType.getPart("aiChip") != null)
-			PartType.getPart("aiChip").item.setCreativeTab(tabApocalypse);
+			tabApocalypse.addItem(PartType.getPart("aiChip").item);
 		if(PartType.getPart("complicatedCircuit") != null)
-			PartType.getPart("complicatedCircuit").item.setCreativeTab(tabApocalypse);
+			tabApocalypse.addItem(PartType.getPart("complicatedCircuit").item);
 		if(PartType.getPart("nuclearPowerCore") != null)
-			PartType.getPart("nuclearPowerCore").item.setCreativeTab(tabApocalypse);
+			tabApocalypse.addItem(PartType.getPart("nuclearPowerCore").item);
 		
 		if(GloveType.getGlove("nukranium_gauntlet") != null)
 		{
@@ -286,50 +230,35 @@ public class FlansModApocalypse implements IFlansModContentProvider
 		}
 		
 		lootGenerator = new FlansModLootGenerator();
-	}
-	
-	@EventHandler
-	public void postInit(FMLPostInitializationEvent event)
-	{
-		proxy.postInit(event);
-	}
-	
-	private WorldGenAbandonedPortal portalGen = new WorldGenAbandonedPortal();
-	
-	
-	@SubscribeEvent
-	public void populateOverworldChunk(PopulateChunkEvent event)
-	{
-		if(event.getRand().nextInt(FlansModApocalypse.ABANDONED_PORTAL_OVERWORLD_RARITY) == 0)
-		{
-			int i = event.getChunkX() * 16 + 8;
-			int j = event.getChunkZ() * 16 + 8;
-			
-			int height = event.getWorld().getHeight(i, j);
-			portalGen.generate(event.getWorld(), event.getRand(), new BlockPos(i, height, j));
-		}
-	}
-	
-	@SubscribeEvent
-	public void registerEntities(RegistryEvent.Register<EntityEntry> event)
-	{
-		event.getRegistry().register(new EntityEntry(EntitySurvivor.class, "Survivor").setRegistryName("Survivor"));
-		event.getRegistry().register(new EntityEntry(EntityTeleporter.class, "Teleporter").setRegistryName("Teleporter"));
-		event.getRegistry().register(new EntityEntry(EntityAIMecha.class, "AIMecha").setRegistryName("AIMecha"));
-		event.getRegistry().register(new EntityEntry(EntityFakePlayer.class, "FakePlayer").setRegistryName("FakePlayer"));
-		event.getRegistry().register(new EntityEntry(EntityNukeDrop.class, "NukeDrop").setRegistryName("NukeDrop"));
-		event.getRegistry().register(new EntityEntry(EntityFlyByPlane.class, "FlyByPlane").setRegistryName("FlyByPlane"));
-		event.getRegistry().register(new EntityEntry(EntitySkullBoss.class, "SkullBoss").setRegistryName("SkullBoss"));
-		event.getRegistry().register(new EntityEntry(EntitySkullDrone.class, "AutoDrone").setRegistryName("AutoDrone"));
 		
-		//EntityRegistry.registerModEntity(new ResourceLocation("flansmodapocalypse:Survivor"), 		EntitySurvivor.class, "Survivor", 112, FlansModApocalypse.INSTANCE, 100, 20, true, 0, 0);
-		EntityRegistry.registerModEntity(new ResourceLocation("flansmodapocalypse:Teleporter"), EntityTeleporter.class, "Teleporter", 113, FlansModApocalypse.INSTANCE, 100, 20, true);
-		EntityRegistry.registerModEntity(new ResourceLocation("flansmodapocalypse:AIMecha"), EntityAIMecha.class, "AIMecha", 114, FlansModApocalypse.INSTANCE, 250, 20, false);
-		EntityRegistry.registerModEntity(new ResourceLocation("flansmodapocalypse:FakePlayer"), EntityFakePlayer.class, "FakePlayer", 115, FlansModApocalypse.INSTANCE, 250, 20, false);
-		EntityRegistry.registerModEntity(new ResourceLocation("flansmodapocalypse:NukeDrop"), EntityNukeDrop.class, "NukeDrop", 116, FlansModApocalypse.INSTANCE, 250, 20, false);
-		EntityRegistry.registerModEntity(new ResourceLocation("flansmodapocalypse:FlyByPlane"), EntityFlyByPlane.class, "FlyByPlane", 117, FlansModApocalypse.INSTANCE, 250, 20, false);
-		EntityRegistry.registerModEntity(new ResourceLocation("flansmodapocalypse:SkullBoss"), EntitySkullBoss.class, "SkullBoss", 118, FlansModApocalypse.INSTANCE, 500, 5, false);
-		EntityRegistry.registerModEntity(new ResourceLocation("flansmodapocalypse:AutoDrone"), EntitySkullDrone.class, "AutoDrone", 119, FlansModApocalypse.INSTANCE, 500, 5, true);
+		ServerTickEvents.END_SERVER_TICK.register(server -> proxy.tick());
+		ServerLifecycleEvents.SERVER_STARTED.register(this::registerDimension);
+	}
+	
+	private void registerDimension(MinecraftServer server)
+	{
+		try
+		{
+			DimensionType overworldType = server.registryAccess().lookupOrThrow(Registries.DIMENSION_TYPE).getOrThrow(BuiltinDimensionTypes.OVERWORLD).value();
+			// TODO APOCALYPSE: the 1.12.2 WorldProviderApocalypse (custom sky/lightning/respawn rules) no longer exists;
+			// the apocalypse dimension reuses the overworld's DimensionType settings
+			APOCALYPSE_DIM = new DimensionType(
+					overworldType.hasFixedTime(), overworldType.hasSkyLight(), overworldType.hasCeiling(), overworldType.hasEnderDragonFight(),
+					overworldType.coordinateScale(), overworldType.minY(), overworldType.height(), overworldType.logicalHeight(),
+					overworldType.infiniburn(), overworldType.ambientLight(), overworldType.monsterSettings(), overworldType.skybox(),
+					overworldType.cardinalLightType(), overworldType.attributes(), overworldType.timelines(), overworldType.defaultClock());
+			Registry.register(server.registryAccess().lookupOrThrow(Registries.DIMENSION_TYPE), APOCALYPSE_DIM_TYPE_KEY, APOCALYPSE_DIM);
+			
+			long seed = server.overworld() != null ? server.overworld().getSeed() : 0L;
+			ChunkProviderApocalypse chunkGenerator = new ChunkProviderApocalypse(new BiomeProviderApocalypse(seed), seed);
+			Registry.register(server.registryAccess().lookupOrThrow(Registries.LEVEL_STEM), APOCALYPSE_LEVEL_STEM_KEY, new LevelStem(Holder.direct(APOCALYPSE_DIM), chunkGenerator));
+		}
+		catch(Exception e)
+		{
+			// TODO APOCALYPSE: the dynamic registries are frozen after datapack load, so the apocalypse
+			// dimension cannot currently be created at runtime; only the dimension type holder is available
+			FlansMod.log.error("Failed to register the apocalypse dimension", e);
+		}
 	}
 	
 	public static FlansModLootGenerator getLootGenerator()
@@ -350,11 +279,11 @@ public class FlansModApocalypse implements IFlansModContentProvider
 		LAB_RARITY = configFile.getInt("Lab Rarity", Configuration.CATEGORY_GENERAL, LAB_RARITY, 1, Integer.MAX_VALUE, "Rarity of the research lab");
 		RETURN_RADIUS = configFile.getInt("Return Radius", Configuration.CATEGORY_GENERAL, RETURN_RADIUS, 1, Integer.MAX_VALUE, "The distance away from your initial AI mecha that your return portal appears");
 		SPAWN_RADIUS = configFile.getInt("Spawn Radius", Configuration.CATEGORY_GENERAL, SPAWN_RADIUS, 1, Integer.MAX_VALUE, "The distance from your deathpoint that you respawn in the apocalypse");
-		OPTION = TeleportOption.getOption(configFile.getString("Option", Configuration.CATEGORY_GENERAL, OPTION.toString(), "Who gets teleported to the apocalypse with a player (One of PLACER_ONLY, DIM, DIM_OPT_IN, NEARBY, NEARBY_OPT_IN)"));
+		OPTION = TeleportOption.getOption(configFile.getString("Option", Configuration.CATEGORY_GENERAL, OPTION.toString()));
 		
 		ABANDONED_PORTAL_APOC_RARITY = configFile.getInt("Abandoned Portal Rarity (Apocalypse)", Configuration.CATEGORY_GENERAL, ABANDONED_PORTAL_APOC_RARITY, 1, Integer.MAX_VALUE, "Rarity of the abandoned portal structures in the apocalypse");
 		ABANDONED_PORTAL_OVERWORLD_RARITY = configFile.getInt("Abandoned Portal Rarity (Other Dimensions)", Configuration.CATEGORY_GENERAL, ABANDONED_PORTAL_OVERWORLD_RARITY, 1, Integer.MAX_VALUE, "Rarity of the abandoned portal structures in other dimensions");
-		RESPAWN_IN_APOC = configFile.getBoolean("Respawn in Apocalypse", Configuration.CATEGORY_GENERAL, RESPAWN_IN_APOC, "If false, players will return to their overworld spawn point");
+		RESPAWN_IN_APOC = configFile.getBoolean("Respawn in Apocalypse", Configuration.CATEGORY_GENERAL, RESPAWN_IN_APOC);
 		
 		if(configFile.hasChanged())
 			configFile.save();
@@ -401,22 +330,22 @@ public class FlansModApocalypse implements IFlansModContentProvider
 	private static boolean sBossFightInProgress = false;
 	private static EntitySkullBoss sTheBoss = null;
 	
-	public void TriggerBossFight(World world, EntityLivingBase placer) 
+	public void TriggerBossFight(Level world, LivingEntity placer) 
 	{
 		sElapsedTicks = 0;
 		
-		if(world.isRemote) {
+		if(world.isClientSide()) {
 			return;
 		}
 		
 		sTheBoss = new EntitySkullBoss(world);
-		sTheBoss.setPosition(0d, WorldGenBossPillar.kBossSpawnHeight, 0d);
+		sTheBoss.setPos(0d, WorldGenBossPillar.kBossSpawnHeight, 0d);
 		sTheBoss.SetTarget(placer);
-		world.spawnEntity(sTheBoss);
+		((net.minecraft.server.level.ServerLevel)world).addFreshEntity(sTheBoss);
 		
 	}
 	
-	public void UpdateBossFight(World world)
+	public void UpdateBossFight(Level world)
 	{
 		sElapsedTicks++;
 		

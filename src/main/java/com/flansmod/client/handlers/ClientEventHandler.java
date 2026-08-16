@@ -1,160 +1,61 @@
 package com.flansmod.client.handlers;
 
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
+
 import net.minecraft.client.Minecraft;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraftforge.client.event.ClientChatReceivedEvent;
-import net.minecraftforge.client.event.EntityViewRenderEvent.CameraSetup;
-import net.minecraftforge.client.event.MouseEvent;
-import net.minecraftforge.client.event.RenderGameOverlayEvent;
-import net.minecraftforge.client.event.RenderItemInFrameEvent;
-import net.minecraftforge.client.event.RenderLivingEvent;
-import net.minecraftforge.client.event.RenderPlayerEvent;
-import net.minecraftforge.client.event.RenderSpecificHandEvent;
-import net.minecraftforge.client.event.RenderWorldLastEvent;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.common.gameevent.InputEvent;
-import net.minecraftforge.fml.common.gameevent.TickEvent;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.network.chat.Component;
 
 import com.flansmod.client.ClientRenderHooks;
 import com.flansmod.client.FlansModClient;
 import com.flansmod.client.model.InstantBulletRenderer;
 import com.flansmod.client.model.RenderFlag;
 import com.flansmod.client.model.RenderGun;
-import com.flansmod.common.FlansMod;
-import com.flansmod.common.guns.ItemGun;
 
 /**
  * All handled events for the client should go through here and be passed on, this makes it easier to see which events
  * are being handled by the mod
  */
-@SideOnly(Side.CLIENT)
 public class ClientEventHandler
 {
 	private KeyInputHandler keyInputHandler = new KeyInputHandler();
 	private MouseInputHandler mouseInputHandler = new MouseInputHandler();
 	private ClientRenderHooks renderHooks = new ClientRenderHooks();
-	
-	@SubscribeEvent
-	public void renderTick(TickEvent.RenderTickEvent event)
+
+	public ClientEventHandler()
 	{
-		switch(event.phase)
+		ClientTickEvents.END_CLIENT_TICK.register(minecraft ->
 		{
-			case START:
-			{
-				RenderGun.smoothing = event.renderTickTime;
-				FlansModClient.updateCameraZoom(event.renderTickTime);
-				renderHooks.setPartialTick(event.renderTickTime);
-				renderHooks.updatePlayerView();
-				break;
-			}
-			case END:
-			{
-				break;
-			}
-		}
-	}
-	
-	@SubscribeEvent
-	@SideOnly(Side.CLIENT)
-	public void clientTick(TickEvent.ClientTickEvent event)
-	{
-		switch(event.phase)
+			clientTick(minecraft);
+		});
+		ClientReceiveMessageEvents.ALLOW_CHAT.register((message, chatMessage, sender, bound, instant) ->
 		{
-			case START:
-			{
-				//Handle all packets received since last tick
-				FlansMod.getPacketHandler().handleClientPackets();
-				FlansModClient.updateFlashlights(Minecraft.getMinecraft());
-				break;
-			}
-			case END:
-			{
-				InstantBulletRenderer.UpdateAllTrails();
-				renderHooks.update();
-				RenderFlag.angle += 2F;
-				FlansModClient.tick();
-				keyInputHandler.checkTickKeys();
-				break;
-			}
-		}
+			return chatMessage(message);
+		});
 	}
-	
-	@SubscribeEvent
-	public void chatMessage(ClientChatReceivedEvent event)
+
+	private void clientTick(Minecraft mc)
 	{
-		if(event.getMessage().getUnformattedText().equals("#flansmod"))
-		{
-			event.setCanceled(true);
-		}
-	}
-	
-	@SideOnly(Side.CLIENT)
-	@SubscribeEvent
-	public void checkMouseInput(MouseEvent event)
-	{
-		mouseInputHandler.checkMouseInput(event);
-		
-		EntityPlayer player = Minecraft.getMinecraft().player;
-		if(player.getHeldItemMainhand().getItem() instanceof ItemGun)
-		{
-			if(((ItemGun)player.getHeldItemMainhand().getItem()).GetType().oneHanded &&
-					Minecraft.getMinecraft().gameSettings.keyBindSneak.isKeyDown() &&
-					Math.abs(event.getDwheel()) > 0)
-				event.setCanceled(true);
-		}
-	}
-	
-	@SideOnly(Side.CLIENT)
-	@SubscribeEvent
-	public void onKeyInput(InputEvent.KeyInputEvent event)
-	{
+		float renderTickTime = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
+
+		RenderGun.smoothing = renderTickTime;
+		FlansModClient.updateCameraZoom(renderTickTime);
+		renderHooks.setPartialTick(renderTickTime);
+		renderHooks.updatePlayerView();
+
+		//Handle all packets received since last tick
+		FlansModClient.updateFlashlights(mc);
+
+		InstantBulletRenderer.UpdateAllTrails();
+		renderHooks.update();
+		RenderFlag.angle += 2F;
+		FlansModClient.tick();
+		keyInputHandler.checkTickKeys();
 		keyInputHandler.checkEventKeys();
 	}
-	
-	@SubscribeEvent
-	public void renderWorld(RenderWorldLastEvent event)
+
+	private boolean chatMessage(Component message)
 	{
-		InstantBulletRenderer.RenderAllTrails(event.getPartialTicks());
-	}
-	
-	// ----------------------------------------
-	// Lots of events for the ClientRenderHooks
-	// ----------------------------------------
-	@SubscribeEvent
-	public void renderItemFrame(RenderItemInFrameEvent event)
-	{
-		renderHooks.renderItemFrame(event);
-	}
-	
-	@SubscribeEvent
-	public void renderHeldItem(RenderSpecificHandEvent event)
-	{
-		renderHooks.renderHeldItem(event);
-	}
-	
-	@SubscribeEvent
-	public void renderThirdPersonWeapons(RenderLivingEvent.Pre event)
-	{
-		renderHooks.renderThirdPersonWeapons(event);
-	}
-	
-	@SubscribeEvent
-	public void renderPlayer(RenderPlayerEvent.Pre event)
-	{
-		renderHooks.renderPlayer(event);
-	}
-	
-	@SubscribeEvent
-	public void cameraSetup(CameraSetup event)
-	{
-		renderHooks.cameraSetup(event);
-	}
-	
-	@SubscribeEvent
-	public void ModifyHUD(RenderGameOverlayEvent event)
-	{
-		renderHooks.modifyHUD(event);
+		return !message.getString().equals("#flansmod");
 	}
 }

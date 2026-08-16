@@ -1,32 +1,29 @@
 package com.flansmod.apocalypse.common.world;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.Teleporter;
-import net.minecraft.world.WorldServer;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
 
-public class TeleporterApocalypse extends Teleporter
+public class TeleporterApocalypse
 {
-	private WorldServer world;
+	private ServerLevel world;
 	private BlockPos targetTeleporter;
 	
-	public TeleporterApocalypse(WorldServer world, BlockPos targetTeleporter)
+	public TeleporterApocalypse(ServerLevel world, BlockPos targetTeleporter)
 	{
-		super(world);
 		this.world = world;
 		this.targetTeleporter = targetTeleporter;
 	}
 	
-	@Override
-	public boolean makePortal(Entity entity)
+	public BlockPos getTargetTeleporter()
 	{
-		return true;
+		return targetTeleporter;
 	}
 	
-	@Override
-	public boolean placeInExistingPortal(Entity entity, float f)
+	public ServerLevel getWorld()
 	{
-		entity.setPosition(targetTeleporter.getX() + 2D, targetTeleporter.getY() + 1.5D, targetTeleporter.getZ() + 2D);
-		return true;
+		return world;
 	}
+	
+	// TODO APOCALYPSE: 1.12.2 extended Teleporter (makePortal/placeInExistingPortal); dimension
+	// transfer now uses ServerPlayer.teleport(TeleportTransition) directly
 }

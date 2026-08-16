@@ -3,16 +3,11 @@ package com.flansmod.common.network;
 import java.util.Random;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import net.minecraft.client.particle.Particle;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.world.World;
-import net.minecraftforge.fml.client.FMLClientHandler;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.core.particles.ParticleOptions;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.Level;
 
-import com.flansmod.client.FlansModClient;
 import com.flansmod.common.FlansMod;
 
 public class PacketFlak extends PacketBase
@@ -46,7 +41,7 @@ public class PacketFlak extends PacketBase
 	}
 	
 	@Override
-	public void encodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void encodeInto(ByteBuf data)
 	{
 		data.writeDouble(x);
 		data.writeDouble(y);
@@ -56,7 +51,7 @@ public class PacketFlak extends PacketBase
 	}
 	
 	@Override
-	public void decodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void decodeInto(ByteBuf data)
 	{
 		x = data.readDouble();
 		y = data.readDouble();
@@ -66,26 +61,20 @@ public class PacketFlak extends PacketBase
 	}
 	
 	@Override
-	public void handleServerSide(EntityPlayerMP playerEntity)
+	public void handleServerSide(ServerPlayer playerEntity)
 	{
 		FlansMod.log.warn("Received flak packet on server. Disregarding.");
 	}
 	
 	@Override
-	@SideOnly(Side.CLIENT)
-	public void handleClientSide(EntityPlayer clientPlayer)
+	public void handleClientSide(Player clientPlayer)
 	{
-		World world = clientPlayer.world;
+		Level world = clientPlayer.level();
+		ParticleOptions options = FlansMod.getParticleType(particleType);
 		for(int i = 0; i < numParticles; i++)
 		{
-			Particle obj = FlansModClient.getParticle(particleType, world, x + rand.nextGaussian(), y + rand.nextGaussian(), z + rand.nextGaussian());
-			if(obj != null)
-			{
-				obj.multiplyVelocity((float)rand.nextGaussian() / 20.0f);
-				// TODO: [1.12] Apparently we can't set the render distance higher, so let's boost the scale and see how that works
-				obj.multipleParticleScaleBy(5.0f);
-				FMLClientHandler.instance().getClient().effectRenderer.addEffect(obj);
-			}
+			world.addParticle(options, x + rand.nextGaussian(), y + rand.nextGaussian(), z + rand.nextGaussian(),
+					rand.nextGaussian() / 20.0F, rand.nextGaussian() / 20.0F, rand.nextGaussian() / 20.0F);
 		}
 	}
 }

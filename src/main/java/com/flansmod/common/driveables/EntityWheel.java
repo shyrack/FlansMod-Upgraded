@@ -1,17 +1,21 @@
 package com.flansmod.common.driveables;
 
-import io.netty.buffer.ByteBuf;
-import net.minecraft.entity.Entity;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.world.World;
-import net.minecraftforge.fml.common.registry.IEntityAdditionalSpawnData;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.Level;
 
 import com.flansmod.common.FlansMod;
+import com.flansmod.common.ModEntities;
 import com.flansmod.common.vector.Vector3f;
 
-public class EntityWheel extends Entity implements IEntityAdditionalSpawnData
+public class EntityWheel extends Entity
 {
 	/**
 	 * The vehicle this wheel is part of
@@ -27,19 +31,34 @@ public class EntityWheel extends Entity implements IEntityAdditionalSpawnData
 	 */
 	private int vehicleID;
 	
-	public EntityWheel(World world)
+	/** The level this entity is in, mirrors the 1.12.2 world field */
+	protected Level world;
+	
+	private static final EntityDataAccessor<Integer> VEHICLE =
+		SynchedEntityData.defineId(EntityWheel.class, EntityDataSerializers.INT);
+	private static final EntityDataAccessor<Integer> WHEEL =
+		SynchedEntityData.defineId(EntityWheel.class, EntityDataSerializers.INT);
+	
+	public EntityWheel(EntityType<?> type, Level world)
 	{
-		super(world);
-		setSize(1F, 1F);
-		stepHeight = 1.0F;
+		super(type, world);
+		this.world = level();
+	}
+
+	public EntityWheel(Level world)
+	{
+		this(ModEntities.WHEEL, world);
+		this.world = level();
 	}
 	
-	public EntityWheel(World world, EntityDriveable entity, int i)
+	public EntityWheel(Level world, EntityDriveable entity, int i)
 	{
 		this(world);
 		vehicle = entity;
-		vehicleID = entity.getEntityId();
+		vehicleID = entity.getId();
+		entityData.set(VEHICLE, vehicleID);
 		ID = i;
+		entityData.set(WHEEL, ID);
 		
 		initPosition();
 	}
@@ -48,34 +67,44 @@ public class EntityWheel extends Entity implements IEntityAdditionalSpawnData
 	{
 		Vector3f wheelVector =
 				vehicle.axes.findLocalVectorGlobally(vehicle.getDriveableType().wheelPositions[ID].position);
-		setPosition(vehicle.posX + wheelVector.x, vehicle.posY + wheelVector.y, vehicle.posZ + wheelVector.z);
-		stepHeight = vehicle.getDriveableType().wheelStepHeight;
+		setPos(vehicle.getX() + wheelVector.x, vehicle.getY() + wheelVector.y, vehicle.getZ() + wheelVector.z);
 		
-		prevPosX = posX;
-		prevPosY = posY;
-		prevPosZ = posZ;
+		xo = getX();
+		yo = getY();
+		zo = getZ();
 	}
 	
 	@Override
-	public void fall(float k, float l)
+	public float maxUpStep()
+	{
+		return vehicle != null ? vehicle.getDriveableType().wheelStepHeight : 1.0F;
+	}
+	
+	@Override
+	public boolean causeFallDamage(double k, float l, DamageSource source)
 	{
 		if(vehicle == null || k <= 0)
-			return;
-		int i = MathHelper.ceil(k - 3F);
+			return false;
+		int i = Mth.ceil(k - 3F);
 		if(i > 0)
-			vehicle.attackPart(vehicle.getDriveableType().wheelPositions[ID].part, DamageSource.FALL, i);
+			vehicle.attackPart(vehicle.getDriveableType().wheelPositions[ID].part, level().damageSources().fall(), i);
+		return true;
 	}
 	
 	@Override
-	protected void entityInit()
+	protected void defineSynchedData(SynchedEntityData.Builder builder)
 	{
+		builder.define(VEHICLE, -1);
+		builder.define(WHEEL, -1);
 	}
 	
 	@Override
-	protected void readEntityFromNBT(NBTTagCompound tags)
+	protected void readAdditionalSaveData(net.minecraft.world.level.storage.ValueInput input)
 	{
-		DriveableType type = DriveableType.getDriveable(tags.getString("DriveableType"));
-		ID = tags.getInteger("Index");
+		CompoundTag tags = input.read("FlanData", net.minecraft.nbt.CompoundTag.CODEC).orElse(new CompoundTag());
+		DriveableType type = DriveableType.getDriveable(tags.getStringOr("DriveableType", ""));
+		ID = tags.getIntOr("Index", 0);
+		entityData.set(WHEEL, ID);
 		
 		if(type == null)
 		{
@@ -84,86 +113,67 @@ public class EntityWheel extends Entity implements IEntityAdditionalSpawnData
 			return;
 		}
 		
-		if(getRidingEntity() instanceof EntityDriveable)
+		if(getVehicle() instanceof EntityDriveable)
 		{
-			vehicle = (EntityDriveable)getRidingEntity();
+			vehicle = (EntityDriveable)getVehicle();
 			vehicle.registerWheel(this);
+			entityData.set(VEHICLE, vehicle.getId());
 		}
 	}
 	
 	@Override
-	protected void writeEntityToNBT(NBTTagCompound tags)
+	protected void addAdditionalSaveData(net.minecraft.world.level.storage.ValueOutput output)
 	{
+		CompoundTag tags = new CompoundTag();
 		if(vehicle != null)
 		{
-			tags.setString("DriveableType", vehicle.getDriveableType().shortName);
-			tags.setInteger("Index", ID);
+			tags.putString("DriveableType", vehicle.getDriveableType().shortName);
+			tags.putInt("Index", ID);
 		}
+		output.store("FlanData", net.minecraft.nbt.CompoundTag.CODEC, tags);
 	}
 	
 	@Override
-	public void onUpdate()
+	public void tick()
 	{
-		if(vehicle == null || isDead)
+		super.tick();
+		if(vehicle == null || isRemoved())
 		{
-			if(getRidingEntity() instanceof EntityDriveable)
+			vehicleID = entityData.get(VEHICLE);
+			if(vehicleID >= 0 && level().getEntity(vehicleID) instanceof EntityDriveable)
 			{
-				vehicle = (EntityDriveable)getRidingEntity();
+				vehicle = (EntityDriveable)level().getEntity(vehicleID);
 				vehicle.registerWheel(this);
 			}
-			return;
+			if(vehicle == null)
+			{
+				return;
+			}
 		}
 		
-		if(!addedToChunk)
-		{
-			world.spawnEntity(this);
-		}
+		ID = entityData.get(WHEEL);
 	}
 	
 	@Override
-	public void setDead()
+	public boolean canBeCollidedWith(Entity other)
 	{
-		// No chance. You do not have the power
+		return !isRemoved();
 	}
-	
-	@Override
-	public boolean canBeCollidedWith()
-	{
-		return !isDead;
-	}
-	
 	
 	public void reallySetDead()
 	{
-		super.setDead();
+		discard();
 	}
 	
 	public double getSpeedXZ()
 	{
-		return Math.sqrt(motionX * motionX + motionZ * motionZ);
+		return Math.sqrt(getDeltaMovement().x * getDeltaMovement().x + getDeltaMovement().z * getDeltaMovement().z);
 	}
 	
 	@Override
-	public void setPositionAndRotationDirect(double d, double d1, double d2, float f, float f1, int i, boolean b)
+	public boolean hurtServer(ServerLevel level, DamageSource source, float amount)
 	{
-	}
-	
-	@Override
-	public void writeSpawnData(ByteBuf data)
-	{
-		data.writeInt(vehicleID);
-		data.writeInt(ID);
-	}
-	
-	@Override
-	public void readSpawnData(ByteBuf data)
-	{
-		vehicleID = data.readInt();
-		ID = data.readInt();
-		if(world.getEntityByID(vehicleID) instanceof EntityDriveable)
-			vehicle = (EntityDriveable)world.getEntityByID(vehicleID);
-		
-		setPosition(posX, posY, posZ);
+		return false;
 	}
 	
 	public int getExpectedWheelID()
@@ -171,15 +181,4 @@ public class EntityWheel extends Entity implements IEntityAdditionalSpawnData
 		return ID;
 	}
 	
-	@Override
-	public void updateRidden()
-	{
-		if(!updateBlocked)
-			onUpdate();
-		
-		if(isRiding())
-		{
-			getRidingEntity().updatePassenger(this);
-		}
-	}
 }

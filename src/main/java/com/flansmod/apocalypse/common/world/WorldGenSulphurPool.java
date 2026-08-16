@@ -2,16 +2,16 @@ package com.flansmod.apocalypse.common.world;
 
 import java.util.Random;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.material.Material;
-import net.minecraft.init.Blocks;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
-import net.minecraft.world.gen.feature.WorldGenerator;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.Level;
 
 import com.flansmod.apocalypse.common.FlansModApocalypse;
+import com.flansmod.apocalypse.common.world.buildings.WorldGenFlan;
 
-public class WorldGenSulphurPool extends WorldGenerator
+public class WorldGenSulphurPool extends WorldGenFlan
 {
 	private Block block;
 	
@@ -20,9 +20,9 @@ public class WorldGenSulphurPool extends WorldGenerator
 		this.block = block;
 	}
 	
-	public boolean generate(World world, Random rand, BlockPos pos)
+	public boolean generate(Level world, Random rand, BlockPos pos)
 	{
-		for(pos = pos.add(-8, 0, -8); pos.getY() > 5 && world.isAirBlock(pos); pos = pos.down())
+		for(pos = pos.offset(-8, 0, -8); pos.getY() > 5 && world.isEmptyBlock(pos); pos = pos.below())
 		{
 		}
 		
@@ -32,7 +32,7 @@ public class WorldGenSulphurPool extends WorldGenerator
 		}
 		else
 		{
-			pos = pos.down(4);
+			pos = pos.below(4);
 			boolean[] aboolean = new boolean[2048];
 			int i = rand.nextInt(4) + 4;
 			int j;
@@ -80,14 +80,14 @@ public class WorldGenSulphurPool extends WorldGenerator
 						
 						if(flag)
 						{
-							Material material = world.getBlockState(pos.add(j, k, k1)).getMaterial();
+							BlockState material = world.getBlockState(pos.offset(j, k, k1));
 							
-							if(k >= 4 && material.isLiquid())
+							if(k >= 4 && !material.getFluidState().isEmpty())
 							{
 								return false;
 							}
 							
-							if(k < 4 && !material.isSolid() && world.getBlockState(pos.add(j, k, k1)).getBlock() != this.block)
+							if(k < 4 && !material.isSolid() && world.getBlockState(pos.offset(j, k, k1)).getBlock() != this.block)
 							{
 								return false;
 							}
@@ -104,7 +104,7 @@ public class WorldGenSulphurPool extends WorldGenerator
 					{
 						if(aboolean[(j * 16 + k1) * 8 + k])
 						{
-							world.setBlockState(pos.add(j, k, k1), k >= 4 ? Blocks.AIR.getDefaultState() : this.block.getDefaultState(), 2);
+							world.setBlockAndUpdate(pos.offset(j, k, k1), k >= 4 ? Blocks.AIR.defaultBlockState() : this.block.defaultBlockState());
 						}
 					}
 				}
@@ -120,9 +120,9 @@ public class WorldGenSulphurPool extends WorldGenerator
 						{
 							flag = !aboolean[(j * 16 + k1) * 8 + k] && (j < 15 && aboolean[((j + 1) * 16 + k1) * 8 + k] || j > 0 && aboolean[((j - 1) * 16 + k1) * 8 + k] || k1 < 15 && aboolean[(j * 16 + k1 + 1) * 8 + k] || k1 > 0 && aboolean[(j * 16 + (k1 - 1)) * 8 + k] || k < 7 && aboolean[(j * 16 + k1) * 8 + k + 1] || k > 0 && aboolean[(j * 16 + k1) * 8 + (k - 1)]);
 							
-							if(flag && (k < 4 || rand.nextInt(2) != 0) && world.getBlockState(pos.add(j, k, k1)).getMaterial().isSolid())
+							if(flag && (k < 4 || rand.nextInt(2) != 0) && world.getBlockState(pos.offset(j, k, k1)).isSolid())
 							{
-								world.setBlockState(pos.add(j, k, k1), FlansModApocalypse.blockSulphur.getDefaultState(), 2);
+								world.setBlockAndUpdate(pos.offset(j, k, k1), FlansModApocalypse.blockSulphur.defaultBlockState());
 							}
 						}
 					}

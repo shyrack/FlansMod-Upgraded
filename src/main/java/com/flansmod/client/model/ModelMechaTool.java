@@ -1,7 +1,6 @@
 package com.flansmod.client.model;
 
-import net.minecraft.client.model.ModelBase;
-import net.minecraft.client.renderer.GlStateManager;
+import com.flansmod.client.model.ModelBase;
 
 import com.flansmod.client.tmt.ModelRendererTurbo;
 import com.flansmod.common.driveables.mechas.EntityMecha;
@@ -43,15 +42,11 @@ public class ModelMechaTool extends ModelBase
 		
 		for(ModelRendererTurbo model : sawModel)
 		{
-			GlStateManager.pushMatrix();
 			if(spin)
 			{
-				GlStateManager.translate(model.rotationPointX / 16F, model.rotationPointY / 16F, model.rotationPointZ / 16F);
-				GlStateManager.rotate(25F * (float)mecha.ticksExisted, 0F, 1F, 0F);
-				GlStateManager.translate(-model.rotationPointX / 16F, -model.rotationPointY / 16F, -model.rotationPointZ / 16F);
+				model.rotateAngleY = 25F * (float)mecha.tickCount / 180F * 3.14159265F;
 			}
 			model.render(f5);
-			GlStateManager.popMatrix();
 		}
 		
 	}

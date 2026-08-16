@@ -2,8 +2,8 @@ package com.flansmod.common.teams;
 
 import java.util.List;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.world.World;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.Level;
 
 /**
  * Interface for objects that act as team bases, places that teams are given or can capture, dependent on game mode.
@@ -72,7 +72,7 @@ public interface ITeamBase
 	double getPosZ();
 	
 	//Returns the world this base is in
-	World getWorld();
+	Level getWorld();
 	
 	//Returns the flag object for CTF like gametypes. May return null, but then this base may not be used in CTF like gametypes
 	ITeamObject getFlag();

@@ -1,7 +1,7 @@
 package com.flansmod.client.tmt;
 
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.Mth;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * The PositionTransformGroup class adds a class which allows for vertex transformations.
@@ -32,17 +32,17 @@ public class TransformGroupBone extends TransformGroup
 		return returnAngle;
 	}
 	
-	public Vec3d getBaseVector()
+	public Vec3 getBaseVector()
 	{
-		return new Vec3d(baseVector.x, baseVector.y, baseVector.z);
+		return new Vec3(baseVector.x, baseVector.y, baseVector.z);
 	}
 	
-	public Vec3d getTransformVector()
+	public Vec3 getTransformVector()
 	{
 		return baseVector.subtract(attachedBone.getPosition());
 	}
 	
-	public Vec3d getCurrentVector()
+	public Vec3 getCurrentVector()
 	{
 		return attachedBone.getPosition();
 	}
@@ -61,9 +61,9 @@ public class TransformGroupBone extends TransformGroup
 	}
 	
 	@Override
-	public Vec3d doTransformation(PositionTransformVertex vertex)
+	public Vec3 doTransformation(PositionTransformVertex vertex)
 	{
-		Vec3d vector = new Vec3d(vertex.neutralVector.x, vertex.neutralVector.y, vertex.neutralVector.z);
+		Vec3 vector = new Vec3(vertex.neutralVector.x, vertex.neutralVector.y, vertex.neutralVector.z);
 		vector = getBaseVector().subtract(vector);
 		Angle3D angle = getTransformAngle();
 		setVectorRotations(vector, angle.angleX, angle.angleY, angle.angleZ);
@@ -71,14 +71,14 @@ public class TransformGroupBone extends TransformGroup
 		return vector;
 	}
 	
-	protected void setVectorRotations(Vec3d vector, float xRot, float yRot, float zRot)
+	protected void setVectorRotations(Vec3 vector, float xRot, float yRot, float zRot)
 	{
-		float xC = MathHelper.cos(xRot);
-		float xS = MathHelper.sin(xRot);
-		float yC = MathHelper.cos(yRot);
-		float yS = MathHelper.sin(yRot);
-		float zC = MathHelper.cos(zRot);
-		float zS = MathHelper.sin(zRot);
+		float xC = Mth.cos(xRot);
+		float xS = Mth.sin(xRot);
+		float yC = Mth.cos(yRot);
+		float yS = Mth.sin(yRot);
+		float zC = Mth.cos(zRot);
+		float zS = Mth.sin(zRot);
 		
 		double xVec = vector.x;
 		double yVec = vector.y;
@@ -98,11 +98,11 @@ public class TransformGroupBone extends TransformGroup
 		yVec = zy;
 		zVec = yz;
 		
-		vector = new Vec3d(xVec, yVec, zVec);
+		vector = new Vec3(xVec, yVec, zVec);
 	}
 	
 	protected Angle3D baseAngles;
-	protected Vec3d baseVector;
+	protected Vec3 baseVector;
 	protected Bone attachedBone;
 	protected double weight;
 }

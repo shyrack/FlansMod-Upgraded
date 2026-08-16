@@ -7,15 +7,15 @@ import com.flansmod.common.BlockItemHolder;
 import com.flansmod.common.ModuloHelper;
 import com.flansmod.common.TileEntityItemHolder;
 
-import net.minecraft.block.BlockColored;
-import net.minecraft.init.Blocks;
-import net.minecraft.item.EnumDyeColor;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
-import net.minecraft.world.gen.feature.WorldGenerator;
 
-public class WorldGenRoads extends WorldGenerator
+import net.minecraft.world.level.block.Blocks;
+
+import net.minecraft.core.Direction;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.Level;
+
+
+public class WorldGenRoads extends WorldGenFlan
 {
 	// Ring road
 	private static final double kRingRoadInner = 400d,
@@ -29,15 +29,15 @@ public class WorldGenRoads extends WorldGenerator
 	private static final double kRepeatDistance = 600d;
 	
 	@Override
-	public boolean generate(World world, Random rand, BlockPos pos)
+	public boolean generate(Level world, Random rand, BlockPos pos)
 	{		
 		for(int i = 8; i < 24; i++)
 		{
 			for(int k = 8; k < 24; k++)
 			{
-				BlockPos p = pos.add(i, 0, k);
+				BlockPos p = pos.offset(i, 0, k);
 				
-				double dist = p.getDistance(0, 0, 0);
+				double dist = Math.sqrt(p.getX() * p.getX() + p.getY() * p.getY() + p.getZ() * p.getZ());
 				double theta = Math.atan2(p.getZ(), p.getX());
 				
 				double r = ModuloHelper.modulo(dist, kRepeatDistance);
@@ -88,30 +88,30 @@ public class WorldGenRoads extends WorldGenerator
 				
 				if(doEdge)
 				{
-					world.setBlockState(p.add(0,64,0), Blocks.DOUBLE_STONE_SLAB.getDefaultState());
+					world.setBlockAndUpdate(p.offset(0,64,0), Blocks.SMOOTH_STONE_SLAB.defaultBlockState());
 				}
 				else if(doRoad > 0)
 				{
-					world.setBlockState(p.add(0,64,0), Blocks.CONCRETE.getDefaultState().withProperty(BlockColored.COLOR, doDash ? EnumDyeColor.WHITE : EnumDyeColor.BLACK), 0);
+					world.setBlockAndUpdate(p.offset(0,64,0), (doDash ? Blocks.WHITE_CONCRETE : Blocks.BLACK_CONCRETE).defaultBlockState());
 					
 				}
 				
 				if(doRoad > 0)
 				{
-					BlockPos downIterate = p.add(0,63,0);
+					BlockPos downIterate = p.offset(0,63,0);
 					
-					while(world.isAirBlock(downIterate) && downIterate.getY() > archHeight)
+					while(world.isEmptyBlock(downIterate) && downIterate.getY() > archHeight)
 					{
-						world.setBlockState(downIterate, Blocks.STONE.getDefaultState());
-						downIterate = downIterate.down();
+						world.setBlockAndUpdate(downIterate, Blocks.STONE.defaultBlockState());
+						downIterate = downIterate.below();
 					}
 					
-					BlockPos upIterate = p.add(0, 65, 0);
+					BlockPos upIterate = p.offset(0, 65, 0);
 
 					while(upIterate.getY() < tunnelHeight)
 					{
-						world.setBlockToAir(upIterate);
-						upIterate = upIterate.up();
+						world.removeBlock(upIterate, false);
+						upIterate = upIterate.above();
 					}
 				}
 			}

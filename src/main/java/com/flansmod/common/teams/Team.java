@@ -4,12 +4,9 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-import net.minecraft.client.model.ModelBase;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import com.flansmod.client.model.ModelBase;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.PlayerData;
@@ -102,9 +99,9 @@ public class Team extends InfoType
 			{
 				if(split[1].equals("None"))
 					return;
-				for(Item item : FlansMod.armourItems)
+				for(ItemTeamArmour item : FlansMod.armourItems)
 				{
-					ArmourType armour = ((ItemTeamArmour)item).type;
+					ArmourType armour = item.type;
 					if(armour != null && armour.shortName.equals(split[1]))
 						hat = new ItemStack(item);
 				}
@@ -113,9 +110,9 @@ public class Team extends InfoType
 			{
 				if(split[1].equals("None"))
 					return;
-				for(Item item : FlansMod.armourItems)
+				for(ItemTeamArmour item : FlansMod.armourItems)
 				{
-					ArmourType armour = ((ItemTeamArmour)item).type;
+					ArmourType armour = item.type;
 					if(armour != null && armour.shortName.equals(split[1]))
 						chest = new ItemStack(item);
 				}
@@ -124,9 +121,9 @@ public class Team extends InfoType
 			{
 				if(split[1].equals("None"))
 					return;
-				for(Item item : FlansMod.armourItems)
+				for(ItemTeamArmour item : FlansMod.armourItems)
 				{
-					ArmourType armour = ((ItemTeamArmour)item).type;
+					ArmourType armour = item.type;
 					if(armour != null && armour.shortName.equals(split[1]))
 						legs = new ItemStack(item);
 				}
@@ -135,9 +132,9 @@ public class Team extends InfoType
 			{
 				if(split[1].equals("None"))
 					return;
-				for(Item item : FlansMod.armourItems)
+				for(ItemTeamArmour item : FlansMod.armourItems)
 				{
-					ArmourType armour = ((ItemTeamArmour)item).type;
+					ArmourType armour = item.type;
 					if(armour != null && armour.shortName.equals(split[1]))
 						shoes = new ItemStack(item);
 				}
@@ -149,8 +146,7 @@ public class Team extends InfoType
 		}
 		catch(Exception e)
 		{
-			FlansMod.log.error("Reading team file failed.");
-			FlansMod.log.throwing(e);
+			FlansMod.log.error("Reading team file failed.", e);
 		}
 	}
 	
@@ -188,9 +184,9 @@ public class Team extends InfoType
 	}
 	*/
 	
-	public void removePlayer(EntityPlayer player)
+	public void removePlayer(Player player)
 	{
-		removePlayer(player.getName());
+		removePlayer(player.getName().getString());
 	}
 	
 	public String removePlayer(String username)
@@ -201,9 +197,9 @@ public class Team extends InfoType
 		return username;
 	}
 	
-	public EntityPlayer addPlayer(EntityPlayer player)
+	public Player addPlayer(Player player)
 	{
-		addPlayer(player.getName());
+		addPlayer(player.getName().getString());
 		return player;
 	}
 	
@@ -258,7 +254,6 @@ public class Team extends InfoType
 	}
 	
 	@Override
-	@SideOnly(Side.CLIENT)
 	public ModelBase GetModel()
 	{
 		return null;

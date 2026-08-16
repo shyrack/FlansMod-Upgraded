@@ -3,9 +3,14 @@ package com.flansmod.common.guns;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.minecraft.client.model.ModelBase;
-import net.minecraft.item.Item;
-import net.minecraft.potion.PotionEffect;
+import com.flansmod.client.model.ModelBase;
+
+import net.minecraft.core.Holder;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.item.Item;
 
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.driveables.EnumWeaponType;
@@ -52,7 +57,7 @@ public class BulletType extends ShootableType
 	
 	public String trailTexture = "defaultBulletTrail";
 	
-	public ArrayList<PotionEffect> hitEffects = new ArrayList<>();
+	public ArrayList<MobEffectInstance> hitEffects = new ArrayList<>();
 	
 	/**
 	 * The static bullets list
@@ -122,13 +127,22 @@ public class BulletType extends ShootableType
 			else if(split[0].equals("LockOnForce") || split[0].equals("TurningForce"))
 				lockOnForce = Float.parseFloat(split[1]);
 			else if(split[0].equals("PotionEffect"))
-				hitEffects.add(getPotionEffect(split));
+				hitEffects.add(parsePotionEffect(split));
 		}
 		catch(Exception e)
 		{
-			FlansMod.log.error("Reading bullet file failed.");
-			FlansMod.log.throwing(e);
+			FlansMod.log.error("Reading bullet file failed.", e);
 		}
+	}
+	
+	private static MobEffectInstance parsePotionEffect(String[] split)
+	{
+		int potionID = Integer.parseInt(split[1]);
+		int duration = Integer.parseInt(split[2]);
+		int amplifier = Integer.parseInt(split[3]);
+		java.util.Optional<net.minecraft.core.Holder.Reference<MobEffect>> effect = BuiltInRegistries.MOB_EFFECT.get(potionID);
+		Holder<MobEffect> holder = effect.isPresent() ? effect.get() : MobEffects.INSTANT_HEALTH;
+		return new MobEffectInstance(holder, duration, amplifier, false, false);
 	}
 	
 	public static BulletType getBullet(String s)

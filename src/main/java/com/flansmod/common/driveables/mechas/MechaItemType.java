@@ -2,10 +2,7 @@ package com.flansmod.common.driveables.mechas;
 
 import java.util.ArrayList;
 
-import net.minecraft.client.model.ModelBase;
-import net.minecraftforge.fml.common.FMLCommonHandler;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import com.flansmod.client.model.ModelBase;
 
 import com.flansmod.client.model.ModelMechaTool;
 import com.flansmod.common.FlansMod;
@@ -78,7 +75,6 @@ public class MechaItemType extends InfoType
 	/**
 	 * The model
 	 */
-	@SideOnly(Side.CLIENT)
 	public ModelMechaTool model;
 	
 	public MechaItemType(TypeFile file)
@@ -93,7 +89,7 @@ public class MechaItemType extends InfoType
 		super.read(split, file);
 		try
 		{
-			if(FMLCommonHandler.instance().getSide().isClient() && split[0].equals("Model"))
+			if(FlansMod.isClient() && split[0].equals("Model"))
 				model = FlansMod.proxy.loadModel(split[1], shortName, ModelMechaTool.class);
 			if(split[0].equals("Type"))
 				type = EnumMechaItemType.getToolType(split[1]);
@@ -195,7 +191,6 @@ public class MechaItemType extends InfoType
 	}
 	
 	@Override
-	@SideOnly(Side.CLIENT)
 	public ModelBase GetModel()
 	{
 		return model;

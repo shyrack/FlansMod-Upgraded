@@ -3,30 +3,32 @@ package com.flansmod.common.teams;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.network.datasync.DataParameter;
-import net.minecraft.network.datasync.DataSerializers;
-import net.minecraft.network.datasync.EntityDataManager;
-import net.minecraft.util.EnumHand;
-import net.minecraft.util.math.AxisAlignedBB;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.RayTraceResult;
-import net.minecraft.world.World;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.level.Level;
 
 import com.flansmod.common.FlansMod;
+import com.flansmod.common.ModEntities;
 import com.flansmod.common.PlayerData;
 import com.flansmod.common.PlayerHandler;
 
 public class EntityFlagpole extends Entity implements ITeamBase
 {
-	protected static final AxisAlignedBB POLE_AABB = new AxisAlignedBB(-0.2D, 0.0D, -0.2D, 0.4D, 2.0D, 0.4D);
-	private static final DataParameter<Integer> FLAGPOLE_ID = EntityDataManager.createKey(EntityFlagpole.class, DataSerializers.VARINT);
+	protected Level world;
+	protected static final AABB POLE_AABB = new AABB(-0.2D, 0.0D, -0.2D, 0.4D, 2.0D, 0.4D);
 	
 	//Set this when an op sets the base and return to it when the gametype restarts
 	public int defaultTeamID;
@@ -48,85 +50,76 @@ public class EntityFlagpole extends Entity implements ITeamBase
 	
 	public static TeamsManager teamsManager = TeamsManager.getInstance();
 	
-	//Chunk loading
-	private boolean uninitialized = true;
-	private int loadDistance = 1;
-	
-	public EntityFlagpole(World world)
+		public EntityFlagpole(EntityType<?> type, Level world)
 	{
-		super(world);
-		setSize(1F, 2F);
+		super(type, world);
+		this.world = level();
+	}
+
+public EntityFlagpole(Level world)
+	{
+		this(ModEntities.FLAGPOLE, world);
+		this.world = level();
+
 	}
 	
-	public EntityFlagpole(World world, double x, double y, double z)
+	public EntityFlagpole(Level world, double x, double y, double z)
 	{
 		this(world);
-		setPosition(x, y, z);
+		setPos(x, y, z);
 		flag = new EntityFlag(world, this);
 		objects.add(flag);
-		world.spawnEntity(flag);
+		if(world instanceof ServerLevel)
+			((ServerLevel)world).addFreshEntity(flag);
 		//flag.startRiding(this);
 		if(teamsManager.maps.size() > 0)
 			map = teamsManager.maps.values().iterator().next();
 	}
 	
-	public EntityFlagpole(World world, int x, int y, int z)
+	public EntityFlagpole(Level world, int x, int y, int z)
 	{
 		this(world, x + 0.5D, y, z + 0.5D);
 	}
 	
-	public EntityFlagpole(World world, BlockPos pos)
+	public EntityFlagpole(Level world, BlockPos pos)
 	{
 		this(world, pos.getX() + 0.5D, pos.getY() + 1D, pos.getZ() + 0.5D);
 	}
 	
-	@SideOnly(Side.CLIENT)
 	@Override
-	public boolean isInRangeToRender3d(double x, double y, double z)
+	public boolean hurtServer(ServerLevel level, DamageSource source, float amount)
 	{
-		double dX = this.posX - x;
-		double dY = this.posY - y;
-		double dZ = this.posZ - z;
-		double distSq = dX * dX + dY * dY + dZ * dZ;
-		double maxDist = 128.0D * getRenderDistanceWeight();
-		return distSq < maxDist * maxDist;
+		return false;
 	}
 	
 	@Override
-	public AxisAlignedBB getCollisionBoundingBox()
-	{
-		return POLE_AABB;
-	}
-	
-	@Override
-	public boolean canBeCollidedWith()
+	public boolean isPickable()
 	{
 		return true;
 	}
 	
 	@Override
-	protected void entityInit()
+	protected void defineSynchedData(SynchedEntityData.Builder builder)
 	{
-		getDataManager().register(FLAGPOLE_ID, 0);
 	}
 	
 	@Override
-	protected void readEntityFromNBT(NBTTagCompound tags)
+	protected void readAdditionalSaveData(ValueInput input)
 	{
-		setBaseID(tags.getInteger("ID"));
-		currentTeamID = defaultTeamID = tags.getInteger("TeamID");
-		map = teamsManager.maps.get(tags.getString("Map"));
-		name = tags.getString("Name");
+		setBaseID(input.getIntOr("ID", 0));
+		currentTeamID = defaultTeamID = input.getIntOr("TeamID", 0);
+		map = teamsManager.maps.get(input.getStringOr("Map", ""));
+		name = input.getStringOr("Name", "");
 		setMap(map);
 	}
 	
 	@Override
-	protected void writeEntityToNBT(NBTTagCompound tags)
+	protected void addAdditionalSaveData(ValueOutput output)
 	{
-		tags.setInteger("TeamID", defaultTeamID);
-		tags.setString("Map", map == null ? "" : map.shortName);
-		tags.setInteger("ID", getBaseID());
-		tags.setString("Name", name);
+		output.putInt("TeamID", defaultTeamID);
+		output.putString("Map", map == null ? "" : map.shortName);
+		output.putInt("ID", getBaseID());
+		output.putString("Name", name);
 	}
 	
 	@Override
@@ -171,7 +164,35 @@ public class EntityFlagpole extends Entity implements ITeamBase
 	@Override
 	public void tick()
 	{
+		super.tick();
 		
+		if(!world.isClientSide())
+		{
+			if(flag == null && getFirstPassenger() instanceof EntityFlag)
+			{
+				flag = (EntityFlag)getFirstPassenger();
+			}
+			if(flag == null)
+			{
+				flag = new EntityFlag(world, this);
+				objects.add(flag);
+			}
+			if(!flag.isAlive() || world.getEntity(flag.getId()) == null)
+			{
+				if(world instanceof ServerLevel)
+					((ServerLevel)world).addFreshEntity(flag);
+			}
+			if(flag.isHome)
+			{
+				flag.setPos(getX(), getY() + 2F, getZ());
+				if(!flag.isPassenger() && tickCount > 2) // Heckin' race conditions. You'd think MC would sort queue bad passenger packets until later...
+					flag.startRiding(this);
+			}
+		}
+		
+		//Temporary fire glitch fix
+		if(world.isClientSide())
+			extinguishFire();
 	}
 	
 	@Override
@@ -209,7 +230,7 @@ public class EntityFlagpole extends Entity implements ITeamBase
 		{
 			map.removeBase(this);
 		}
-		setDead();
+		discard();
 	}
 	
 	@Override
@@ -221,23 +242,23 @@ public class EntityFlagpole extends Entity implements ITeamBase
 	@Override
 	public double getPosX()
 	{
-		return posX;
+		return getX();
 	}
 	
 	@Override
 	public double getPosY()
 	{
-		return posY;
+		return getY();
 	}
 	
 	@Override
 	public double getPosZ()
 	{
-		return posZ;
+		return getZ();
 	}
 	
 	@Override
-	public World getWorld()
+	public Level getWorld()
 	{
 		return world;
 	}
@@ -256,60 +277,23 @@ public class EntityFlagpole extends Entity implements ITeamBase
 	}
 	
 	@Override
-	public void onUpdate()
+	public InteractionResult interact(Player player, InteractionHand hand, net.minecraft.world.phys.Vec3 vec)
 	{
-		super.onUpdate();
-		
-		if(!world.isRemote)
+		if(!world.isClientSide() && player instanceof ServerPlayer)
 		{
-			if(flag == null && getPassengers().get(0) instanceof EntityFlag)
-			{
-				flag = (EntityFlag)getPassengers().get(0);
-			}
-			if(flag == null)
-			{
-				flag = new EntityFlag(world, this);
-				objects.add(flag);
-			}
-			if(!flag.addedToChunk)
-				world.spawnEntity(flag);
-			if(flag.isHome)
-			{
-				flag.setPosition(posX, posY + 2F, posZ);
-				if(!flag.isRiding() && ticksExisted > 2) // Heckin' race conditions. You'd think MC would sort queue bad passenger packets until later...
-					flag.startRiding(this);
-			}
+			PlayerData data = PlayerHandler.getPlayerData(player);
+			if(data != null && data.team == null && TeamsManager.getInstance().playerIsOp(player) &&
+				(player.getMainHandItem().isEmpty() || !(player.getMainHandItem().getItem() instanceof ItemOpStick)))
+				ItemOpStick.openBaseEditGUI(this, (ServerPlayer)player);
+			
+			TeamsManager.getInstance().playerClickedEntity((ServerPlayer)player, this);
 		}
-		
-		//Temporary fire glitch fix
-		if(world.isRemote)
-			extinguish();
+		return InteractionResult.PASS;
 	}
 	
-	@Override
-	public void setDead()
+	public ItemStack getPickedResult(HitResult target)
 	{
-		super.setDead();
-	}
-	
-	@Override
-	public boolean processInitialInteract(EntityPlayer player, EnumHand hand)
-	{
-		PlayerData data = PlayerHandler.getPlayerData(player);
-		if(!world.isRemote && data.team == null && TeamsManager.getInstance().playerIsOp(player) && (player.getHeldItemMainhand() == null || !(player.getHeldItemMainhand().getItem() instanceof ItemOpStick)))
-			ItemOpStick.openBaseEditGUI(this, (EntityPlayerMP)player);
-		
-		/* TODO : Check the generalised code in TeamsManager works
-		if(player instanceof EntityPlayerMP && TeamsManager.getInstance().currentGametype != null)
-			TeamsManager.getInstance().currentGametype.baseClickedByPlayer(this, (EntityPlayerMP)player);
-			*/
-		return false;
-	}
-	
-	@Override
-	public ItemStack getPickedResult(RayTraceResult target)
-	{
-		return new ItemStack(FlansMod.flag, 1, 0);
+		return new ItemStack(FlansMod.flag);
 	}
 	
 	@Override
@@ -348,11 +332,5 @@ public class EntityFlagpole extends Entity implements ITeamBase
 	public void setOwnerID(int id)
 	{
 		currentTeamID = id;
-	}
-	
-	@Override
-	public boolean isBurning()
-	{
-		return false;
 	}
 }

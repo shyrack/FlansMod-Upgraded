@@ -1,56 +1,49 @@
 package com.flansmod.common.teams;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.projectile.EntityFishHook;
-import net.minecraft.item.ItemStack;
-import net.minecraft.world.World;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.projectile.FishingHook;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 
-public class EntityConnectingLine extends EntityFishHook
+public class EntityConnectingLine extends FishingHook
 {
 	
 	public Object connectedTo;
-	public EntityPlayer player;
+	public Player player;
 	
-	public EntityConnectingLine(World world, EntityPlayer player)
+	public EntityConnectingLine(Level world, Player player)
 	{
-		super(world, player);
+		super(player, world, 0, 0);
 		this.player = player;
+		player.fishing = this;
 	}
 	
-	public EntityConnectingLine(World world, EntityPlayer player, ITeamBase base)
+	public EntityConnectingLine(Level world, Player player, ITeamBase base)
 	{
 		this(world, player);
-		caughtEntity = this;
-		ignoreFrustumCheck = true;
-		setSize(0.25F, 0.25F);
-		setPosition(base.getPosX(), base.getPosY(), base.getPosZ());
-		motionX = 0;
-		motionZ = 0;
-		motionY = 0;
 		connectedTo = base;
+
+		setPos(base.getPosX(), base.getPosY(), base.getPosZ());
+		setDeltaMovement(0, 0, 0);
 	}
 	
-	public EntityConnectingLine(World world, EntityPlayer player, ITeamObject object)
+	public EntityConnectingLine(Level world, Player player, ITeamObject object)
 	{
 		this(world, player);
-		caughtEntity = this;
-		ignoreFrustumCheck = true;
-		setSize(0.25F, 0.25F);
-		setPosition(object.getPosX(), object.getPosY(), object.getPosZ());
-		motionX = 0;
-		motionZ = 0;
-		motionY = 0;
 		connectedTo = object;
+
+		setPos(object.getPosX(), object.getPosY(), object.getPosZ());
+		setDeltaMovement(0, 0, 0);
 	}
 	
 	@Override
-	public void onUpdate()
+	public void tick()
 	{
-		ItemStack currentItemstack = player.inventory.getCurrentItem();
-		if(currentItemstack == null || !(currentItemstack.getItem() instanceof ItemOpStick) || currentItemstack.getItemDamage() != 1)
+		ItemStack currentItemstack = player.getMainHandItem();
+		if(currentItemstack == null || !(currentItemstack.getItem() instanceof ItemOpStick) || currentItemstack.getDamageValue() != 1)
 		{
-			setDead();
-			player.fishEntity = null;
+			discard();
+			player.fishing = null;
 		}
 	}
 	

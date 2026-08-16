@@ -12,12 +12,12 @@ public class ModelApron extends ModelCustomArmour
 		
 		bodyModel = new ModelRendererTurbo[1];
 		
-		bodyModel[0] = new ModelRendererTurbo(this, 0, 0, textureX, textureY);
+		bodyModel[0] = new ModelRendererTurbo(null, 0, 0, textureX, textureY);
 		bodyModel[0].addBox(-5F, 0F, -3F, 10, 12, 6);
 		
 		skirtFrontModel = new ModelRendererTurbo[1];
 		
-		skirtFrontModel[0] = new ModelRendererTurbo(this, 32, 0, textureX, textureY);
+		skirtFrontModel[0] = new ModelRendererTurbo(null, 32, 0, textureX, textureY);
 		skirtFrontModel[0].addBox(-5F, 0F, -3F, 10, 12, 6);
 	}
 }

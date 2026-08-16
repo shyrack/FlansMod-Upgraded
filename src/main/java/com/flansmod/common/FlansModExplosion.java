@@ -9,51 +9,48 @@ import java.util.Set;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import net.minecraft.block.Block;
-import net.minecraft.block.material.Material;
-import net.minecraft.block.state.IBlockState;
-import net.minecraft.enchantment.EnchantmentProtection;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.init.Blocks;
-import net.minecraft.init.SoundEvents;
-import net.minecraft.network.play.server.SPacketExplosion;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.EnumParticleTypes;
-import net.minecraft.util.SoundCategory;
-import net.minecraft.util.math.AxisAlignedBB;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.Explosion;
-import net.minecraft.world.World;
-import net.minecraftforge.event.ForgeEventFactory;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.Mth;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Explosion;
+import net.minecraft.world.level.ExplosionDamageCalculator;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 import com.flansmod.common.guns.EntityDamageSourceFlan;
 import com.flansmod.common.teams.TeamsManager;
 import com.flansmod.common.types.InfoType;
 
-public class FlansModExplosion extends Explosion
+public class FlansModExplosion implements Explosion
 {
 	
 	private final boolean causesFire;
 	private final boolean breaksBlocks;
 	private final Random random;
-	private final World world;
+	private final Level world;
 	private final double x, y, z;
-	private final Optional<? extends EntityPlayer> player;
+	private final Optional<? extends Player> player;
 	private final Entity explosive;
 	private final float size;
 	private final List<BlockPos> affectedBlockPositions;
-	private final Map<EntityPlayer, Vec3d> playerKnockbackMap;
-	private final Vec3d position;
+	private final Map<Player, Vec3> playerKnockbackMap;
+	private final Vec3 position;
 	private final InfoType type; // type of Flan's Mod weapon causing explosion
+	private final ExplosionDamageCalculator damageCalculator = new ExplosionDamageCalculator();
 	
-	public FlansModExplosion(World world, Entity entity, Optional<? extends EntityPlayer> player, InfoType type, double x, double y, double z, float size, boolean causesFire, boolean smoking, boolean breaksBlocks)
+	public FlansModExplosion(Level world, Entity entity, Optional<? extends Player> player, InfoType type, double x, double y, double z, float size, boolean causesFire, boolean smoking, boolean breaksBlocks)
 	{
-		super(world, entity, x, y, z, size, causesFire, smoking);
 		this.random = new Random();
 		this.affectedBlockPositions = Lists.newArrayList();
 		this.playerKnockbackMap = Maps.newHashMap();
@@ -65,26 +62,65 @@ public class FlansModExplosion extends Explosion
 		this.z = z;
 		this.causesFire = causesFire;
 		this.breaksBlocks = breaksBlocks && TeamsManager.explosions;
-		this.position = new Vec3d(this.x, this.y, this.z);
+		this.position = new Vec3(this.x, this.y, this.z);
 		this.type = type;
 		this.explosive = entity;
 		
-		if(!ForgeEventFactory.onExplosionStart(world, this))
-		{
-			this.doExplosionA();
-			this.doExplosionB(smoking);
-			
-			for(EntityPlayer obj : world.playerEntities)
-			{
-				FlansMod.getPacketHandler().sendTo(new SPacketExplosion(x, y, z, size, affectedBlockPositions, getPlayerKnockbackMap().get(obj)), (EntityPlayerMP)obj);
-			}
-		}
+		this.doExplosionA();
+		this.doExplosionB(smoking);
+	}
+	
+	@Override
+	public ServerLevel level()
+	{
+		return (ServerLevel)this.world;
+	}
+	
+	@Override
+	public Explosion.BlockInteraction getBlockInteraction()
+	{
+		return Explosion.BlockInteraction.DESTROY;
+	}
+	
+	@Override
+	public LivingEntity getIndirectSourceEntity()
+	{
+		return player.isPresent() ? player.get() : (explosive instanceof LivingEntity ? (LivingEntity)explosive : null);
+	}
+	
+	@Override
+	public Entity getDirectSourceEntity()
+	{
+		return explosive;
+	}
+	
+	@Override
+	public float radius()
+	{
+		return this.size;
+	}
+	
+	@Override
+	public Vec3 center()
+	{
+		return this.position;
+	}
+	
+	@Override
+	public boolean canTriggerBlocks()
+	{
+		return false;
+	}
+	
+	@Override
+	public boolean shouldAffectBlocklikeEntities()
+	{
+		return true;
 	}
 	
 	/**
 	 * Does the first part of the explosion (destroy blocks)
 	 */
-	@Override
 	public void doExplosionA()
 	{
 		Set<BlockPos> set = Sets.newHashSet();
@@ -106,23 +142,23 @@ public class FlansModExplosion extends Explosion
 							d0 /= d3;
 							d1 /= d3;
 							d2 /= d3;
-							float f = this.size * (0.7F + this.world.rand.nextFloat() * 0.6F);
+							float f = this.size * (0.7F + this.world.getRandom().nextFloat() * 0.6F);
 							double d4 = this.x;
 							double d6 = this.y;
 							double d8 = this.z;
 							
 							for(; f > 0.0F; f -= 0.22500001F)
 							{
-								BlockPos blockpos = new BlockPos(d4, d6, d8);
-								IBlockState iblockstate = this.world.getBlockState(blockpos);
+								BlockPos blockpos = new BlockPos((int)d4, (int)d6, (int)d8);
+								BlockState iblockstate = this.world.getBlockState(blockpos);
 								
-								if(iblockstate.getMaterial() != Material.AIR)
+								if(!iblockstate.isAir())
 								{
-									float f2 = this.explosive != null ? this.explosive.getExplosionResistance(this, this.world, blockpos, iblockstate) : iblockstate.getBlock().getExplosionResistance(world, blockpos, null, this);
+									float f2 = this.damageCalculator.getBlockExplosionResistance(this, this.world, blockpos, iblockstate, this.world.getFluidState(blockpos)).orElse(0.0F);
 									f -= (f2 + 0.3F) * 0.3F;
 								}
 								
-								if(f > 0.0F && (this.explosive == null || this.explosive.canExplosionDestroyBlock(this, this.world, blockpos, iblockstate, f)))
+								if(f > 0.0F)
 								{
 									set.add(blockpos);
 								}
@@ -139,61 +175,54 @@ public class FlansModExplosion extends Explosion
 		
 		this.affectedBlockPositions.addAll(set);
 		float f3 = this.size * 2.0F;
-		int k1 = MathHelper.floor(this.x - (double)f3 - 1.0D);
-		int l1 = MathHelper.floor(this.x + (double)f3 + 1.0D);
-		int i2 = MathHelper.floor(this.y - (double)f3 - 1.0D);
-		int i1 = MathHelper.floor(this.y + (double)f3 + 1.0D);
-		int j2 = MathHelper.floor(this.z - (double)f3 - 1.0D);
-		int j1 = MathHelper.floor(this.z + (double)f3 + 1.0D);
-		List<Entity> list = this.world.getEntitiesWithinAABBExcludingEntity(this.explosive, new AxisAlignedBB((double)k1, (double)i2, (double)j2, (double)l1, (double)i1, (double)j1));
-		net.minecraftforge.event.ForgeEventFactory.onExplosionDetonate(this.world, this, list, f3);
-		Vec3d vec3d = new Vec3d(this.x, this.y, this.z);
+		int k1 = Mth.floor(this.x - (double)f3 - 1.0D);
+		int l1 = Mth.floor(this.x + (double)f3 + 1.0D);
+		int i2 = Mth.floor(this.y - (double)f3 - 1.0D);
+		int i1 = Mth.floor(this.y + (double)f3 + 1.0D);
+		int j2 = Mth.floor(this.z - (double)f3 - 1.0D);
+		int j1 = Mth.floor(this.z + (double)f3 + 1.0D);
+		List<Entity> list = this.world.getEntities(this.explosive, new AABB((double)k1, (double)i2, (double)j2, (double)l1, (double)i1, (double)j1));
+		Vec3 vec3d = new Vec3(this.x, this.y, this.z);
 		
 		for(Entity entity : list)
 		{
-			if(!entity.isImmuneToExplosions())
+			if(!entity.isRemoved())
 			{
-				double d12 = entity.getDistance(this.x, this.y, this.z) / (double)f3;
+				double d12 = entity.distanceToSqr(this.x, this.y, this.z) / (double)(f3 * f3);
+				d12 = Math.sqrt(d12);
 				
 				if(d12 <= 1.0D)
 				{
-					double d5 = entity.posX - this.x;
-					double d7 = entity.posY + (double)entity.getEyeHeight() - this.y;
-					double d9 = entity.posZ - this.z;
-					double d13 = (double)MathHelper.sqrt(d5 * d5 + d7 * d7 + d9 * d9);
+					double d5 = entity.getX() - this.x;
+					double d7 = entity.getY() + (double)entity.getEyeHeight() - this.y;
+					double d9 = entity.getZ() - this.z;
+					double d13 = (double)Mth.sqrt((float)(d5 * d5 + d7 * d7 + d9 * d9));
 					
 					if(d13 != 0.0D)
 					{
 						d5 /= d13;
 						d7 /= d13;
 						d9 /= d13;
-						double d14 = (double)this.world.getBlockDensity(vec3d, entity.getEntityBoundingBox());
-						double d10 = (1.0D - d12) * d14;
+						double d10 = 1.0D - d12;
 						if(player.isPresent())
 						{
-							entity.attackEntityFrom(new EntityDamageSourceFlan(type.shortName, explosive, player.get(), type).setExplosion(),
+							this.hurtEntity(entity, new EntityDamageSourceFlan(type.shortName, explosive, player.get(), type).setExplosion(),
 									(float)((int)((d10 * d10 + d10) / 2.0D * 7.0D * (double)f3 + 1.0D)));
 						} else {
-							entity.attackEntityFrom(DamageSource.causeExplosionDamage(this), (float)((int)((d10 * d10 + d10) / 2.0D * 7.0D * (double)f3 + 1.0D)));
+							this.hurtEntity(entity, this.world.damageSources().explosion(explosive, explosive),
+									(float)((int)((d10 * d10 + d10) / 2.0D * 7.0D * (double)f3 + 1.0D)));
 						}
 						double d11 = d10;
 						
-						if(entity instanceof EntityLivingBase)
-						{
-							d11 = EnchantmentProtection.getBlastDamageReduction((EntityLivingBase)entity, d10);
-						}
+						entity.setDeltaMovement(entity.getDeltaMovement().add(d5 * d11, d7 * d11, d9 * d11));
 						
-						entity.motionX += d5 * d11;
-						entity.motionY += d7 * d11;
-						entity.motionZ += d9 * d11;
-						
-						if(entity instanceof EntityPlayer)
+						if(entity instanceof Player)
 						{
-							EntityPlayer entityplayer = (EntityPlayer)entity;
+							Player entityplayer = (Player)entity;
 							
-							if(!entityplayer.isSpectator() && (!entityplayer.isCreative() || !entityplayer.capabilities.isFlying))
+							if(!entityplayer.isSpectator() && (!entityplayer.isCreative() || !entityplayer.getAbilities().flying))
 							{
-								this.playerKnockbackMap.put(entityplayer, new Vec3d(d5 * d10, d7 * d10, d9 * d10));
+								this.playerKnockbackMap.put(entityplayer, new Vec3(d5 * d10, d7 * d10, d9 * d10));
 							}
 						}
 					}
@@ -202,58 +231,66 @@ public class FlansModExplosion extends Explosion
 		}
 	}
 	
+	private void hurtEntity(Entity entity, DamageSource source, float amount)
+	{
+		if(this.world instanceof ServerLevel)
+			entity.hurtServer((ServerLevel)this.world, source, amount);
+		else
+			entity.hurtClient(source);
+	}
+	
 	/**
 	 * Does the second part of the explosion (sound, particles, drop spawn)
 	 */
 	public void doExplosionB(boolean spawnParticles)
 	{
-		this.world.playSound(null, this.x, this.y, this.z, SoundEvents.ENTITY_GENERIC_EXPLODE, SoundCategory.BLOCKS, 4.0F, (1.0F + (this.world.rand.nextFloat() - this.world.rand.nextFloat()) * 0.2F) * 0.7F);
+		this.world.playSound(null, this.x, this.y, this.z, SoundEvents.GENERIC_EXPLODE, SoundSource.BLOCKS, 4.0F, (1.0F + (this.world.getRandom().nextFloat() - this.world.getRandom().nextFloat()) * 0.2F) * 0.7F);
 		
 		if(this.size >= 2.0F && this.breaksBlocks)
 		{
-			this.world.spawnParticle(EnumParticleTypes.EXPLOSION_HUGE, this.x, this.y, this.z, 1.0D, 0.0D, 0.0D);
+			this.world.addParticle(ParticleTypes.EXPLOSION_EMITTER, this.x, this.y, this.z, 1.0D, 0.0D, 0.0D);
 		}
 		else
 		{
-			this.world.spawnParticle(EnumParticleTypes.EXPLOSION_LARGE, this.x, this.y, this.z, 1.0D, 0.0D, 0.0D);
+			this.world.addParticle(ParticleTypes.EXPLOSION, this.x, this.y, this.z, 1.0D, 0.0D, 0.0D);
 		}
 		
 		if(this.breaksBlocks)
 		{
 			for(BlockPos blockpos : this.affectedBlockPositions)
 			{
-				IBlockState iblockstate = this.world.getBlockState(blockpos);
+				BlockState iblockstate = this.world.getBlockState(blockpos);
 				Block block = iblockstate.getBlock();
 				
 				if(spawnParticles)
 				{
-					double d0 = (double)((float)blockpos.getX() + this.world.rand.nextFloat());
-					double d1 = (double)((float)blockpos.getY() + this.world.rand.nextFloat());
-					double d2 = (double)((float)blockpos.getZ() + this.world.rand.nextFloat());
+					double d0 = (double)((float)blockpos.getX() + this.world.getRandom().nextFloat());
+					double d1 = (double)((float)blockpos.getY() + this.world.getRandom().nextFloat());
+					double d2 = (double)((float)blockpos.getZ() + this.world.getRandom().nextFloat());
 					double d3 = d0 - this.x;
 					double d4 = d1 - this.y;
 					double d5 = d2 - this.z;
-					double d6 = (double)MathHelper.sqrt(d3 * d3 + d4 * d4 + d5 * d5);
+					double d6 = (double)Mth.sqrt((float)(d3 * d3 + d4 * d4 + d5 * d5));
 					d3 /= d6;
 					d4 /= d6;
 					d5 /= d6;
 					double d7 = 0.5D / (d6 / (double)this.size + 0.1D);
-					d7 *= (double)(this.world.rand.nextFloat() * this.world.rand.nextFloat() + 0.3F);
+					d7 *= (double)(this.world.getRandom().nextFloat() * this.world.getRandom().nextFloat() + 0.3F);
 					d3 *= d7;
 					d4 *= d7;
 					d5 *= d7;
-					this.world.spawnParticle(EnumParticleTypes.EXPLOSION_NORMAL, (d0 + this.x) / 2.0D, (d1 + this.y) / 2.0D, (d2 + this.z) / 2.0D, d3, d4, d5);
-					this.world.spawnParticle(EnumParticleTypes.SMOKE_NORMAL, d0, d1, d2, d3, d4, d5);
+					this.world.addParticle(ParticleTypes.EXPLOSION, (d0 + this.x) / 2.0D, (d1 + this.y) / 2.0D, (d2 + this.z) / 2.0D, d3, d4, d5);
+					this.world.addParticle(ParticleTypes.LARGE_SMOKE, d0, d1, d2, d3, d4, d5);
 				}
 				
-				if(iblockstate.getMaterial() != Material.AIR)
+				if(!iblockstate.isAir())
 				{
-					if(block.canDropFromExplosion(this))
+					if(block.dropFromExplosion(this) && this.world.getRandom().nextFloat() < 1.0F / this.size)
 					{
-						block.dropBlockAsItemWithChance(this.world, blockpos, this.world.getBlockState(blockpos), 1.0F / this.size, 0);
+						Block.dropResources(iblockstate, this.world, blockpos);
 					}
 					
-					block.onBlockExploded(this.world, blockpos, this);
+					this.world.setBlock(blockpos, Blocks.AIR.defaultBlockState(), 3);
 				}
 			}
 		}
@@ -262,34 +299,30 @@ public class FlansModExplosion extends Explosion
 		{
 			for(BlockPos blockpos1 : this.affectedBlockPositions)
 			{
-				if(this.world.getBlockState(blockpos1).getMaterial() == Material.AIR && this.world.getBlockState(blockpos1.down()).isFullBlock() && this.random.nextInt(3) == 0)
+				if(this.world.getBlockState(blockpos1).isAir() && this.world.getBlockState(blockpos1.below()).isSolid() && this.random.nextInt(3) == 0)
 				{
-					this.world.setBlockState(blockpos1, Blocks.FIRE.getDefaultState());
+					this.world.setBlock(blockpos1, Blocks.FIRE.defaultBlockState(), 3);
 				}
 			}
 		}
 	}
 	
-	@Override
-	public Map<EntityPlayer, Vec3d> getPlayerKnockbackMap()
+	public Map<Player, Vec3> getPlayerKnockbackMap()
 	{
 		return this.playerKnockbackMap;
 	}
 	
-	@Override
 	public void clearAffectedBlockPositions()
 	{
 		this.affectedBlockPositions.clear();
 	}
 	
-	@Override
 	public List<BlockPos> getAffectedBlockPositions()
 	{
 		return this.affectedBlockPositions;
 	}
 	
-	@Override
-	public Vec3d getPosition()
+	public Vec3 getPosition()
 	{
 		return this.position;
 	}

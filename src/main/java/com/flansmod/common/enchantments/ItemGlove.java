@@ -1,34 +1,32 @@
 package com.flansmod.common.enchantments;
 
-import java.util.List;
+import com.flansmod.common.ModItems;
+import java.util.function.Consumer;
 
-import javax.annotation.Nullable;
-
-import com.flansmod.common.FlansMod;
 import com.flansmod.common.types.IFlanItem;
 import com.flansmod.common.types.InfoType;
 
-import net.minecraft.client.util.ITooltipFlag;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.world.World;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
 
 public class ItemGlove extends Item implements IFlanItem
 {
 	
 	private GloveType mType;
 	
+	public ItemGlove(Item.Properties properties)
+	{
+		super(properties);
+	}
+	
 	public ItemGlove(GloveType glove)
 	{
+		this(new Item.Properties().stacksTo(1).durability(glove.Durability).enchantable(glove.Enchantability).setId(ModItems.itemKey(glove)));
 		mType = glove;	
-		maxStackSize = 1;
 		glove.item = this;
-		setMaxDamage(mType.Durability);
-		setRegistryName(glove.shortName);
-		setTranslationKey(glove.shortName);
-		setCreativeTab(FlansMod.tabFlanTeams);
 	}
 	
 	@Override
@@ -38,16 +36,9 @@ public class ItemGlove extends Item implements IFlanItem
 	}
 
 	@Override
-    public int getItemEnchantability()
-    {
-        return mType.Enchantability;
-    }
-	
-    @SideOnly(Side.CLIENT)
-    @Override
-    public void addInformation(ItemStack stack, @Nullable World worldIn, List<String> tooltip, ITooltipFlag flagIn)
-    {
-    	tooltip.add("\u00a73Improves gun, sword or axe handling when enchanted and held in off hand");
-    	tooltip.add("\u00a73Works with two-handed guns");
-    }
+	public void appendHoverText(ItemStack stack, TooltipContext context, TooltipDisplay display, Consumer<Component> tooltip, TooltipFlag flag)
+	{
+		tooltip.accept(Component.literal("\u00a73Improves gun, sword or axe handling when enchanted and held in off hand"));
+		tooltip.accept(Component.literal("\u00a73Works with two-handed guns"));
+	}
 }

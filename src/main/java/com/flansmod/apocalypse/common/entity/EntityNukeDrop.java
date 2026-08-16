@@ -1,80 +1,86 @@
 package com.flansmod.apocalypse.common.entity;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.MoverType;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.world.World;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.MoverType;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.level.Level;
 
 import com.flansmod.apocalypse.common.FlansModApocalypse;
+import com.flansmod.common.ModEntities;
 
 public class EntityNukeDrop extends Entity
 {
+	protected Level world;
 	public static final int explosionLength = 500;
 	public int timeSinceExplosion;
 	
-	public EntityNukeDrop(World world)
+	public EntityNukeDrop(EntityType<?> type, Level world)
 	{
-		super(world);
-		
-		if(world.isRemote)
-		{
-			clientInit();
-		}
-		setSize(1F, 1F);
-		noClip = false;
-		ignoreFrustumCheck = true;
+		super(type, world);
+		this.world = level();
+	}
+
+	public EntityNukeDrop(Level world)
+	{
+		this(ModEntities.NUKE_DROP, world);
+		this.world = level();
+
+		noPhysics = false;
+		// TODO APOCALYPSE: ignoreFrustumCheck no longer exists; nuke drop may cull when far away
 	}
 	
-	public EntityNukeDrop(World world, double x, double y, double z)
+	public EntityNukeDrop(Level world, double x, double y, double z)
 	{
 		this(world);
-		setPosition(x, y, z);
-	}
-
-	@SideOnly(Side.CLIENT)
-	private void clientInit()
-	{
-		setRenderDistanceWeight(400D);
+		setPos(x, y, z);
 	}
 	
 	@Override
-	protected void entityInit()
+	protected void defineSynchedData(SynchedEntityData.Builder builder)
 	{
 
 	}
 
 	@Override
-	protected void readEntityFromNBT(NBTTagCompound tags)
+	public boolean hurtServer(net.minecraft.server.level.ServerLevel level, net.minecraft.world.damagesource.DamageSource source, float amount)
+	{
+		return false;
+	}
+
+	@Override
+	protected void readAdditionalSaveData(ValueInput input)
 	{
 	}
 
 	@Override
-	protected void writeEntityToNBT(NBTTagCompound tags)
+	protected void addAdditionalSaveData(ValueOutput output)
 	{
 
 	}
 
 	@Override
-	public void onUpdate()
+	public void tick()
 	{
-		super.onUpdate();
+		super.tick();
 		
-		if(!onGround)
+		if(!onGround())
 		{
-			motionY -= 0.01D;
-			move(MoverType.SELF, motionX, motionY, motionZ);
+			setDeltaMovement(getDeltaMovement().x, getDeltaMovement().y - 0.01D, getDeltaMovement().z);
+			move(MoverType.SELF, getDeltaMovement());
 		}
 		else
 		{
 			timeSinceExplosion++;
 			
 			if(timeSinceExplosion > explosionLength)
-				setDead();
+				discard();
 		}
 		
-		if(!world.isRemote && FlansModApocalypse.proxy.getApocalypseCountdown() <= 0)
-			setDead();
+		if(!world.isClientSide() && FlansModApocalypse.proxy.getApocalypseCountdown() <= 0)
+			discard();
 	}
 }

@@ -8,18 +8,17 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import org.lwjgl.opengl.GL11;
+import org.joml.Quaternionf;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.model.ModelBase;
-import net.minecraft.client.model.ModelRenderer;
-import net.minecraft.client.model.TexturedQuad;
-import net.minecraft.client.renderer.GLAllocation;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.texture.TextureManager;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.math.Axis;
+
+import com.flansmod.client.model.ModelBase;
+import com.flansmod.client.model.ModelRenderer;
+
+import net.minecraft.util.Mth;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * An extension to the ModelRenderer class. It basically is a copy to ModelRenderer,
@@ -36,10 +35,9 @@ public class ModelRendererTurbo extends ModelRenderer
 {
 	public ModelRendererTurbo(ModelBase modelbase, String s)
 	{
-		super(modelbase, s);
+		super();
 		flip = false;
 		compiled = false;
-		displayList = 0;
 		mirror = false;
 		showModel = true;
 		field_1402_i = false;
@@ -342,7 +340,6 @@ public class ModelRendererTurbo extends ModelRenderer
 	 * @param h the height (over the y-direction)
 	 * @param d the depth (over the z-direction)
 	 */
-	@Override
 	public ModelRendererTurbo addBox(float x, float y, float z, int w, int h, int d)
 	{
 		addBox(x, y, z, w, h, d, 0.0F);
@@ -360,7 +357,6 @@ public class ModelRendererTurbo extends ModelRenderer
 	 * @param d         the depth (over the z-direction)
 	 * @param expansion the expansion of the box. It increases the size in each direction by that many.
 	 */
-	@Override
 	public void addBox(float x, float y, float z, int w, int h, int d, float expansion)
 	{
 		addBox(x, y, z, w, h, d, expansion, 1F);
@@ -854,9 +850,9 @@ public class ModelRendererTurbo extends ModelRenderer
 	 */
 	public void addBox(float x, float y, float z, float w, float h, float d)
 	{
-		int rw = MathHelper.ceil(w);
-		int rh = MathHelper.ceil(h);
-		int rd = MathHelper.ceil(d);
+		int rw = Mth.ceil(w);
+		int rh = Mth.ceil(h);
+		int rd = Mth.ceil(d);
 		w -= rw;
 		h -= rh;
 		d -= rd;
@@ -1471,10 +1467,10 @@ public class ModelRendererTurbo extends ModelRenderer
 		{
 			for(int i = 0; i < segs; i++)
 			{
-				float yWidth = MathHelper.cos(-pi / 2 + (pi / rings) * j);
-				float yHeight = MathHelper.sin(-pi / 2 + (pi / rings) * j);
-				float xSize = MathHelper.sin((pi / segs) * i * 2F + pi) * yWidth;
-				float zSize = -MathHelper.cos((pi / segs) * i * 2F + pi) * yWidth;
+				float yWidth = Mth.cos(-pi / 2 + (pi / rings) * j);
+				float yHeight = Mth.sin(-pi / 2 + (pi / rings) * j);
+				float xSize = Mth.sin((pi / segs) * i * 2F + pi) * yWidth;
+				float zSize = -Mth.cos((pi / segs) * i * 2F + pi) * yWidth;
 				int curVert = 1 + i + segs * (j - 1);
 				tempVerts[curVert] = new PositionTextureVertex(x + xSize * r, y + yHeight * r, z + zSize * r, 0, 0);
 				if(i > 0)
@@ -1740,8 +1736,8 @@ public class ModelRendererTurbo extends ModelRenderer
 		{
 			for(int index = 0; index < segments; index++)
 			{
-				float xSize = (mirror ^ dirMirror ? -1 : 1) * MathHelper.sin((pi / segments) * index * 2F + pi) * radius * sCur;
-				float zSize = -MathHelper.cos((pi / segments) * index * 2F + pi) * radius * sCur;
+				float xSize = (mirror ^ dirMirror ? -1 : 1) * Mth.sin((pi / segments) * index * 2F + pi) * radius * sCur;
+				float zSize = -Mth.cos((pi / segments) * index * 2F + pi) * radius * sCur;
 				
 				float xPlace = xCur + (!dirSide ? xSize : 0);
 				float yPlace = yCur + (!dirTop ? zSize : 0);
@@ -1770,10 +1766,10 @@ public class ModelRendererTurbo extends ModelRenderer
 		for(int index = 0; index < segments; index++)
 		{
 			int index2 = (index + 1) % segments;
-			float uSize = MathHelper.sin((pi / segments) * index * 2F + (!dirTop ? 0 : pi)) * (0.5F * uCircle - 2F * uOffset);
-			float vSize = MathHelper.cos((pi / segments) * index * 2F + (!dirTop ? 0 : pi)) * (0.5F * vCircle - 2F * vOffset);
-			float uSize1 = MathHelper.sin((pi / segments) * index2 * 2F + (!dirTop ? 0 : pi)) * (0.5F * uCircle - 2F * uOffset);
-			float vSize1 = MathHelper.cos((pi / segments) * index2 * 2F + (!dirTop ? 0 : pi)) * (0.5F * vCircle - 2F * vOffset);
+			float uSize = Mth.sin((pi / segments) * index * 2F + (!dirTop ? 0 : pi)) * (0.5F * uCircle - 2F * uOffset);
+			float vSize = Mth.cos((pi / segments) * index * 2F + (!dirTop ? 0 : pi)) * (0.5F * vCircle - 2F * vOffset);
+			float uSize1 = Mth.sin((pi / segments) * index2 * 2F + (!dirTop ? 0 : pi)) * (0.5F * uCircle - 2F * uOffset);
+			float vSize1 = Mth.cos((pi / segments) * index2 * 2F + (!dirTop ? 0 : pi)) * (0.5F * vCircle - 2F * vOffset);
 			vert = new PositionTextureVertex[3];
 			
 			vert[0] = tempVerts[0].setTexturePosition(uStart + 0.5F * uCircle, vStart + 0.5F * vCircle);
@@ -1852,7 +1848,6 @@ public class ModelRendererTurbo extends ModelRenderer
 	 * @param x the x-coordinate of the texture start
 	 * @param y the y-coordinate of the texture start
 	 */
-	@Override
 	public ModelRendererTurbo setTextureOffset(int x, int y)
 	{
 		textureOffsetX = x;
@@ -1889,7 +1884,7 @@ public class ModelRendererTurbo extends ModelRenderer
 			PositionTextureVertex[] verts = face.vertexPositions;
 			for(PositionTextureVertex vert : verts)
 			{
-				vert.vector3D = new Vec3d(vert.vector3D.x * (x ? -1 : 1), vert.vector3D.y * (y ? -1 : 1), vert.vector3D.z * (z ? -1 : 1));
+				vert.vector3D = new Vec3(vert.vector3D.x * (x ? -1 : 1), vert.vector3D.y * (y ? -1 : 1), vert.vector3D.z * (z ? -1 : 1));
 				
 			}
 			if(x ^ y ^ z)
@@ -1965,24 +1960,6 @@ public class ModelRendererTurbo extends ModelRenderer
 			if(copyGroup)
 				currentTextureGroup.addPoly(poly[idx]);
 		}
-	}
-	
-	/**
-	 * Copies an array of vertices and quads to the current shape. This method
-	 * converts quads to polygons and then calls the main copyTo method.
-	 *
-	 * @param verts the array of vertices you want to copy
-	 * @param quad  the array of quads you want to copy
-	 */
-	public void copyTo(PositionTextureVertex[] verts, TexturedQuad[] quad)
-	{
-		TexturedPolygon[] poly = new TexturedPolygon[quad.length];
-		for(int idx = 0; idx < quad.length; idx++)
-		{
-			poly[idx] = new TexturedPolygon((PositionTextureVertex[])quad[idx].vertexPositions);
-		}
-		
-		copyTo(verts, poly);
 	}
 	
 	/**
@@ -2128,67 +2105,57 @@ public class ModelRendererTurbo extends ModelRenderer
 		{
 			return;
 		}
-		if(!compiled || forcedRecompile)
+		RenderContext context = getRenderContext();
+		if(context == null || context.poseStack == null || context.consumer == null)
+			return;
+		render(context.poseStack, context.consumer, context.light, context.overlay, worldScale, oldRotateOrder);
+	}
+
+	@Override
+	public void render(PoseStack poseStack, VertexConsumer consumer, int light, int overlay, float worldScale)
+	{
+		render(poseStack, consumer, light, overlay, worldScale, false);
+	}
+
+	public void render(PoseStack poseStack, VertexConsumer consumer, int light, int overlay, float worldScale, boolean oldRotateOrder)
+	{
+		if(field_1402_i || !showModel)
+			return;
+		poseStack.pushPose();
+		poseStack.translate(rotationPointX * worldScale, rotationPointY * worldScale, rotationPointZ * worldScale);
+		if(!oldRotateOrder && rotateAngleY != 0.0F)
 		{
-			compileDisplayList(worldScale);
+			poseStack.mulPose(Axis.YP.rotationDegrees(rotateAngleY * 57.29578F));
 		}
-		if(rotateAngleX != 0.0F || rotateAngleY != 0.0F || rotateAngleZ != 0.0F)
+		if(rotateAngleZ != 0.0F)
 		{
-			GlStateManager.pushMatrix();
-			GlStateManager.translate(rotationPointX * worldScale, rotationPointY * worldScale, rotationPointZ * worldScale);
-			if(!oldRotateOrder && rotateAngleY != 0.0F)
-			{
-				GlStateManager.rotate(rotateAngleY * 57.29578F, 0.0F, 1.0F, 0.0F);
-			}
-			if(rotateAngleZ != 0.0F)
-			{
-				GlStateManager.rotate((oldRotateOrder ? -1 : 1) * rotateAngleZ * 57.29578F, 0.0F, 0.0F, 1.0F);
-			}
-			if(oldRotateOrder && rotateAngleY != 0.0F)
-			{
-				GlStateManager.rotate(-rotateAngleY * 57.29578F, 0.0F, 1.0F, 0.0F);
-			}
-			if(rotateAngleX != 0.0F)
-			{
-				GlStateManager.rotate(rotateAngleX * 57.29578F, 1.0F, 0.0F, 0.0F);
-			}
-			
-			callDisplayList();
-			if(childModels != null)
-			{
-				for(Object childModel : childModels)
-				{
-					((ModelRenderer)childModel).render(worldScale);
-				}
-				
-			}
-			GlStateManager.popMatrix();
+			poseStack.mulPose(Axis.ZP.rotationDegrees((oldRotateOrder ? -1 : 1) * rotateAngleZ * 57.29578F));
 		}
-		else if(rotationPointX != 0.0F || rotationPointY != 0.0F || rotationPointZ != 0.0F)
+		if(oldRotateOrder && rotateAngleY != 0.0F)
 		{
-			GlStateManager.translate(rotationPointX * worldScale, rotationPointY * worldScale, rotationPointZ * worldScale);
-			callDisplayList();
-			if(childModels != null)
-			{
-				for(Object childModel : childModels)
-				{
-					((ModelRenderer)childModel).render(worldScale);
-				}
-				
-			}
-			GlStateManager.translate(-rotationPointX * worldScale, -rotationPointY * worldScale, -rotationPointZ * worldScale);
+			poseStack.mulPose(Axis.YP.rotationDegrees(-rotateAngleY * 57.29578F));
 		}
-		else
+		if(rotateAngleX != 0.0F)
 		{
-			callDisplayList();
-			if(childModels != null)
+			poseStack.mulPose(Axis.XP.rotationDegrees(rotateAngleX * 57.29578F));
+		}
+		renderParts(poseStack, consumer, light, overlay, worldScale);
+		if(childModels != null)
+		{
+			for(Object childModel : childModels)
 			{
-				for(Object childModel : childModels)
-				{
-					((ModelRenderer)childModel).render(worldScale);
-				}
-				
+				((ModelRenderer)childModel).render(poseStack, consumer, light, overlay, worldScale);
 			}
+		}
+		poseStack.popPose();
+	}
+
+	@Override
+	protected void renderParts(PoseStack poseStack, VertexConsumer consumer, int light, int overlay, float worldScale)
+	{
+		for(TexturedPolygon face : faces)
+		{
+			face.draw(consumer, poseStack.last(), worldScale, light, overlay);
 		}
 	}
 	
@@ -2203,26 +2170,26 @@ public class ModelRendererTurbo extends ModelRenderer
 		{
 			return;
 		}
-		if(!compiled)
-		{
-			compileDisplayList(f);
-		}
-		GlStateManager.pushMatrix();
-		GlStateManager.translate(rotationPointX * f, rotationPointY * f, rotationPointZ * f);
+		RenderContext context = getRenderContext();
+		if(context == null || context.poseStack == null || context.consumer == null)
+			return;
+		PoseStack poseStack = context.poseStack;
+		poseStack.pushPose();
+		poseStack.translate(rotationPointX * f, rotationPointY * f, rotationPointZ * f);
 		if(rotateAngleY != 0.0F)
 		{
-			GlStateManager.rotate(rotateAngleY * 57.29578F, 0.0F, 1.0F, 0.0F);
+			poseStack.mulPose(Axis.YP.rotationDegrees(rotateAngleY * 57.29578F));
 		}
 		if(rotateAngleX != 0.0F)
 		{
-			GlStateManager.rotate(rotateAngleX * 57.29578F, 1.0F, 0.0F, 0.0F);
+			poseStack.mulPose(Axis.XP.rotationDegrees(rotateAngleX * 57.29578F));
 		}
 		if(rotateAngleZ != 0.0F)
 		{
-			GlStateManager.rotate(rotateAngleZ * 57.29578F, 0.0F, 0.0F, 1.0F);
+			poseStack.mulPose(Axis.ZP.rotationDegrees(rotateAngleZ * 57.29578F));
 		}
-		callDisplayList();
-		GlStateManager.popMatrix();
+		renderParts(poseStack, context.consumer, context.light, context.overlay, f);
+		poseStack.popPose();
 	}
 	
 	@Override
@@ -2236,103 +2203,39 @@ public class ModelRendererTurbo extends ModelRenderer
 		{
 			return;
 		}
-		if(!compiled || forcedRecompile)
-		{
-			compileDisplayList(f);
-		}
+		RenderContext context = getRenderContext();
+		if(context == null || context.poseStack == null)
+			return;
+		PoseStack poseStack = context.poseStack;
 		if(rotateAngleX != 0.0F || rotateAngleY != 0.0F || rotateAngleZ != 0.0F)
 		{
-			GlStateManager.translate(rotationPointX * f, rotationPointY * f, rotationPointZ * f);
+			poseStack.translate(rotationPointX * f, rotationPointY * f, rotationPointZ * f);
 			if(rotateAngleZ != 0.0F)
 			{
-				GlStateManager.rotate(rotateAngleZ * 57.29578F, 0.0F, 0.0F, 1.0F);
+				poseStack.mulPose(Axis.ZP.rotationDegrees(rotateAngleZ * 57.29578F));
 			}
 			if(rotateAngleY != 0.0F)
 			{
-				GlStateManager.rotate(rotateAngleY * 57.29578F, 0.0F, 1.0F, 0.0F);
+				poseStack.mulPose(Axis.YP.rotationDegrees(rotateAngleY * 57.29578F));
 			}
 			if(rotateAngleX != 0.0F)
 			{
-				GlStateManager.rotate(rotateAngleX * 57.29578F, 1.0F, 0.0F, 0.0F);
+				poseStack.mulPose(Axis.XP.rotationDegrees(rotateAngleX * 57.29578F));
 			}
 		}
 		else if(rotationPointX != 0.0F || rotationPointY != 0.0F || rotationPointZ != 0.0F)
 		{
-			GlStateManager.translate(rotationPointX * f, rotationPointY * f, rotationPointZ * f);
+			poseStack.translate(rotationPointX * f, rotationPointY * f, rotationPointZ * f);
 		}
-	}
-	
-	private void callDisplayList()
-	{
-		if(useLegacyCompiler)
-			GlStateManager.callList(displayList);
-		else
-		{
-			TextureManager renderEngine = Minecraft.getMinecraft().renderEngine;
-			
-			Collection<TextureGroup> textures = textureGroup.values();
-			
-			Iterator<TextureGroup> itr = textures.iterator();
-			for(int i = 0; itr.hasNext(); i++)
-			{
-				TextureGroup curTexGroup = itr.next();
-				curTexGroup.loadTexture();
-				GlStateManager.callList(displayListArray[i]);
-				if(!defaultTexture.equals(""))
-					renderEngine.bindTexture(new ResourceLocation("", defaultTexture)); //TODO : Check. Not sure about this one
-			}
-		}
-	}
-	
-	private void compileDisplayList(float worldScale)
-	{
-		if(useLegacyCompiler)
-			compileLegacyDisplayList(worldScale);
-		else
-		{
-			Collection<TextureGroup> textures = textureGroup.values();
-			
-			Iterator<TextureGroup> itr = textures.iterator();
-			displayListArray = new int[textureGroup.size()];
-			for(int i = 0; itr.hasNext(); i++)
-			{
-				displayListArray[i] = GLAllocation.generateDisplayLists(1);
-				GlStateManager.glNewList(displayListArray[i], GL11.GL_COMPILE);
-				TmtTessellator tessellator = TmtTessellator.instance;
-				
-				TextureGroup usedGroup = itr.next();
-				for(int j = 0; j < usedGroup.poly.size(); j++)
-				{
-					usedGroup.poly.get(j).draw(tessellator, worldScale);
-				}
-				
-				GlStateManager.glEndList();
-			}
-		}
-		
-		compiled = true;
-	}
-	
-	private void compileLegacyDisplayList(float worldScale)
-	{
-		displayList = GLAllocation.generateDisplayLists(1);
-		GlStateManager.glNewList(displayList, GL11.GL_COMPILE);
-		TmtTessellator tessellator = TmtTessellator.instance;
-		for(TexturedPolygon face : faces)
-		{
-			face.draw(tessellator, worldScale);
-		}
-		
-		GlStateManager.glEndList();
 	}
 	
 	private PositionTextureVertex vertices[];
 	private TexturedPolygon faces[];
 	private int textureOffsetX;
 	private int textureOffsetY;
+	public int textureWidth;
+	public int textureHeight;
 	private boolean compiled;
-	private int displayList;
-	private int displayListArray[];
 	private Map<String, TransformGroup> transformGroup;
 	private Map<String, TextureGroup> textureGroup;
 	private TransformGroup currentGroup;

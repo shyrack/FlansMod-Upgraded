@@ -1,78 +1,94 @@
 package com.flansmod.apocalypse.client.model;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.OpenGlHelper;
-import net.minecraft.client.renderer.RenderHelper;
-import net.minecraft.client.renderer.entity.Render;
-import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.entity.Entity;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.world.World;
-import net.minecraftforge.client.event.RenderWorldLastEvent;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.fml.client.registry.IRenderFactory;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-
-import com.flansmod.apocalypse.common.entity.EntityNukeDrop;
 import com.flansmod.apocalypse.common.entity.EntitySkullBoss;
-import com.flansmod.apocalypse.common.entity.EntityTeleporter;
 
-public class RenderSkullBoss extends Render<EntitySkullBoss>
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.entity.EntityRenderer;
+import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.resources.Identifier;
+
+import com.flansmod.client.model.ModelRenderer;
+
+public class RenderSkullBoss extends EntityRenderer<EntitySkullBoss, RenderSkullBoss.State>
 {
-	private static final ResourceLocation texture = new ResourceLocation("flansmodapocalypse", "textures/entity/skullboss.png");
-	private ModelSkullBoss model;
-	
-	public RenderSkullBoss(RenderManager rm)
+	public static class State extends EntityRenderState
 	{
-		super(rm);
-		model = new ModelSkullBoss();
+		public float yaw;
+		public float pitch;
+		public float spawnSpin;
+		public float laughFactor;
+		public float partialTick;
 	}
 	
-	public void doRender(EntitySkullBoss entity, double x, double y, double z, float p_76986_8_, float partialTicks)
-	{
-		bindEntityTexture(entity);
-		
-		GlStateManager.pushMatrix();
-		GlStateManager.translate(x, y, z);
-		
-		GlStateManager.rotate(-entity.rotationYaw + entity.GetSpawnSpin(partialTicks), 0, 1, 0);
-		GlStateManager.rotate(entity.rotationPitch, 0, 0, 1);
-		GlStateManager.scale(32f, 32f, 32f);
-		
-		float laughFactor = entity.GetLaughFactor(partialTicks);
-		
-		GlStateManager.pushMatrix();
-		{
-			GlStateManager.rotate(laughFactor * 15.0f, 0, 0, 1);
-			model.renderHead(1F / 16F);
-		}
-		GlStateManager.popMatrix();
-		
+	private final ModelSkullBoss model = new ModelSkullBoss();
+	private final PoseStack poseStack = new PoseStack();
+	private static final Identifier texture = Identifier.fromNamespaceAndPath("flansmodapocalypse", "textures/entity/skullboss.png");
 	
-		GlStateManager.pushMatrix();
-		{
-			GlStateManager.rotate(-laughFactor * 15.0f, 0, 0, 1);
-			model.renderJaw(1F / 16F);		
-		}
-		GlStateManager.popMatrix();
-		
-		
-		GlStateManager.popMatrix();
+	public RenderSkullBoss(EntityRendererProvider.Context context)
+	{
+		super(context);
 	}
 	
 	@Override
-	protected ResourceLocation getEntityTexture(EntitySkullBoss entity)
+	public State createRenderState()
 	{
-		return texture;
+		return new State();
 	}
-		
-	public static class Factory implements IRenderFactory<EntitySkullBoss>
+	
+	@Override
+	public void extractRenderState(EntitySkullBoss entity, State state, float partialTick)
 	{
-		@Override
-		public Render<EntitySkullBoss> createRenderFor(RenderManager manager)
+		super.extractRenderState(entity, state, partialTick);
+		state.yaw = entity.getYRot();
+		state.pitch = entity.getXRot();
+		state.spawnSpin = entity.GetSpawnSpin(partialTick);
+		state.laughFactor = entity.GetLaughFactor(partialTick);
+		state.partialTick = partialTick;
+	}
+	
+	@Override
+	public void submit(State state, PoseStack pose, SubmitNodeCollector collector, CameraRenderState camera)
+	{
+		pose.pushPose();
+		
+		pose.mulPose(Axis.YP.rotationDegrees(-state.yaw + state.spawnSpin));
+		pose.mulPose(Axis.ZP.rotationDegrees(state.pitch));
+		pose.scale(32f, 32f, 32f);
+		
+		float laughFactor = state.laughFactor;
+		
+		pose.pushPose();
+		pose.mulPose(Axis.ZP.rotationDegrees(laughFactor * 15.0f));
+		collector.submitCustomGeometry(pose, RenderTypes.entityCutout(texture), (p, consumer) ->
 		{
-			return new RenderSkullBoss(manager);
-		}
+			poseStack.pushPose();
+			poseStack.last().set(p);
+			ModelRenderer.beginRender(poseStack, consumer, state.lightCoords, OverlayTexture.NO_OVERLAY);
+			model.renderHead(1F / 16F);
+			ModelRenderer.endRender();
+			poseStack.popPose();
+		});
+		pose.popPose();
+		
+		pose.pushPose();
+		pose.mulPose(Axis.ZP.rotationDegrees(-laughFactor * 15.0f));
+		collector.submitCustomGeometry(pose, RenderTypes.entityCutout(texture), (p, consumer) ->
+		{
+			poseStack.pushPose();
+			poseStack.last().set(p);
+			ModelRenderer.beginRender(poseStack, consumer, state.lightCoords, OverlayTexture.NO_OVERLAY);
+			model.renderJaw(1F / 16F);
+			ModelRenderer.endRender();
+			poseStack.popPose();
+		});
+		pose.popPose();
+		
+		pose.popPose();
 	}
 }

@@ -1,17 +1,19 @@
 package com.flansmod.common.guns;
 
-import net.minecraft.inventory.IInventory;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.Container;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 
 import com.flansmod.common.FlansMod;
+import com.flansmod.common.guns.GunUtil;
+import com.flansmod.common.util.FlansModUtil;
 
 /**
- * Adds access to the InventoryPlayer stack combination methods for arbitrary inventories
+ * Adds access to the Inventory stack combination methods for arbitrary inventories
  */
 public class InventoryHelper
 {
-	public static boolean addItemStackToInventory(IInventory inventory, ItemStack stack, boolean creative)
+	public static boolean add(Container inventory, ItemStack stack, boolean creative)
 	{
 		if(stack == null || stack.isEmpty())
 			return false;
@@ -23,15 +25,14 @@ public class InventoryHelper
 			{
 				int i;
 				
-				if(stack.isItemDamaged())
+				if(stack.getDamageValue() > 0)
 				{
 					i = getFirstEmptyStack(inventory);
 					
 					if(i >= 0)
 					{
 						ItemStack stackToAdd = stack.copy();
-						stackToAdd.setAnimationsToGo(5);
-						inventory.setInventorySlotContents(i, stackToAdd);
+						inventory.setItem(i, stackToAdd);
 						stack.setCount(0);
 						return true;
 					}
@@ -64,20 +65,20 @@ public class InventoryHelper
 			}
 			catch(Throwable throwable)
 			{
-				FlansMod.log.throwing(throwable);
+				FlansMod.log.error("Failed to add item stack to inventory.", throwable);
 				return false;
 			}
 		}
 	}
 	
-	public static int storeItemStack(IInventory inventory, ItemStack stack)
+	public static int storeItemStack(Container inventory, ItemStack stack)
 	{
-		for(int i = 0; i < inventory.getSizeInventory(); ++i)
+		for(int i = 0; i < inventory.getContainerSize(); ++i)
 		{
-			ItemStack oldStack = inventory.getStackInSlot(i);
+			ItemStack oldStack = inventory.getItem(i);
 			if(oldStack != null && !oldStack.isEmpty() && oldStack.getItem() == stack.getItem() && oldStack.isStackable() &&
-					oldStack.getCount() < oldStack.getMaxStackSize() && oldStack.getCount() < inventory.getInventoryStackLimit() &&
-					(!oldStack.getHasSubtypes() || oldStack.getItemDamage() == stack.getItemDamage()) && ItemStack.areItemStackTagsEqual(oldStack, stack))
+					oldStack.getCount() < oldStack.getMaxStackSize() && oldStack.getCount() < inventory.getMaxStackSize() &&
+					oldStack.getDamageValue() == stack.getDamageValue() && ItemStack.isSameItemSameComponents(oldStack, stack))
 			{
 				return i;
 			}
@@ -86,7 +87,7 @@ public class InventoryHelper
 		return -1;
 	}
 	
-	public static int storePartialItemStack(IInventory inventory, ItemStack stack)
+	public static int storePartialItemStack(Container inventory, ItemStack stack)
 	{
 		Item item = stack.getItem();
 		int j = stack.getCount();
@@ -103,9 +104,9 @@ public class InventoryHelper
 			}
 			else
 			{
-				if(inventory.getStackInSlot(k) == null || inventory.getStackInSlot(k).isEmpty())
+				if(inventory.getItem(k) == null || inventory.getItem(k).isEmpty())
 				{
-					inventory.setInventorySlotContents(k, stack.copy());
+					inventory.setItem(k, stack.copy());
 				}
 				return 0;
 			}
@@ -124,14 +125,14 @@ public class InventoryHelper
 			}
 			else
 			{
-				ItemStack oldStack = inventory.getStackInSlot(k);
+				ItemStack oldStack = inventory.getItem(k);
 				
 				if(oldStack == null || oldStack.isEmpty())
 				{
-					oldStack = new ItemStack(item, 0, stack.getItemDamage());
-					if(stack.hasTagCompound())
-						oldStack.setTagCompound(stack.getTagCompound().copy());
-					inventory.setInventorySlotContents(k, oldStack);
+					oldStack = new ItemStack(item, 0);
+					if(GunUtil.hasTag(stack))
+						GunUtil.setTag(oldStack, GunUtil.getTag(stack).copy());
+					inventory.setItem(k, oldStack);
 				}
 				
 				int l = j;
@@ -141,9 +142,9 @@ public class InventoryHelper
 					l = oldStack.getMaxStackSize() - oldStack.getCount();
 				}
 				
-				if(l > inventory.getInventoryStackLimit() - oldStack.getCount())
+				if(l > inventory.getMaxStackSize() - oldStack.getCount())
 				{
-					l = inventory.getInventoryStackLimit() - oldStack.getCount();
+					l = inventory.getMaxStackSize() - oldStack.getCount();
 				}
 				
 				if(l == 0)
@@ -154,7 +155,6 @@ public class InventoryHelper
 				{
 					j -= l;
 					oldStack.setCount(oldStack.getCount() + l);
-					oldStack.setAnimationsToGo(5);
 					return j;
 				}
 			}
@@ -162,12 +162,12 @@ public class InventoryHelper
 	}
 	
 	/**
-	 * Method from InventoryPlayer
+	 * Method from Inventory
 	 */
-	public static int getFirstEmptyStack(IInventory inventory)
+	public static int getFirstEmptyStack(Container inventory)
 	{
-		for(int i = 0; i < inventory.getSizeInventory(); ++i)
-			if(inventory.getStackInSlot(i) == null || inventory.getStackInSlot(i).isEmpty())
+		for(int i = 0; i < inventory.getContainerSize(); ++i)
+			if(inventory.getItem(i) == null || inventory.getItem(i).isEmpty())
 				return i;
 		
 		return -1;

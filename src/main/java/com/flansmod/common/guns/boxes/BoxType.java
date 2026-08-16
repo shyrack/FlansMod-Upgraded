@@ -1,8 +1,6 @@
 package com.flansmod.common.guns.boxes;
 
-import net.minecraft.client.model.ModelBase;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import com.flansmod.client.model.ModelBase;
 
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.types.InfoType;
@@ -31,8 +29,7 @@ public abstract class BoxType extends InfoType
 		}
 		catch(Exception e)
 		{
-			FlansMod.log.error("Reading box file failed : " + shortName);
-			FlansMod.log.throwing(e);
+			FlansMod.log.error("Reading box file failed : " + shortName, e);
 		}
 	}
 
@@ -47,7 +44,6 @@ public abstract class BoxType extends InfoType
 	}
 
 	@Override
-	@SideOnly(Side.CLIENT)
 	public ModelBase GetModel()
 	{
 		return null;

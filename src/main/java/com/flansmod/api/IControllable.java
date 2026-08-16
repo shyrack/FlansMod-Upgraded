@@ -1,10 +1,8 @@
 package com.flansmod.api;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 
 import com.flansmod.common.driveables.EntitySeat;
 
@@ -22,9 +20,9 @@ public interface IControllable
 	 * @param key the keycode of the key. see @link:KeyInputHandler
 	 * @return boolean to indicate it this key was handled.
 	 */
-	boolean pressKey(int key, EntityPlayer player, boolean isOnEvent);
+	boolean pressKey(int key, Player player, boolean isOnEvent);
 	
-	boolean serverHandleKeyPress(int key, EntityPlayer player);
+	boolean serverHandleKeyPress(int key, Player player);
 	
 	void updateKeyHeldState(int key, boolean held);
 	
@@ -47,8 +45,7 @@ public interface IControllable
 	 */
 	float getCameraDistance();
 	
-	@SideOnly(Side.CLIENT)
-	EntityLivingBase getCamera();
+	LivingEntity getCamera();
 	
-	EntitySeat getSeat(EntityLivingBase living);
+	EntitySeat getSeat(LivingEntity living);
 }

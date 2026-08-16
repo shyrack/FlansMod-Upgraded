@@ -1,55 +1,52 @@
 package com.flansmod.client.debug;
 
-import org.lwjgl.opengl.GL11;
-
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.entity.Render;
-import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.fml.client.registry.IRenderFactory;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.entity.EntityRenderer;
+import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
 
 import com.flansmod.common.FlansMod;
 
-public class RenderDebugDot extends Render<EntityDebugDot>
+public class RenderDebugDot extends EntityRenderer<EntityDebugDot, RenderDebugDot.State>
 {
-	
-	public RenderDebugDot(RenderManager renderManager)
+	public static class State extends EntityRenderState
 	{
-		super(renderManager);
+		public float red = 1F, green = 1F, blue = 1F;
 	}
-	
+
+	public RenderDebugDot(EntityRendererProvider.Context context)
+	{
+		super(context);
+	}
+
 	@Override
-	public void doRender(EntityDebugDot entity, double d0, double d1, double d2, float f, float f1)
+	public State createRenderState()
+	{
+		return new State();
+	}
+
+	@Override
+	public void extractRenderState(EntityDebugDot entity, State state, float partialTick)
+	{
+		super.extractRenderState(entity, state, partialTick);
+		state.red = entity.getColorRed();
+		state.green = entity.getColorGreen();
+		state.blue = entity.getColorBlue();
+	}
+
+	@Override
+	public void submit(State state, PoseStack pose, SubmitNodeCollector collector, CameraRenderState camera)
 	{
 		if(!FlansMod.DEBUG)
 			return;
-		
-		GlStateManager.disableTexture2D();
-		GlStateManager.disableDepth();
-		GlStateManager.color(entity.getColorRed(), entity.getColorGreen(), entity.getColorBlue());
-		GlStateManager.pushMatrix();
-		GlStateManager.translate((float)d0, (float)d1, (float)d2);
-		GL11.glPointSize(10F);
-		GlStateManager.glBegin(GL11.GL_POINTS);
-		GlStateManager.glVertex3f(0F, 0F, 0F);
-		GlStateManager.glEnd();
-		GlStateManager.popMatrix();
-		GlStateManager.enableTexture2D();
-		GlStateManager.enableDepth();
-	}
-	
-	@Override
-	protected ResourceLocation getEntityTexture(EntityDebugDot entity)
-	{
-		return null;
-	}
-	
-	public static class Factory implements IRenderFactory<EntityDebugDot>
-	{
-		@Override
-		public Render<EntityDebugDot> createRenderFor(RenderManager manager)
+
+		collector.submitCustomGeometry(pose, RenderTypes.debugPoint(), (p, consumer) ->
 		{
-			return new RenderDebugDot(manager);
-		}
+			consumer.addVertex(p, 0F, 0F, 0F).setColor(state.red, state.green, state.blue, 1F);
+		});
 	}
 }

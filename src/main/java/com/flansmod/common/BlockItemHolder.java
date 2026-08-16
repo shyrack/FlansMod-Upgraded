@@ -1,151 +1,135 @@
 package com.flansmod.common;
 
-import net.minecraft.block.BlockContainer;
-import net.minecraft.block.material.Material;
-import net.minecraft.block.properties.PropertyDirection;
-import net.minecraft.block.state.BlockStateContainer;
-import net.minecraft.block.state.IBlockState;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.item.EntityItem;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.inventory.IInventory;
-import net.minecraft.inventory.InventoryHelper;
-import net.minecraft.item.ItemStack;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.EnumHand;
-import net.minecraft.util.math.AxisAlignedBB;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.IBlockAccess;
-import net.minecraft.world.World;
-import net.minecraftforge.fml.relauncher.Side;
+import com.mojang.serialization.MapCodec;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.Containers;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.block.BaseEntityBlock;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.material.MapColor;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
-public class BlockItemHolder extends BlockContainer
+public class BlockItemHolder extends BaseEntityBlock
 {
+	public static final MapCodec<BlockItemHolder> CODEC = simpleCodec(BlockItemHolder::new);
 	public ItemHolderType type;
-	public static final PropertyDirection FACING = PropertyDirection.create("facing", EnumFacing.Plane.HORIZONTAL);
+	public static final EnumProperty<Direction> FACING = BlockStateProperties.HORIZONTAL_FACING;
+	
+	public BlockItemHolder(BlockBehaviour.Properties properties)
+	{
+		super(properties);
+	}
 	
 	public BlockItemHolder(ItemHolderType type)
 	{
-		super(Material.ROCK);
+		this(BlockBehaviour.Properties.of().mapColor(MapColor.STONE).strength(2F, 4F), type);
+	}
+
+	public BlockItemHolder(BlockBehaviour.Properties properties, ItemHolderType type)
+	{
+		super(properties);
 		this.type = type;
-		setCreativeTab(FlansMod.tabFlanParts);
-		setHardness(2F);
-		setResistance(4F);
-		setRegistryName(type.shortName);
-		setTranslationKey(type.shortName);
-		setCreativeTab(FlansMod.tabFlanParts);
-		setDefaultState(blockState.getBaseState().withProperty(FACING, EnumFacing.NORTH));
 		type.block = this;
-		//type.item = Item.getItemFromBlock(this);
-		this.lightOpacity = 0;
 	}
 	
 	@Override
-	public boolean doesSideBlockRendering(IBlockState state, IBlockAccess world, BlockPos pos, EnumFacing face)
+	protected MapCodec<? extends BaseEntityBlock> codec()
 	{
-		return false;
+		return CODEC;
 	}
 	
 	@Override
-	public void onBlockPlacedBy(World worldIn, BlockPos pos, IBlockState state, EntityLivingBase placer, ItemStack stack)
+	public void setPlacedBy(Level worldIn, BlockPos pos, BlockState state, LivingEntity placer, ItemStack stack)
 	{
-		EnumFacing enumfacing = EnumFacing.fromAngle((double)placer.rotationYaw);
-		worldIn.setBlockState(pos, state.withProperty(FACING, enumfacing), 2);
+		Direction enumfacing = Direction.fromYRot((double)placer.getYRot());
+		worldIn.setBlock(pos, state.setValue(FACING, enumfacing), 2);
 	}
 	
 	@Override
-	public IBlockState getStateFromMeta(int meta)
+	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder)
 	{
-		return this.getDefaultState().withProperty(FACING, EnumFacing.byHorizontalIndex(meta));
+		builder.add(FACING);
 	}
 	
 	@Override
-	public int getMetaFromState(IBlockState state)
+	public boolean canSurvive(BlockState state, LevelReader level, BlockPos pos)
 	{
-		byte b0 = 0;
-		return b0 | state.getValue(FACING).getHorizontalIndex();
+		return level.getBlockState(pos.below()).isSolid();
 	}
 	
-	@Override
-	protected BlockStateContainer createBlockState()
-	{
-		return new BlockStateContainer(this, FACING);
-	}
-	
+	protected static final VoxelShape AABB = Shapes.create(0.0D, 0.0D, 0.0D, 1.0D, 0.5D, 1.0D);
 	
 	@Override
-	public boolean canPlaceBlockAt(World par1World, BlockPos pos)
-	{
-		return par1World.getBlockState(pos.add(0, -1, 0)).isSideSolid(par1World, pos.add(0, -1, 0), EnumFacing.UP);
-	}
-	
-	protected static final AxisAlignedBB AABB = new AxisAlignedBB(0.0D, 0.0D, 0.0D, 1.0D, 0.5D, 1.0D);
-	
-	@Override
-	public AxisAlignedBB getBoundingBox(IBlockState state, IBlockAccess source, BlockPos pos)
+	public VoxelShape getShape(BlockState state, BlockGetter source, BlockPos pos, CollisionContext context)
 	{
 		return AABB;
 	}
 	
 	@Override
-	public boolean isOpaqueCube(IBlockState state)
+	public BlockEntity newBlockEntity(BlockPos pos, BlockState state)
 	{
-		return false;
+		TileEntityItemHolder tileEntity = new TileEntityItemHolder(pos, state);
+		tileEntity.type = type;
+		return tileEntity;
 	}
 	
 	@Override
-	public boolean isFullCube(IBlockState state)
+	public InteractionResult useWithoutItem(BlockState state, Level world, BlockPos pos, Player player, BlockHitResult hit)
 	{
-		return false;
-	}
-	
-	@Override
-	public TileEntity createNewTileEntity(World var1, int i)
-	{
-		return new TileEntityItemHolder(type);
-	}
-	
-	@Override
-	public boolean onBlockActivated(World world, BlockPos pos, IBlockState state, EntityPlayer player, EnumHand hand, EnumFacing side, float par7, float par8, float par9)
-	{
-		if(world.isRemote)
+		if(world.isClientSide())
 		{
-			FlansMod.playerHandler.getPlayerData(player, Side.CLIENT).shootTimeLeft = FlansMod.playerHandler.getPlayerData(player, Side.CLIENT).shootTimeRight = 10;
-			return true;
+			FlansMod.playerHandler.getPlayerData(player, true).shootTimeLeft = FlansMod.playerHandler.getPlayerData(player, true).shootTimeRight = 10;
+			return InteractionResult.SUCCESS;
 		}
 		
-		TileEntityItemHolder holder = (TileEntityItemHolder)world.getTileEntity(pos);
-		ItemStack item = player.getHeldItemMainhand();
+		TileEntityItemHolder holder = (TileEntityItemHolder)world.getBlockEntity(pos);
+		ItemStack item = player.getMainHandItem();
 		
-		if(holder.getStackInSlot(0).isEmpty())
+		if(holder.getItem(0).isEmpty())
 		{
-			holder.setInventorySlotContents(0, item);
-			player.inventory.setInventorySlotContents(player.inventory.currentItem, ItemStack.EMPTY.copy());
+			holder.setItem(0, item);
+			player.getInventory().setItem(player.getInventory().getSelectedSlot(), ItemStack.EMPTY.copy());
 		}
 		else
 		{
-			world.spawnEntity(new EntityItem(world, pos.getX(), pos.getY(), pos.getZ(), holder.getStackInSlot(0)));
-			holder.setInventorySlotContents(0, ItemStack.EMPTY.copy());
-			FlansMod.playerHandler.getPlayerData(player, Side.SERVER).shootTimeLeft = FlansMod.playerHandler.getPlayerData(player, Side.SERVER).shootTimeRight = 10;
+			((ServerLevel)world).addFreshEntity(new ItemEntity(world, pos.getX(), pos.getY(), pos.getZ(), holder.getItem(0)));
+			holder.setItem(0, ItemStack.EMPTY.copy());
+			FlansMod.playerHandler.getPlayerData(player, false).shootTimeLeft = FlansMod.playerHandler.getPlayerData(player, false).shootTimeRight = 10;
 		}
 		
-		world.scheduleUpdate(pos, this, 0);
-		
-		return true;
+		return InteractionResult.SUCCESS;
 	}
 	
 	@Override
-	public void breakBlock(World worldIn, BlockPos pos, IBlockState state)
+	public BlockState playerWillDestroy(Level worldIn, BlockPos pos, BlockState state, Player player)
 	{
-		TileEntity tileentity = worldIn.getTileEntity(pos);
-		
-		if(tileentity instanceof IInventory)
+		if(!state.isAir())
 		{
-			InventoryHelper.dropInventoryItems(worldIn, pos, (IInventory)tileentity);
-			worldIn.updateComparatorOutputLevel(pos, this);
+			BlockEntity tileentity = worldIn.getBlockEntity(pos);
+			
+			if(tileentity instanceof TileEntityItemHolder)
+			{
+				Containers.dropContents(worldIn, pos, (TileEntityItemHolder)tileentity);
+			}
 		}
-		
-		super.breakBlock(worldIn, pos, state);
+		return super.playerWillDestroy(worldIn, pos, state, player);
 	}
 }

@@ -1,49 +1,46 @@
 package com.flansmod.common.network;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.EnumHand;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.InteractionHand;
 
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.guns.ItemGun;
 
 public class PacketGunFire extends PacketBase
 {
-	private EnumHand hand;
+	private InteractionHand hand;
 	
 	public PacketGunFire() {
 		
 	}
 	
-	public PacketGunFire(EnumHand hand)
+	public PacketGunFire(InteractionHand hand)
 	{
 		this.hand = hand;
 	}
 	
 	@Override
-	public void encodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void encodeInto(ByteBuf data)
 	{
 		//TODO Proper packet enum encoding
-		data.writeInt(EnumHand.MAIN_HAND.equals(hand)?0:1);
+		data.writeInt(InteractionHand.MAIN_HAND.equals(hand)?0:1);
 	}
 	
 	@Override
-	public void decodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void decodeInto(ByteBuf data)
 	{
 		//TODO Proper packet enum encoding
-		hand = data.readInt()==0?EnumHand.MAIN_HAND:EnumHand.OFF_HAND;
+		hand = data.readInt()==0?InteractionHand.MAIN_HAND:InteractionHand.OFF_HAND;
 	}
 	
 	@Override
-	public void handleServerSide(EntityPlayerMP playerEntity)
+	public void handleServerSide(ServerPlayer playerEntity)
 	{
-		ItemStack itemstack = playerEntity.getHeldItem(hand);
+		ItemStack itemstack = playerEntity.getItemInHand(hand);
 		//TODO can itemstack be null?
 		Item item = itemstack.getItem();
 		if (item instanceof ItemGun) {
@@ -56,8 +53,7 @@ public class PacketGunFire extends PacketBase
 	}
 	
 	@Override
-	@SideOnly(Side.CLIENT)
-	public void handleClientSide(EntityPlayer clientPlayer)
+	public void handleClientSide(Player clientPlayer)
 	{
 		FlansMod.log.warn("Received gun button packet on client. Skipping.");
 	}

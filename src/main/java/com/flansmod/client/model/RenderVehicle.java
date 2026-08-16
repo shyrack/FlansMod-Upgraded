@@ -1,136 +1,170 @@
 package com.flansmod.client.model;
 
-import org.lwjgl.opengl.GL11;
-
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.OpenGlHelper;
-import net.minecraft.client.renderer.RenderHelper;
-import net.minecraft.client.renderer.entity.Render;
-import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.entity.Entity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.EnumHand;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.math.AxisAlignedBB;
-import net.minecraft.world.World;
-import net.minecraftforge.client.event.RenderWorldLastEvent;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.fml.client.registry.IRenderFactory;
-import net.minecraftforge.fml.common.eventhandler.EventPriority;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.entity.EntityRenderer;
+import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.AABB;
 
 import com.flansmod.client.handlers.FlansModResourceHandler;
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.driveables.DriveablePart;
 import com.flansmod.common.driveables.DriveablePosition;
-import com.flansmod.common.driveables.DriveableType;
 import com.flansmod.common.driveables.EntitySeat;
 import com.flansmod.common.driveables.EntityVehicle;
 import com.flansmod.common.driveables.EnumDriveablePart;
-import com.flansmod.common.driveables.ItemVehicle;
 import com.flansmod.common.driveables.ShootPoint;
 import com.flansmod.common.driveables.VehicleType;
 import com.flansmod.common.guns.Paintjob;
 
-public class RenderVehicle extends Render<EntityVehicle> implements CustomItemRenderer
+public class RenderVehicle extends EntityRenderer<EntityVehicle, RenderVehicle.State> implements CustomItemRenderer
 {
-	public RenderVehicle(RenderManager renderManager)
+	public static class State extends EntityRenderState
 	{
-		super(renderManager);
-		shadowSize = 0.5F;
-		MinecraftForge.EVENT_BUS.register(this);
+		public EntityVehicle vehicle;
+		public VehicleType type;
+		public ModelVehicle model;
+		public Identifier texture;
+		public float partialTick;
 	}
-	
-	public void render(EntityVehicle vehicle, double d, double d1, double d2, float f, float f1)
+
+	private final PoseStack poseStack = new PoseStack();
+
+	public RenderVehicle(EntityRendererProvider.Context context)
 	{
-		bindEntityTexture(vehicle);
-		VehicleType type = vehicle.getVehicleType();
-		GlStateManager.pushMatrix();
+		super(context);
+		shadowRadius = 0.5F;
+	}
+
+	@Override
+	public State createRenderState()
+	{
+		return new State();
+	}
+
+	@Override
+	public void extractRenderState(EntityVehicle vehicle, State state, float partialTick)
+	{
+		super.extractRenderState(vehicle, state, partialTick);
+		state.vehicle = vehicle;
+		state.type = vehicle.getVehicleType();
+		state.model = (ModelVehicle)state.type.model;
+		Paintjob paintjob = state.type.getPaintjob(vehicle.getDriveableData().paintjobID);
+		state.texture = FlansModResourceHandler.getPaintjobTexture(paintjob);
+		state.partialTick = partialTick;
+	}
+
+	@Override
+	public void submit(State state, PoseStack pose, SubmitNodeCollector collector, CameraRenderState camera)
+	{
+		EntityVehicle vehicle = state.vehicle;
+		VehicleType type = state.type;
+		ModelVehicle modVehicle = state.model;
+		float f1 = state.partialTick;
+
+		float dYaw = (vehicle.axes.getYaw() - vehicle.prevAxes.getYaw());
+		while(dYaw > 180F)
 		{
-			GlStateManager.translate((float)d, (float)d1, (float)d2);
-			float dYaw = (vehicle.axes.getYaw() - vehicle.prevRotationYaw);
-			while(dYaw > 180F)
+			dYaw -= 360F;
+		}
+		while(dYaw <= -180F)
+		{
+			dYaw += 360F;
+		}
+		float dPitch = (vehicle.axes.getPitch() - vehicle.prevAxes.getPitch());
+		while(dPitch > 180F)
+		{
+			dPitch -= 360F;
+		}
+		while(dPitch <= -180F)
+		{
+			dPitch += 360F;
+		}
+		float dRoll = (vehicle.axes.getRoll() - vehicle.prevRotationRoll);
+		while(dRoll > 180F)
+		{
+			dRoll -= 360F;
+		}
+		while(dRoll <= -180F)
+		{
+			dRoll += 360F;
+		}
+
+		float modelScale = type.modelScale;
+
+		float recoilDPos = (float)Math.sin(Math.toRadians(vehicle.recoilPos)) -
+			(float)Math.sin(Math.toRadians(vehicle.lastRecoilPos));
+		float recoilPos = (float)Math.sin(Math.toRadians(vehicle.lastRecoilPos)) + recoilDPos * f1;
+
+		pose.pushPose();
+		{
+			pose.mulPose(Axis.YP.rotationDegrees(180F - vehicle.prevAxes.getYaw() - dYaw * f1));
+			pose.mulPose(Axis.ZP.rotationDegrees(vehicle.prevAxes.getPitch() + dPitch * f1));
+			pose.mulPose(Axis.XP.rotationDegrees(vehicle.prevRotationRoll + dRoll * f1));
+			pose.mulPose(Axis.YP.rotationDegrees(180F));
+
+			pose.pushPose();
 			{
-				dYaw -= 360F;
-			}
-			while(dYaw <= -180F)
-			{
-				dYaw += 360F;
-			}
-			float dPitch = (vehicle.axes.getPitch() - vehicle.prevRotationPitch);
-			while(dPitch > 180F)
-			{
-				dPitch -= 360F;
-			}
-			while(dPitch <= -180F)
-			{
-				dPitch += 360F;
-			}
-			float dRoll = (vehicle.axes.getRoll() - vehicle.prevRotationRoll);
-			while(dRoll > 180F)
-			{
-				dRoll -= 360F;
-			}
-			while(dRoll <= -180F)
-			{
-				dRoll += 360F;
-			}
-			GlStateManager.rotate(180F - vehicle.prevRotationYaw - dYaw * f1, 0.0F, 1.0F, 0.0F);
-			GlStateManager.rotate(vehicle.prevRotationPitch + dPitch * f1, 0.0F, 0.0F, 1.0F);
-			GlStateManager.rotate(vehicle.prevRotationRoll + dRoll * f1, 1.0F, 0.0F, 0.0F);
-			GlStateManager.rotate(180F, 0.0F, 1.0F, 0.0F);
-			
-			float modelScale = type.modelScale;
-			GlStateManager.pushMatrix();
-			{
-				float recoilDPos = (float)Math.sin(Math.toRadians(vehicle.recoilPos)) -
-					(float)Math.sin(Math.toRadians(vehicle.lastRecoilPos));
-				float recoilPos = (float)Math.sin(Math.toRadians(vehicle.lastRecoilPos)) + recoilDPos * f1;
-				
-				GlStateManager.scale(modelScale, modelScale, modelScale);
-				ModelVehicle modVehicle = (ModelVehicle)type.model;
+				pose.scale(modelScale, modelScale, modelScale);
 				if(modVehicle != null)
-					modVehicle.render(vehicle, f1);
-				
-				for(int i = 0; i < vehicle.trackLinksLeft.length; i++)
 				{
-					AnimTrackLink link = vehicle.trackLinksLeft[i];
-					float rotZ = link.zRot;
-					GlStateManager.pushMatrix();
-					GlStateManager.translate(link.position.x / 16F, link.position.y / 16F, link.position.z / 16F);
-					for(; rotZ > 180F; rotZ -= 360F)
+					collector.submitCustomGeometry(pose, RenderTypes.entityCutout(state.texture), (p, consumer) ->
 					{
-					}
-					for(; rotZ <= -180F; rotZ += 360F)
-					{
-					}
-					GlStateManager.rotate(rotZ * (float)(180 / Math.PI), 0, 0, 1);
-					modVehicle.renderFancyTracks(vehicle, f1);
-					GlStateManager.popMatrix();
+						poseStack.pushPose();
+						poseStack.last().set(p);
+						ModelRenderer.beginRender(poseStack, consumer, state.lightCoords, OverlayTexture.NO_OVERLAY);
+						modVehicle.render(vehicle, f1);
+
+						for(int i = 0; i < vehicle.trackLinksLeft.length; i++)
+						{
+							AnimTrackLink link = vehicle.trackLinksLeft[i];
+							float rotZ = link.zRot;
+							poseStack.pushPose();
+							poseStack.translate(link.position.x / 16F, link.position.y / 16F, link.position.z / 16F);
+							for(; rotZ > 180F; rotZ -= 360F)
+							{
+							}
+							for(; rotZ <= -180F; rotZ += 360F)
+							{
+							}
+							poseStack.mulPose(Axis.ZP.rotationDegrees(rotZ * (float)(180 / Math.PI)));
+							modVehicle.renderFancyTracks(vehicle, f1);
+							poseStack.popPose();
+						}
+
+						for(int i = 0; i < vehicle.trackLinksRight.length; i++)
+						{
+							AnimTrackLink link = vehicle.trackLinksRight[i];
+							float rotZ = link.zRot;
+							for(; rotZ > 180F; rotZ -= 360F)
+							{
+							}
+							for(; rotZ <= -180F; rotZ += 360F)
+							{
+							}
+							poseStack.pushPose();
+							poseStack.translate(link.position.x / 16F, link.position.y / 16F, link.position.z / 16F);
+							poseStack.mulPose(Axis.ZP.rotationDegrees(rotZ * (float)(180 / Math.PI)));
+							modVehicle.renderFancyTracks(vehicle, f1);
+							poseStack.popPose();
+						}
+						ModelRenderer.endRender();
+						poseStack.popPose();
+					});
 				}
-				
-				for(int i = 0; i < vehicle.trackLinksRight.length; i++)
-				{
-					AnimTrackLink link = vehicle.trackLinksRight[i];
-					float rotZ = link.zRot;
-					for(; rotZ > 180F; rotZ -= 360F)
-					{
-					}
-					for(; rotZ <= -180F; rotZ += 360F)
-					{
-					}
-					GlStateManager.pushMatrix();
-					GlStateManager.translate(link.position.x / 16F, link.position.y / 16F, link.position.z / 16F);
-					GlStateManager.rotate(rotZ * (float)(180 / Math.PI), 0, 0, 1);
-					modVehicle.renderFancyTracks(vehicle, f1);
-					GlStateManager.popMatrix();
-				}
-				
-				GlStateManager.pushMatrix();
+
 				if(type.turretOrigin != null && vehicle.isPartIntact(EnumDriveablePart.turret) &&
 					vehicle.getSeat(0) != null)
 				{
+					pose.pushPose();
 					dYaw = (vehicle.getSeat(0).looking.getYaw() - vehicle.getSeat(0).prevLooking.getYaw());
 					while(dYaw > 180F)
 					{
@@ -141,288 +175,155 @@ public class RenderVehicle extends Render<EntityVehicle> implements CustomItemRe
 						dYaw += 360F;
 					}
 					float yaw = vehicle.getSeat(0).prevLooking.getYaw() + dYaw * f1;
-					
-					GlStateManager.translate(type.turretOrigin.x, type.turretOrigin.y, type.turretOrigin.z);
-					GlStateManager.rotate(-yaw, 0.0F, 1.0F, 0.0F);
-					GlStateManager.translate(-type.turretOrigin.x, -type.turretOrigin.y, -type.turretOrigin.z);
-					
-					if(modVehicle != null)
-						modVehicle.renderTurret(0.0F, 0.0F, -0.1F, 0.0F, 0.0F, 0.0625F, vehicle, f1);
-					
-					//rotate and render barrel
+
+					pose.translate(type.turretOrigin.x, type.turretOrigin.y, type.turretOrigin.z);
+					pose.mulPose(Axis.YP.rotationDegrees(-yaw));
+					pose.translate(-type.turretOrigin.x, -type.turretOrigin.y, -type.turretOrigin.z);
+
 					if(modVehicle != null)
 					{
-						EntitySeat[] seats = vehicle.getSeats();
-						GlStateManager.translate(modVehicle.barrelAttach.x,
-							modVehicle.barrelAttach.y,
-							-modVehicle.barrelAttach.z);
-						float bPitch = (seats[0].looking.getPitch() - seats[0].prevLooking.getPitch());
-						float aPitch = seats[0].prevLooking.getPitch() + bPitch * f1;
-						
-						GlStateManager.rotate(-aPitch, 0F, 0F, 1F);
-						GlStateManager.translate(recoilPos * -(5F / 16F), 0F, 0F);
-						modVehicle.renderAnimBarrel(0.0F, 0.0F, -0.1F, 0.0F, 0.0F, 0.0625F, vehicle, f1);
+						collector.submitCustomGeometry(pose, RenderTypes.entityCutout(state.texture), (p, consumer) ->
+						{
+							poseStack.pushPose();
+							poseStack.last().set(p);
+							ModelRenderer.beginRender(poseStack, consumer, state.lightCoords, OverlayTexture.NO_OVERLAY);
+							modVehicle.renderTurret(0.0F, 0.0F, -0.1F, 0.0F, 0.0F, 0.0625F, vehicle, f1);
+
+							//rotate and render barrel
+							EntitySeat[] seats = vehicle.getSeats();
+							poseStack.translate(modVehicle.barrelAttach.x,
+								modVehicle.barrelAttach.y,
+								-modVehicle.barrelAttach.z);
+							float bPitch = (seats[0].looking.getPitch() - seats[0].prevLooking.getPitch());
+							float aPitch = seats[0].prevLooking.getPitch() + bPitch * f1;
+
+							poseStack.mulPose(Axis.ZP.rotationDegrees(-aPitch));
+							poseStack.translate(recoilPos * -(5F / 16F), 0F, 0F);
+							modVehicle.renderAnimBarrel(0.0F, 0.0F, -0.1F, 0.0F, 0.0F, 0.0625F, vehicle, f1);
+							ModelRenderer.endRender();
+							poseStack.popPose();
+						});
 					}
-					
+
 					if(FlansMod.DEBUG)
 					{
-						GlStateManager.translate(type.turretOrigin.x, type.turretOrigin.y, type.turretOrigin.z);
-						GlStateManager.rotate(-vehicle.getSeat(0).looking.getPitch(), 0.0F, 0.0F, 1.0F);
-						GlStateManager.translate(-type.turretOrigin.x, -type.turretOrigin.y, -type.turretOrigin.z);
-						
-						//Render shoot points
-						GlStateManager.color(0F, 0F, 1F, 0.3F);
-						for(ShootPoint point : type.shootPointsPrimary)
+						pose.pushPose();
+						pose.translate(type.turretOrigin.x, type.turretOrigin.y, type.turretOrigin.z);
+						pose.mulPose(Axis.ZP.rotationDegrees(-vehicle.getSeat(0).looking.getPitch()));
+						pose.translate(-type.turretOrigin.x, -type.turretOrigin.y, -type.turretOrigin.z);
+
+						//EntityRenderer shoot points
+						collector.submitCustomGeometry(pose, RenderTypes.lines(), (p, consumer) ->
 						{
-							DriveablePosition driveablePosition = point.rootPos;
-							if(driveablePosition.part == EnumDriveablePart.turret)
+							for(ShootPoint point : type.shootPointsPrimary)
 							{
-								renderOffsetAABB(new AxisAlignedBB(
-										driveablePosition.position.x - 0.25F,
-										driveablePosition.position.y - 0.25F,
-										driveablePosition.position.z - 0.25F,
-										driveablePosition.position.x + 0.25F,
-										driveablePosition.position.y + 0.25F,
-										driveablePosition.position.z + 0.25F),
-									0, 0, 0);
+								DriveablePosition driveablePosition = point.rootPos;
+								if(driveablePosition.part == EnumDriveablePart.turret)
+								{
+									ModelDriveable.renderOffsetAABB(consumer, p, new AABB(
+											driveablePosition.position.x - 0.25F,
+											driveablePosition.position.y - 0.25F,
+											driveablePosition.position.z - 0.25F,
+											driveablePosition.position.x + 0.25F,
+											driveablePosition.position.y + 0.25F,
+											driveablePosition.position.z + 0.25F),
+										0, 0, 0);
+								}
 							}
-						}
-						
-						GlStateManager.color(0F, 1F, 0F, 0.3F);
-						for(ShootPoint point : type.shootPointsSecondary)
-						{
-							DriveablePosition driveablePosition = point.rootPos;
-							if(driveablePosition.part == EnumDriveablePart.turret)
-								renderOffsetAABB(new AxisAlignedBB(
-										driveablePosition.position.x - 0.25F,
-										driveablePosition.position.y - 0.25F,
-										driveablePosition.position.z - 0.25F,
-										driveablePosition.position.x + 0.25F,
-										driveablePosition.position.y + 0.25F,
-										driveablePosition.position.z + 0.25F),
-									0, 0, 0);
-						}
+							for(ShootPoint point : type.shootPointsSecondary)
+							{
+								DriveablePosition driveablePosition = point.rootPos;
+								if(driveablePosition.part == EnumDriveablePart.turret)
+									ModelDriveable.renderOffsetAABB(consumer, p, new AABB(
+											driveablePosition.position.x - 0.25F,
+											driveablePosition.position.y - 0.25F,
+											driveablePosition.position.z - 0.25F,
+											driveablePosition.position.x + 0.25F,
+											driveablePosition.position.y + 0.25F,
+											driveablePosition.position.z + 0.25F),
+										0, 0, 0);
+							}
+						});
+						pose.popPose();
 					}
+					pose.popPose();
 				}
-				GlStateManager.popMatrix();
 				if(modVehicle != null)
 				{
-					GlStateManager.pushMatrix();
-					
-					GlStateManager.translate(modVehicle.drillHeadOrigin.x, modVehicle.drillHeadOrigin.y,
+					pose.pushPose();
+
+					pose.translate(modVehicle.drillHeadOrigin.x, modVehicle.drillHeadOrigin.y,
 						modVehicle.drillHeadOrigin.z);
-					GlStateManager.rotate(vehicle.harvesterAngle * 50F, 1.0F, 0.0F, 0.0F);
-					GlStateManager.translate(-modVehicle.drillHeadOrigin.x, -modVehicle.drillHeadOrigin.y,
+					pose.mulPose(Axis.XP.rotationDegrees(vehicle.harvesterAngle * 50F));
+					pose.translate(-modVehicle.drillHeadOrigin.x, -modVehicle.drillHeadOrigin.y,
 						-modVehicle.drillHeadOrigin.z);
-					modVehicle.renderDrillBit(vehicle, f1);
-					
-					GlStateManager.popMatrix();
+					collector.submitCustomGeometry(pose, RenderTypes.entityCutout(state.texture), (p, consumer) ->
+					{
+						poseStack.pushPose();
+						poseStack.last().set(p);
+						ModelRenderer.beginRender(poseStack, consumer, state.lightCoords, OverlayTexture.NO_OVERLAY);
+						modVehicle.renderDrillBit(vehicle, f1);
+						ModelRenderer.endRender();
+						poseStack.popPose();
+					});
+					pose.popPose();
 				}
 			}
-			GlStateManager.popMatrix();
-			
+			pose.popPose();
+
 			if(FlansMod.DEBUG)
 			{
-				GlStateManager.disableTexture2D();
-				GlStateManager.enableBlend();
-				GlStateManager.disableDepth();
-				GlStateManager.color(1F, 0F, 0F, 0.3F);
-				GlStateManager.scale(1F, 1F, 1F);
-				for(DriveablePart part : vehicle.getDriveableData().parts.values())
+				pose.pushPose();
+				collector.submitCustomGeometry(pose, RenderTypes.lines(), (p, consumer) ->
 				{
-					if(part.box == null)
-						continue;
-					
-					ModelDriveable.renderOffsetAABB(new AxisAlignedBB(part.box.x, part.box.y, part.box.z, (part.box.x + part.box.w),
-						(part.box.y + part.box.h), (part.box.z + part.box.d)), 0, 0, 0);
-				}
-				
-				// Render shoot points
-				GlStateManager.color(0F, 0F, 1F, 0.3F);
-				for(ShootPoint point : type.shootPointsPrimary)
-				{
-					DriveablePosition driveablePosition = point.rootPos;
-					if(driveablePosition.part != EnumDriveablePart.turret)
+					for(DriveablePart part : vehicle.getDriveableData().parts.values())
 					{
-						ModelDriveable.renderOffsetAABB(new AxisAlignedBB(
-								driveablePosition.position.x - 0.25F,
-								driveablePosition.position.y - 0.25F,
-								driveablePosition.position.z - 0.25F,
-								driveablePosition.position.x + 0.25F,
-								driveablePosition.position.y + 0.25F,
-								driveablePosition.position.z + 0.25F),
-							0, 0, 0);
+						if(part.box == null)
+							continue;
+
+						ModelDriveable.renderOffsetAABB(consumer, p, new AABB(part.box.x, part.box.y, part.box.z, (part.box.x + part.box.w),
+							(part.box.y + part.box.h), (part.box.z + part.box.d)), 0, 0, 0);
 					}
-				}
-				
-				GlStateManager.color(0F, 1F, 0F, 0.3F);
-				for(ShootPoint point : type.shootPointsSecondary)
-				{
-					DriveablePosition driveablePosition = point.rootPos;
-					if(driveablePosition.part != EnumDriveablePart.turret)
-						ModelDriveable.renderOffsetAABB(new AxisAlignedBB(
-								driveablePosition.position.x - 0.25F,
-								driveablePosition.position.y - 0.25F,
-								driveablePosition.position.z - 0.25F,
-								driveablePosition.position.x + 0.25F,
-								driveablePosition.position.y + 0.25F,
-								driveablePosition.position.z + 0.25F),
-							0, 0, 0);
-				}
-				
-				GlStateManager.enableTexture2D();
-				GlStateManager.enableDepth();
-				GlStateManager.disableBlend();
-				GlStateManager.color(1F, 1F, 1F, 1F);
-			}
-		}
-		GlStateManager.popMatrix();
-	}
-	
-	@Override
-	public void doRender(EntityVehicle entity, double d, double d1, double d2, float f, float f1)
-	{
-		//render((EntityVehicle)entity, d, d1, d2, f, f1);
-		//The Vehicle is rendered by the renderWorld Method
-	}
-	
-	@Override
-	protected ResourceLocation getEntityTexture(EntityVehicle entity)
-	{
-		DriveableType type = entity.getDriveableType();
-		Paintjob paintjob = type.getPaintjob(entity.getDriveableData().paintjobID);
-		return FlansModResourceHandler.getPaintjobTexture(paintjob);
-	}
-	
-	@Override
-	public void renderItem(CustomItemRenderType type, EnumHand hand, ItemStack item, Object... data)
-	{
-		GlStateManager.pushMatrix();
-		if(item != null && item.getItem() instanceof ItemVehicle)
-		{
-			VehicleType vehicleType = ((ItemVehicle)item.getItem()).type;
-			if(vehicleType.model != null)
-			{
-				float scale = 1F;
-				switch(type)
-				{
-					case ENTITY:
+
+					// EntityRenderer shoot points
+					for(ShootPoint point : type.shootPointsPrimary)
 					{
-						scale = 1.5F;
-						break;
-					}
-					case INVENTORY:
-					{
-						scale = 0.70F;
-						GlStateManager.translate(0F, -0.05F, 0F);
-						break;
-					}
-					case EQUIPPED:
-					{
-						GlStateManager.rotate(0F, 0F, 0F, 1F);
-						GlStateManager.rotate(270F, 1F, 0F, 0F);
-						GlStateManager.rotate(270F, 0F, 1F, 0F);
-						GlStateManager.translate(0F, 0.25F, 0F);
-						scale = 0.5F;
-						break;
-					}
-					case EQUIPPED_FIRST_PERSON:
-					{
-						if(hand == EnumHand.MAIN_HAND)
+						DriveablePosition driveablePosition = point.rootPos;
+						if(driveablePosition.part != EnumDriveablePart.turret)
 						{
-							GlStateManager.rotate(45F, 0F, 1F, 0F);
-							GlStateManager.translate(-0.5F, 0.5F, -0.5F);
+							ModelDriveable.renderOffsetAABB(consumer, p, new AABB(
+									driveablePosition.position.x - 0.25F,
+									driveablePosition.position.y - 0.25F,
+									driveablePosition.position.z - 0.25F,
+									driveablePosition.position.x + 0.25F,
+									driveablePosition.position.y + 0.25F,
+									driveablePosition.position.z + 0.25F),
+								0, 0, 0);
 						}
-						else
-						{
-							GlStateManager.rotate(45F, 0F, 1F, 0F);
-							GlStateManager.translate(-0.5F, 0.5F, -2.3F);
-						}
-						
-						break;
 					}
-					default:
-						break;
-				}
-				
-				GlStateManager.scale(scale / vehicleType.cameraDistance, scale / vehicleType.cameraDistance,
-					scale / vehicleType.cameraDistance);
-				Minecraft.getMinecraft().renderEngine.bindTexture(FlansModResourceHandler.getTexture(vehicleType));
-				ModelDriveable model = vehicleType.model;
-				model.render(vehicleType);
+					for(ShootPoint point : type.shootPointsSecondary)
+					{
+						DriveablePosition driveablePosition = point.rootPos;
+						if(driveablePosition.part != EnumDriveablePart.turret)
+							ModelDriveable.renderOffsetAABB(consumer, p, new AABB(
+									driveablePosition.position.x - 0.25F,
+									driveablePosition.position.y - 0.25F,
+									driveablePosition.position.z - 0.25F,
+									driveablePosition.position.x + 0.25F,
+									driveablePosition.position.y + 0.25F,
+									driveablePosition.position.z + 0.25F),
+								0, 0, 0);
+					}
+				});
+				pose.popPose();
 			}
 		}
-		GlStateManager.popMatrix();
+		pose.popPose();
 	}
-	
-	@SubscribeEvent(priority = EventPriority.HIGHEST)
-	public void renderWorld(RenderWorldLastEvent event)
+
+	@Override
+	public void renderItem(CustomItemRenderType type, InteractionHand hand, ItemStack item, Object... data)
 	{
-		//Get the world
-		World world = Minecraft.getMinecraft().world;
-		if(world == null)
-			return;
-		
-		//Get the camera frustrum for clipping
-		Entity camera = Minecraft.getMinecraft().getRenderViewEntity();
-		double x = camera.lastTickPosX + (camera.posX - camera.lastTickPosX) * event.getPartialTicks();
-		double y = camera.lastTickPosY + (camera.posY - camera.lastTickPosY) * event.getPartialTicks();
-		double z = camera.lastTickPosZ + (camera.posZ - camera.lastTickPosZ) * event.getPartialTicks();
-		
-		//Frustum frustrum = new Frustum();
-		//frustrum.setPosition(x, y, z);
-		
-		//Push
-		GlStateManager.pushMatrix();
-		//Setup lighting
-		Minecraft.getMinecraft().entityRenderer.enableLightmap();
-		GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
-		GlStateManager.enableLighting();
-		GlStateManager.enableLighting();
-		GlStateManager.disableBlend();
-		
-		RenderHelper.enableStandardItemLighting();
-		
-		//GlStateManager.translate(-(float)x, -(float)y, -(float)z);
-		for(Object entity : world.loadedEntityList)
-		{
-			if(entity instanceof EntityVehicle)
-			{
-				EntityVehicle vehicle = (EntityVehicle)entity;
-				int i = vehicle.getBrightnessForRender();
-				
-				if(vehicle.isBurning())
-				{
-					i = 15728880;
-				}
-				
-				int j = i % 65536;
-				int k = i / 65536;
-				OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, (float)j / 1.0F, (float)k / 1.0F);
-				GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
-				render(vehicle,
-					(vehicle.prevPosX - x) + (vehicle.posX - vehicle.prevPosX) * event.getPartialTicks(),
-					(vehicle.prevPosY - y) + (vehicle.posY - vehicle.prevPosY) * event.getPartialTicks(),
-					(vehicle.prevPosZ - z) + (vehicle.posZ - vehicle.prevPosZ) * event.getPartialTicks(),
-					0F,
-					event.getPartialTicks());
-			}
-		}
-		
-		//Reset Lighting
-		Minecraft.getMinecraft().entityRenderer.disableLightmap();
-		GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
-		GlStateManager.disableLighting();
-		//Pop
-		GlStateManager.popMatrix();
-	}
-	
-	public static class Factory implements IRenderFactory<EntityVehicle>
-	{
-		@Override
-		public Render<EntityVehicle> createRenderFor(RenderManager manager)
-		{
-			return new RenderVehicle(manager);
-		}
+		// TODO: [26.1.2] item in hand rendering is done through the modern item model system and will be redone later
 	}
 }

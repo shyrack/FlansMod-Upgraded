@@ -1,6 +1,6 @@
 package com.flansmod.common.teams;
 
-import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.world.entity.player.Player;
 
 import com.flansmod.common.FlansMod;
 
@@ -80,17 +80,17 @@ public class RewardBoxInstance
 		boxHash = box.hashCode();
 	}
 	
-	public static RewardBoxInstance CreateLevelUpReward(RewardBox box, EntityPlayer player)
+	public static RewardBoxInstance CreateLevelUpReward(RewardBox box, Player player)
 	{
-		FlansMod.log.info("Level up reward box created for " + player.getDisplayNameString());
+		FlansMod.log.info("Level up reward box created for " + player.getName().getString());
 		return new RewardBoxInstance(EnumRewardOrigin.LEVEL_UP, box);
 	}
 	
 	// Ideally this would go through some automated system, but for now, this will be quicker
-	public static RewardBoxInstance CreatePurchasedReward(RewardBox box, EntityPlayer player, EntityPlayer commandSender)
+	public static RewardBoxInstance CreatePurchasedReward(RewardBox box, Player player, Player commandSender)
 	{
 		FlansMod.log.info("--------------------------------------------------------------------------------------------------------------------------------------------");
-		FlansMod.log.info("PURCHASED REWARD BOX MANUALLY REDEEMED FOR USER: " + player.getDisplayNameString() + " BY PLAYER " + commandSender.getDisplayNameString());
+		FlansMod.log.info("PURCHASED REWARD BOX MANUALLY REDEEMED FOR USER: " + player.getName().getString() + " BY PLAYER " + commandSender.getName().getString());
 		FlansMod.log.info("--------------------------------------------------------------------------------------------------------------------------------------------");
 		return new RewardBoxInstance(EnumRewardOrigin.PURCHASE, box);
 	}

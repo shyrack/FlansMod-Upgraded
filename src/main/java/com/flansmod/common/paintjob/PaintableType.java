@@ -3,18 +3,13 @@ package com.flansmod.common.paintjob;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import net.minecraft.init.Items;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.world.storage.loot.LootEntry;
-import net.minecraft.world.storage.loot.LootEntryItem;
-import net.minecraft.world.storage.loot.LootPool;
-import net.minecraft.world.storage.loot.RandomValueRange;
-import net.minecraft.world.storage.loot.conditions.LootCondition;
-import net.minecraft.world.storage.loot.functions.LootFunction;
-import net.minecraft.world.storage.loot.functions.SetDamage;
-import net.minecraftforge.event.LootTableLoadEvent;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 
 import com.flansmod.client.handlers.FlansModResourceHandler;
 import com.flansmod.common.FlansMod;
@@ -80,9 +75,6 @@ public abstract class PaintableType extends InfoType
 				nonlegendarypaintjobs.add(p);
 		}
 		
-		// Add all custom paintjobs to dungeon loot. Equal chance for each
-		totalDungeonChance += dungeonChance * (nonlegendarypaintjobs.size() - 1);
-		
 		paintableTypes.put(shortName.hashCode(), this);
 	}
 	
@@ -103,7 +95,7 @@ public abstract class PaintableType extends InfoType
 					if(split[i * 2 + 3].equals("rainbow"))
 						dyeStacks[i] = new ItemStack(FlansMod.rainbowPaintcan, Integer.parseInt(split[i * 2 + 4]));
 					else
-						dyeStacks[i] = new ItemStack(Items.DYE, Integer.parseInt(split[i * 2 + 4]), getDyeDamageValue(split[i * 2 + 3]));
+						dyeStacks[i] = new ItemStack(getDyeItem(getDyeDamageValue(split[i * 2 + 3])), Integer.parseInt(split[i * 2 + 4]));
 				}
 				if(split[1].contains("_"))
 				{
@@ -118,8 +110,31 @@ public abstract class PaintableType extends InfoType
 		}
 		catch(Exception e)
 		{
-			FlansMod.log.error("Reading file failed : " + shortName);
-			FlansMod.log.throwing(e);
+			FlansMod.log.error("Reading file failed : " + shortName, e);
+		}
+	}
+	
+	public static Item getDyeItem(int damage)
+	{
+		switch(damage)
+		{
+			case 0: return Items.WHITE_DYE;
+			case 1: return Items.ORANGE_DYE;
+			case 2: return Items.MAGENTA_DYE;
+			case 3: return Items.LIGHT_BLUE_DYE;
+			case 4: return Items.YELLOW_DYE;
+			case 5: return Items.LIME_DYE;
+			case 6: return Items.PINK_DYE;
+			case 7: return Items.GRAY_DYE;
+			case 8: return Items.LIGHT_GRAY_DYE;
+			case 9: return Items.CYAN_DYE;
+			case 10: return Items.PURPLE_DYE;
+			case 11: return Items.BLUE_DYE;
+			case 12: return Items.BROWN_DYE;
+			case 13: return Items.GREEN_DYE;
+			case 14: return Items.RED_DYE;
+			case 15: return Items.BLACK_DYE;
+			default: return Items.WHITE_DYE;
 		}
 	}
 	
@@ -147,35 +162,6 @@ public abstract class PaintableType extends InfoType
 		return defaultPaintjob;
 	}
 	
-	@Override
-	public void addLoot(LootTableLoadEvent event)
-	{
-		if(dungeonChance > 0)
-		{
-			LootPool pool = event.getTable().getPool("FlansMod");
-			if(pool == null)
-			{
-				pool = new LootPool(new LootEntry[0], new LootCondition[0], new RandomValueRange(1, 1), new RandomValueRange(1, 1), "FlansMod");
-				event.getTable().addPool(pool);
-			}
-			
-			if(pool != null)
-			{
-				LootEntry entry = new LootEntryItem(
-						item, 
-						FlansMod.dungeonLootChance * dungeonChance, 
-						1, 
-						new LootFunction[]
-						{
-							new SetDamage(new LootCondition[0], new RandomValueRange(0, nonlegendarypaintjobs.size() - 1))
-						}, 
-						new LootCondition[0], 
-						shortName);
-				pool.addEntry(entry);
-			}
-		}
-	}
-	
 	public float GetRecommendedScale()
 	{
 		return 50.0f;
@@ -190,34 +176,34 @@ public abstract class PaintableType extends InfoType
 		
 		if(stack.getItem() instanceof IPaintableItem)
 		{
-			return stack.getTagCompound().hasKey("CustomPaint");
+			return stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().contains("CustomPaint");
 		}
 		return false;
 	}
 	
-	public static ResourceLocation GetCustomPaintjobSkinResource(ItemStack stack)
+	public static Identifier GetCustomPaintjobSkinResource(ItemStack stack)
 	{
-		NBTTagCompound tags = stack.getTagCompound().getCompoundTag("CustomPaint");
-		int customPaintHash = tags.getInteger("Hash");
+		CompoundTag tags = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getCompoundOrEmpty("CustomPaint");
+		int customPaintHash = tags.getIntOr("Hash", 0);
 		
 		if(!FlansModResourceHandler.HasResourceForHash(customPaintHash))
 		{
-			FlansModResourceHandler.CreateSkinResourceFromByteArray(tags.getByteArray("Skin"), tags.getInteger("SkinWidth"), tags.getInteger("SkinHeight"), customPaintHash);
-			FlansModResourceHandler.CreateIconResourceFromByteArray(tags.getByteArray("Icon"), tags.getInteger("IconWidth"), tags.getInteger("IconHeight"), customPaintHash);
+			FlansModResourceHandler.CreateSkinResourceFromByteArray(tags.getByteArray("Skin").orElse(new byte[0]), tags.getIntOr("SkinWidth", 0), tags.getIntOr("SkinHeight", 0), customPaintHash);
+			FlansModResourceHandler.CreateIconResourceFromByteArray(tags.getByteArray("Icon").orElse(new byte[0]), tags.getIntOr("IconWidth", 0), tags.getIntOr("IconHeight", 0), customPaintHash);
 		}
 		
 		return FlansModResourceHandler.GetSkinResourceFromHash(customPaintHash);
 	}
 	
-	public static ResourceLocation GetCustomPaintjobIconResource(ItemStack stack)
+	public static Identifier GetCustomPaintjobIconResource(ItemStack stack)
 	{
-		NBTTagCompound tags = stack.getTagCompound().getCompoundTag("CustomPaint");
-		int customPaintHash = tags.getInteger("Hash");
+		CompoundTag tags = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getCompoundOrEmpty("CustomPaint");
+		int customPaintHash = tags.getIntOr("Hash", 0);
 		
 		if(!FlansModResourceHandler.HasResourceForHash(customPaintHash))
 		{
-			FlansModResourceHandler.CreateSkinResourceFromByteArray(tags.getByteArray("Skin"), tags.getInteger("SkinWidth"), tags.getInteger("SkinHeight"), customPaintHash);
-			FlansModResourceHandler.CreateIconResourceFromByteArray(tags.getByteArray("Icon"), tags.getInteger("IconWidth"), tags.getInteger("IconHeight"), customPaintHash);
+			FlansModResourceHandler.CreateSkinResourceFromByteArray(tags.getByteArray("Skin").orElse(new byte[0]), tags.getIntOr("SkinWidth", 0), tags.getIntOr("SkinHeight", 0), customPaintHash);
+			FlansModResourceHandler.CreateIconResourceFromByteArray(tags.getByteArray("Icon").orElse(new byte[0]), tags.getIntOr("IconWidth", 0), tags.getIntOr("IconHeight", 0), customPaintHash);
 		}
 		
 		return FlansModResourceHandler.GetIconResourceFromHash(customPaintHash);

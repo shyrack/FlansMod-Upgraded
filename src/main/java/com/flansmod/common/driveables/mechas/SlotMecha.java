@@ -1,9 +1,9 @@
 package com.flansmod.common.driveables.mechas;
 
-import net.minecraft.inventory.IInventory;
-import net.minecraft.inventory.Slot;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.Container;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 
 import com.flansmod.common.guns.ItemGun;
 
@@ -11,14 +11,14 @@ public class SlotMecha extends Slot
 {
 	private EnumMechaSlotType slotType;
 	
-	public SlotMecha(IInventory inv, EnumMechaSlotType e, int x, int y)
+	public SlotMecha(Container inv, EnumMechaSlotType e, int x, int y)
 	{
 		super(inv, e.ordinal(), x, y);
 		slotType = e;
 	}
 	
 	@Override
-	public boolean isItemValid(ItemStack stack)
+	public boolean mayPlace(ItemStack stack)
 	{
 		if(stack == null || stack.isEmpty())
 			return true;
@@ -35,12 +35,12 @@ public class SlotMecha extends Slot
 	}
 	
 	@Override
-	public void putStack(ItemStack stack)
+	public void set(ItemStack stack)
 	{
-		if(!isItemValid(stack))
+		if(!mayPlace(stack))
 			return;
-		inventory.setInventorySlotContents(slotType.ordinal(), stack);
-		onSlotChanged();
+		container.setItem(slotType.ordinal(), stack);
+		setChanged();
 	}
 
 }

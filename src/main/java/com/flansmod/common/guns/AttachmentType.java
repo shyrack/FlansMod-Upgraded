@@ -2,12 +2,10 @@ package com.flansmod.common.guns;
 
 import java.util.ArrayList;
 
-import net.minecraft.client.model.ModelBase;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraftforge.fml.common.FMLCommonHandler;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import com.flansmod.client.model.ModelBase;
+
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.item.ItemStack;
 
 import com.flansmod.client.model.ModelAttachment;
 import com.flansmod.common.FlansMod;
@@ -97,7 +95,6 @@ public class AttachmentType extends PaintableType implements IScope
 	 */
 	public boolean hasScopeOverlay = false;
 	
-	@SideOnly(Side.CLIENT)
 	/** Model. Only applicable when the attachment is added to 3D guns */
 	public ModelAttachment model;
 	
@@ -121,7 +118,7 @@ public class AttachmentType extends PaintableType implements IScope
 		{
 			if(split[0].equals("AttachmentType"))
 				type = EnumAttachmentType.get(split[1]);
-			else if(FMLCommonHandler.instance().getSide().isClient()
+			else if(FlansMod.isClient()
 					&& (split[0].equals("Model")))
 				model = FlansMod.proxy.loadModel(split[1], shortName,
 						ModelAttachment.class);
@@ -175,8 +172,7 @@ public class AttachmentType extends PaintableType implements IScope
 		}
 		catch(Exception e)
 		{
-			FlansMod.log.error("Reading attachment file failed.");
-			FlansMod.log.throwing(e);
+			FlansMod.log.error("Reading attachment file failed.", e);
 		}
 	}
 	
@@ -189,10 +185,10 @@ public class AttachmentType extends PaintableType implements IScope
 				ModelAttachment.class);
 	}
 	
-	public static AttachmentType getFromNBT(NBTTagCompound tags)
+	public static AttachmentType getFromNBT(CompoundTag tags)
 	{
-		ItemStack stack = new ItemStack(tags);
-		if(stack != null && stack.getItem() instanceof ItemAttachment)
+		ItemStack stack = GunUtil.stackFromTag(tags);
+		if(stack != null && !stack.isEmpty() && stack.getItem() instanceof ItemAttachment)
 			return ((ItemAttachment)stack.getItem()).type;
 		return null;
 	}
@@ -244,7 +240,6 @@ public class AttachmentType extends PaintableType implements IScope
 	}
 	
 	@Override
-	@SideOnly(Side.CLIENT)
 	public ModelBase GetModel()
 	{
 		return model;

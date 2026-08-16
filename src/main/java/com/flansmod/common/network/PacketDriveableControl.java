@@ -1,12 +1,8 @@
 package com.flansmod.common.network;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
 
 import com.flansmod.common.driveables.EntityDriveable;
 import com.flansmod.common.driveables.EntityPlane;
@@ -29,16 +25,16 @@ public class PacketDriveableControl extends PacketBase
 	
 	public PacketDriveableControl(EntityDriveable driveable)
 	{
-		entityId = driveable.getEntityId();
-		posX = driveable.posX;
-		posY = driveable.posY;
-		posZ = driveable.posZ;
+		entityId = driveable.getId();
+		posX = driveable.getX();
+		posY = driveable.getY();
+		posZ = driveable.getZ();
 		yaw = driveable.axes.getYaw();
 		pitch = driveable.axes.getPitch();
 		roll = driveable.axes.getRoll();
-		motX = driveable.motionX;
-		motY = driveable.motionY;
-		motZ = driveable.motionZ;
+		motX = driveable.getDeltaMovement().x;
+		motY = driveable.getDeltaMovement().y;
+		motZ = driveable.getDeltaMovement().z;
 		avelx = driveable.angularVelocity.x;
 		avely = driveable.angularVelocity.y;
 		avelz = driveable.angularVelocity.z;
@@ -57,7 +53,7 @@ public class PacketDriveableControl extends PacketBase
 	}
 	
 	@Override
-	public void encodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void encodeInto(ByteBuf data)
 	{
 		data.writeInt(entityId);
 		data.writeDouble(posX);
@@ -78,7 +74,7 @@ public class PacketDriveableControl extends PacketBase
 	}
 	
 	@Override
-	public void decodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void decodeInto(ByteBuf data)
 	{
 		entityId = data.readInt();
 		posX = data.readDouble();
@@ -99,20 +95,12 @@ public class PacketDriveableControl extends PacketBase
 	}
 	
 	@Override
-	public void handleServerSide(EntityPlayerMP playerEntity)
+	public void handleServerSide(ServerPlayer playerEntity)
 	{
-		if(playerEntity == null || playerEntity.world == null || playerEntity.world.loadedEntityList == null)
+		if(playerEntity == null || playerEntity.level() == null)
 			return;
-		EntityDriveable driveable = null;
-		for(int i = 0; i < playerEntity.world.loadedEntityList.size(); i++)
-		{
-			Entity obj = playerEntity.world.loadedEntityList.get(i);
-			if(obj instanceof EntityDriveable && obj.getEntityId() == entityId)
-			{
-				driveable = (EntityDriveable)obj;
-				break;
-			}
-		}
+		EntityDriveable driveable = playerEntity.level().getEntity(entityId) instanceof EntityDriveable ?
+				(EntityDriveable)playerEntity.level().getEntity(entityId) : null;
 		if(driveable != null)
 			updateDriveable(driveable, false);
 	}
@@ -124,24 +112,18 @@ public class PacketDriveableControl extends PacketBase
 	}
 	
 	@Override
-	@SideOnly(Side.CLIENT)
-	public void handleClientSide(EntityPlayer clientPlayer)
+	public void handleClientSide(Player clientPlayer)
 	{
-		if(clientPlayer == null || clientPlayer.world == null)
+		if(clientPlayer == null || clientPlayer.level() == null)
 			return;
-		EntityDriveable driveable = null;
-		for(Object obj : clientPlayer.world.loadedEntityList)
-		{
-			if(obj instanceof EntityDriveable && ((Entity)obj).getEntityId() == entityId)
-			{
-				driveable = (EntityDriveable)obj;
-				driveable.driveableData.fuelInTank = fuelInTank;
-				if(driveable.getSeat(0) != null && driveable.getSeat(0).getControllingPassenger() == clientPlayer)
-					return;
-				break;
-			}
-		}
+		EntityDriveable driveable = clientPlayer.level().getEntity(entityId) instanceof EntityDriveable ?
+				(EntityDriveable)clientPlayer.level().getEntity(entityId) : null;
 		if(driveable != null)
+		{
+			driveable.driveableData.fuelInTank = fuelInTank;
+			if(driveable.getSeat(0) != null && driveable.getSeat(0).getControllingPassenger() == clientPlayer)
+				return;
 			updateDriveable(driveable, true);
+		}
 	}
 }

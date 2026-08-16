@@ -4,17 +4,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.nbt.NBTTagList;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.world.World;
-import net.minecraftforge.fml.client.FMLClientHandler;
-import net.minecraftforge.fml.common.FMLCommonHandler;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.util.Mth;
+import net.minecraft.world.level.Level;
 
 import com.flansmod.client.gui.teams.EnumLoadoutSlot;
 import com.flansmod.client.gui.teams.GuiChooseLoadout;
@@ -57,19 +53,19 @@ public class TeamsManagerRanked extends TeamsManager
 			return;
 		}
 		
-		for(EntityPlayer player : getPlayers())
+		for(Player player : getPlayers())
 		{
-			ProcessRankData((EntityPlayerMP)player);
+			ProcessRankData((ServerPlayer)player);
 		}
 		
 		super.startRound();
 		
-		for(EntityPlayer player : getPlayers())
+		for(Player player : getPlayers())
 		{
 			PlayerData data = PlayerHandler.getPlayerData(player);
 			if(data != null && !data.builder)
 			{
-				sendLoadoutData((EntityPlayerMP)player);
+				sendLoadoutData((ServerPlayer)player);
 			}
 		}
 	}
@@ -86,45 +82,45 @@ public class TeamsManagerRanked extends TeamsManager
 			{
 				roundFinishedTemplateData.votingOptions[i].numVotes = 0;
 			}
-			for(EntityPlayer player : getPlayers())
+			for(Player player : getPlayers())
 			{
 				PlayerData data = PlayerHandler.getPlayerData(player);
 				if(!data.builder && data.vote != 0 && data.vote - 1 < roundFinishedTemplateData.votingOptions.length)
 					roundFinishedTemplateData.votingOptions[data.vote - 1].numVotes++;
 			}
-			for(EntityPlayer player : getPlayers())
+			for(Player player : getPlayers())
 			{
 				PlayerData data = PlayerHandler.getPlayerData(player);
 				if(!data.builder)
-					sendPacketToPlayer(new PacketVoting(roundFinishedTemplateData), (EntityPlayerMP)player);
+					sendPacketToPlayer(new PacketVoting(roundFinishedTemplateData), (ServerPlayer)player);
 			}
 		}
 	}
 	
-	public void sendLoadoutData(EntityPlayerMP player)
+	public void sendLoadoutData(ServerPlayer player)
 	{
 		PacketLoadoutData data = new PacketLoadoutData();
 		
 		//Get the available teams from the gametype
 		Team[] availableTeams = currentRound.gametype.getTeamsCanSpawnAs(currentRound, player);
 		//Add in the spectators as an option and "none" if the player is an op
-		boolean playerIsOp = FMLCommonHandler.instance().getMinecraftServerInstance().getPlayerList().canSendCommands(player.getGameProfile());
+		boolean playerIsOp = FlansMod.serverInstance.getPlayerList().isOp(new net.minecraft.server.players.NameAndId(player.getGameProfile()));
 		Team[] allAvailableTeams = new Team[availableTeams.length + (playerIsOp ? 2 : 1)];
 		System.arraycopy(availableTeams, 0, allAvailableTeams, 0, availableTeams.length);
 		allAvailableTeams[availableTeams.length] = Team.spectators;
 		
 		data.teamsAvailable = allAvailableTeams;
 		data.currentPool = currentPool;
-		data.myRankData = rankData.get(player.getUniqueID());
+		data.myRankData = rankData.get(player.getUUID());
 		data.motd = motd;
 		
 		FlansMod.getPacketHandler().sendTo(data, player);
 	}
 	
 	@Override
-	public void onPlayerLogin(EntityPlayer player)
+	public void onPlayerLogin(Player player)
 	{
-		if(!rankData.containsKey(player.getUniqueID()))
+		if(!rankData.containsKey(player.getUUID()))
 		{
 			PlayerRankData data = new PlayerRankData();
 			
@@ -142,7 +138,7 @@ public class TeamsManagerRanked extends TeamsManager
 				}
 			}
 			
-			rankData.put(player.getUniqueID(), data);
+			rankData.put(player.getUUID(), data);
 		}
 		
 		//super.onPlayerLogin(player);
@@ -150,9 +146,9 @@ public class TeamsManagerRanked extends TeamsManager
 		if(!enabled || currentRound == null)
 			return;
 		
-		if(player instanceof EntityPlayerMP)
+		if(player instanceof ServerPlayer)
 		{
-			EntityPlayerMP playerMP = (EntityPlayerMP)player;
+			ServerPlayer playerMP = (ServerPlayer)player;
 			//sendTeamsMenuToPlayer(playerMP);
 			sendLoadoutData(playerMP);
 			currentRound.gametype.playerJoined(playerMP);
@@ -160,46 +156,46 @@ public class TeamsManagerRanked extends TeamsManager
 	}
 	
 	@Override
-	public void onPlayerLogout(EntityPlayer player)
+	public void onPlayerLogout(Player player)
 	{
 		super.onPlayerLogout(player);
 	}
 	
 	@Override
-	public void OnPlayerKilled(EntityPlayerMP victim, DamageSource source)
+	public void OnPlayerKilled(ServerPlayer victim, DamageSource source)
 	{
 		super.OnPlayerKilled(victim, source);
 		
 		PlayerData victimData = PlayerHandler.getPlayerData(victim);
 		
-		if(source.getTrueSource() instanceof EntityPlayerMP)
+		if(source.getEntity() instanceof ServerPlayer)
 		{
-			EntityPlayerMP attacker = ((EntityPlayerMP)source.getTrueSource());
+			ServerPlayer attacker = ((ServerPlayer)source.getEntity());
 			PlayerData attackerData = PlayerHandler.getPlayerData(attacker);
 			if(attackerData != null && attackerData.team != null)
 			{
 				// Make sure players are on opposing teams
 				if(attackerData.team != victimData.team)
 				{
-					AwardXP(attacker, MathHelper.floor(currentPool.XPForKill * XPMultiplier));
-					AwardXP(victim, MathHelper.floor(currentPool.XPForDeath * XPMultiplier));
+					AwardXP(attacker, Mth.floor(currentPool.XPForKill * XPMultiplier));
+					AwardXP(victim, Mth.floor(currentPool.XPForDeath * XPMultiplier));
 				}
 			}
 		}
 	}
 	
-	public static void AwardXP(EntityPlayerMP player, int amount)
+	public static void AwardXP(ServerPlayer player, int amount)
 	{
-		PlayerRankData data = rankData.get(player.getUniqueID());
+		PlayerRankData data = rankData.get(player.getUUID());
 		if(data != null)
 		{
 			data.AddXP(amount);
 		}
 	}
 	
-	public static void ResetRank(EntityPlayerMP player)
+	public static void ResetRank(ServerPlayer player)
 	{
-		PlayerRankData data = rankData.get(player.getUniqueID());
+		PlayerRankData data = rankData.get(player.getUUID());
 		if(data != null)
 		{
 			data.currentLevel = 0;
@@ -214,9 +210,9 @@ public class TeamsManagerRanked extends TeamsManager
 		
 		UpdateRoundFinishedTemplate();
 		
-		for(EntityPlayer player : getPlayers())
+		for(Player player : getPlayers())
 		{
-			SendRoundFinishedDataToPlayer((EntityPlayerMP)player);
+			SendRoundFinishedDataToPlayer((ServerPlayer)player);
 		}
 		
 		super.OnRoundEnded();
@@ -235,7 +231,7 @@ public class TeamsManagerRanked extends TeamsManager
 		}
 	}
 	
-	private void SendRoundFinishedDataToPlayer(EntityPlayerMP player)
+	private void SendRoundFinishedDataToPlayer(ServerPlayer player)
 	{
 		PlayerData pData = PlayerHandler.getPlayerData(player);
 		if(pData != null && pData.builder)
@@ -244,7 +240,7 @@ public class TeamsManagerRanked extends TeamsManager
 		}
 		
 		RoundFinishedData finishedData = new RoundFinishedData(roundFinishedTemplateData);
-		PlayerRankData data = rankData.get(player.getUniqueID());
+		PlayerRankData data = rankData.get(player.getUUID());
 		
 		int resultantXP = data.pendingXP + data.currentXP;
 		int resultantLevel = data.currentLevel;
@@ -266,12 +262,12 @@ public class TeamsManagerRanked extends TeamsManager
 	}
 	
 	
-	private void SendRankDataToPlayer(EntityPlayerMP player)
+	private void SendRankDataToPlayer(ServerPlayer player)
 	{
 		/*
 		FlansMod.log("Sending rank data to " + player.getDisplayNameString());
 		PacketRankUpdate packet = new PacketRankUpdate();
-		PlayerRankData data = rankData.get(player.getUniqueID());
+		PlayerRankData data = rankData.get(player.getUUID());
 		if(data != null)
 		{
 			packet.pendingXP = data.pendingXP;
@@ -300,9 +296,9 @@ public class TeamsManagerRanked extends TeamsManager
 		*/
 	}
 	
-	private void ProcessRankData(EntityPlayerMP player)
+	private void ProcessRankData(ServerPlayer player)
 	{
-		PlayerRankData data = rankData.get(player.getUniqueID());
+		PlayerRankData data = rankData.get(player.getUUID());
 		if(data != null)
 		{
 			int resultantXP = data.pendingXP + data.currentXP;
@@ -326,7 +322,7 @@ public class TeamsManagerRanked extends TeamsManager
 		}
 	}
 	
-	private void GiveRewardsForLevelUp(int level, EntityPlayerMP player)
+	private void GiveRewardsForLevelUp(int level, ServerPlayer player)
 	{
 		for(RewardBox box : currentPool.rewardsPerLevel[level - 1])
 		{
@@ -343,7 +339,7 @@ public class TeamsManagerRanked extends TeamsManager
 	}
 	
 	@Override
-	public void sendTeamsMenuToPlayer(EntityPlayerMP player, boolean info)
+	public void sendTeamsMenuToPlayer(ServerPlayer player, boolean info)
 	{
 		if(!enabled || currentRound == null || currentRound.teams == null)
 			return;
@@ -352,26 +348,26 @@ public class TeamsManagerRanked extends TeamsManager
 	}
 	
 	@Override
-	public void sendClassMenuToPlayer(EntityPlayerMP player)
+	public void sendClassMenuToPlayer(ServerPlayer player)
 	{
 		// Don't need this either
 	}
 	
 	@Override
-	protected void ReadFromNBT(NBTTagCompound tags, World world)
+	protected void ReadFromNBT(CompoundTag tags, Level world)
 	{
 		super.ReadFromNBT(tags, world);
 		
-		int iPoolHash = tags.getInteger("pool");
+		int iPoolHash = tags.getIntOr("pool", 0);
 		currentPool = LoadoutPool.GetPool(iPoolHash);
 		
-		NBTTagList ranks = tags.getTagList("playerRanks", 10); // 10 = CompoundTag
+		ListTag ranks = tags.getListOrEmpty("playerRanks");
 		if(ranks != null)
 		{
-			for(int i = 0; i < ranks.tagCount(); i++)
+			for(int i = 0; i < ranks.size(); i++)
 			{
-				NBTTagCompound playerTags = ranks.getCompoundTagAt(i);
-				UUID uuid = new UUID(playerTags.getLong("uuid1"), playerTags.getLong("uuid2"));
+				CompoundTag playerTags = ranks.getCompoundOrEmpty(i);
+				UUID uuid = new UUID(playerTags.getLongOr("uuid1", 0L), playerTags.getLongOr("uuid2", 0L));
 				PlayerRankData rData = new PlayerRankData();
 				rData.readFromNBT(playerTags);
 				rankData.put(uuid, rData);
@@ -380,38 +376,38 @@ public class TeamsManagerRanked extends TeamsManager
 	}
 	
 	@Override
-	protected void WriteToNBT(NBTTagCompound tags)
+	protected void WriteToNBT(CompoundTag tags)
 	{
 		super.WriteToNBT(tags);
 		
 		if(currentPool != null)
 		{
-			tags.setInteger("pool", currentPool.shortName.hashCode());
+			tags.putInt("pool", currentPool.shortName.hashCode());
 		}
 		
-		NBTTagList ranks = new NBTTagList();
+		ListTag ranks = new ListTag();
 		for(Map.Entry<UUID, PlayerRankData> entry : rankData.entrySet())
 		{
-			NBTTagCompound playerTags = new NBTTagCompound();
-			playerTags.setLong("uuid1", entry.getKey().getMostSignificantBits());
-			playerTags.setLong("uuid2", entry.getKey().getLeastSignificantBits());
+			CompoundTag playerTags = new CompoundTag();
+			playerTags.putLong("uuid1", entry.getKey().getMostSignificantBits());
+			playerTags.putLong("uuid2", entry.getKey().getLeastSignificantBits());
 			entry.getValue().writeToNBT(playerTags);
 			
-			ranks.appendTag(playerTags);
+			ranks.add(playerTags);
 		}
 		
-		tags.setTag("playerRanks", ranks);
+		tags.put("playerRanks", ranks);
 	}
 	
 	@Override
-	public void playerSelectedClass(EntityPlayerMP player, String className)
+	public void playerSelectedClass(ServerPlayer player, String className)
 	{
 		if(!enabled || currentRound == null)
 			return;
 		
 		//Get player class requested
 		int selection = Integer.parseInt(className);
-		PlayerRankData data = rankData.get(player.getUniqueID());
+		PlayerRankData data = rankData.get(player.getUUID());
 		//PlayerData data = PlayerHandler.getPlayerData(player);
 		
 		IPlayerClass playerClass = new PlayerClassCustom(selection, data.loadouts[selection]);
@@ -419,7 +415,6 @@ public class TeamsManagerRanked extends TeamsManager
 		playerSelectedClass(player, playerClass);
 	}
 	
-	@SideOnly(Side.CLIENT)
 	public static void ConfirmLoadoutChanges()
 	{
 		PacketLoadoutData packet = new PacketLoadoutData();
@@ -427,7 +422,6 @@ public class TeamsManagerRanked extends TeamsManager
 		FlansMod.getPacketHandler().sendToServer(packet);
 	}
 	
-	@SideOnly(Side.CLIENT)
 	public static void ChooseLoadout(int id)
 	{
 		PacketTeamSelect packet = new PacketTeamSelect();
@@ -440,21 +434,19 @@ public class TeamsManagerRanked extends TeamsManager
 	}
 	
 	@Override
-	@SideOnly(Side.CLIENT)
 	public void SelectTeam(Team team)
 	{
 		FlansMod.getPacketHandler().sendToServer(new PacketTeamSelect(team == null ? "null" : team.shortName, false));
 		if(team == null)
 		{
-			FMLClientHandler.instance().getClient().displayGuiScreen(null);
+			net.minecraft.client.Minecraft.getInstance().setScreen(null);
 		}
 		else
 		{
-			FMLClientHandler.instance().getClient().displayGuiScreen(new GuiChooseLoadout());
+			net.minecraft.client.Minecraft.getInstance().setScreen(new GuiChooseLoadout());
 		}
 	}
 	
-	@SideOnly(Side.CLIENT)
 	public static boolean LocalPlayerOwnsUnlock(int unlockHash)
 	{
 		return ClientTeamsData.theRankData.OwnsUnlock(unlockHash);
@@ -465,9 +457,9 @@ public class TeamsManagerRanked extends TeamsManager
 		return false;
 	}
 	
-	public static void OpenRewardBox(EntityPlayerMP player, RewardBox box)
+	public static void OpenRewardBox(ServerPlayer player, RewardBox box)
 	{
-		PlayerRankData data = rankData.get(player.getUniqueID());
+		PlayerRankData data = rankData.get(player.getUUID());
 		for(RewardBoxInstance instance : data.rewardBoxData)
 		{
 			if(!instance.opened
@@ -480,12 +472,12 @@ public class TeamsManagerRanked extends TeamsManager
 			}
 		}
 		
-		FlansMod.Assert(false, "Player " + player.getDisplayNameString() + " tried to open box they don't have");
+		FlansMod.Assert(false, "Player " + player.getName().getString() + " tried to open box they don't have");
 	}
 	
-	public static PlayerRankData GetRankData(EntityPlayer player)
+	public static PlayerRankData GetRankData(Player player)
 	{
-		return GetInstance().rankData.get(player.getUniqueID());
+		return GetInstance().rankData.get(player.getUUID());
 	}
 	
 	public static PlayerRankData GetRankData(UUID id)

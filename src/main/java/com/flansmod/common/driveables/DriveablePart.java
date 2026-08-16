@@ -1,6 +1,6 @@
 package com.flansmod.common.driveables;
 
-import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.CompoundTag;
 
 import com.flansmod.common.guns.BulletType;
 import com.flansmod.common.guns.raytracing.FlansModRaytracer.DriveableHit;
@@ -41,22 +41,22 @@ public class DriveablePart
 		}
 	}
 	
-	public void writeToNBT(NBTTagCompound tags)
+	public void writeToNBT(CompoundTag tags)
 	{
-		tags.setInteger(type.getShortName() + "_Health", health);
-		tags.setBoolean(type.getShortName() + "_Fire", onFire);
+		tags.putInt(type.getShortName() + "_Health", health);
+		tags.putBoolean(type.getShortName() + "_Fire", onFire);
 	}
 	
-	public void readFromNBT(NBTTagCompound tags)
+	public void readFromNBT(CompoundTag tags)
 	{
-		if(!tags.hasKey(type.getShortName() + "_Health"))
+		if(!tags.contains(type.getShortName() + "_Health"))
 		{
 			health = maxHealth;
 			onFire = false;
 			return;
 		}
-		health = tags.getInteger(type.getShortName() + "_Health");
-		onFire = tags.getBoolean(type.getShortName() + "_Fire");
+		health = tags.getIntOr(type.getShortName() + "_Health", 0);
+		onFire = tags.getBooleanOr(type.getShortName() + "_Fire", false);
 	}
 	
 	/**

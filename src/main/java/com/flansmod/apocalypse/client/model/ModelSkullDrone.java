@@ -8,7 +8,7 @@ import com.flansmod.client.model.ModelItemHolder;
 import com.flansmod.client.tmt.ModelRendererTurbo;
 import com.flansmod.common.vector.Vector3f;
 
-import net.minecraft.client.model.ModelBase;
+import com.flansmod.client.model.ModelBase;
 
 public class ModelSkullDrone extends ModelBase
 {

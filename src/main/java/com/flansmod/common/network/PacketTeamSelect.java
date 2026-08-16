@@ -1,12 +1,9 @@
 package com.flansmod.common.network;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
 import net.minecraft.client.Minecraft;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
 
 import com.flansmod.client.gui.teams.GuiTeamSelect;
 import com.flansmod.common.FlansMod;
@@ -58,7 +55,7 @@ public class PacketTeamSelect extends PacketBase
 	}
 	
 	@Override
-	public void encodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void encodeInto(ByteBuf data)
 	{
 		data.writeBoolean(selectionPacket);
 		data.writeBoolean(classChoicesPacket);
@@ -92,7 +89,7 @@ public class PacketTeamSelect extends PacketBase
 	}
 	
 	@Override
-	public void decodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void decodeInto(ByteBuf data)
 	{
 		selectionPacket = data.readBoolean();
 		classChoicesPacket = data.readBoolean();
@@ -129,7 +126,7 @@ public class PacketTeamSelect extends PacketBase
 	 * Handle player responses to team / class selection packets
 	 */
 	@Override
-	public void handleServerSide(EntityPlayerMP playerEntity)
+	public void handleServerSide(ServerPlayer playerEntity)
 	{
 		if(!selectionPacket)
 		{
@@ -150,8 +147,7 @@ public class PacketTeamSelect extends PacketBase
 	 * Handle a request from the server to display a team / class selection window
 	 */
 	@Override
-	@SideOnly(Side.CLIENT)
-	public void handleClientSide(EntityPlayer clientPlayer)
+	public void handleClientSide(Player clientPlayer)
 	{
 		if(selectionPacket)
 		{
@@ -160,12 +156,12 @@ public class PacketTeamSelect extends PacketBase
 		}
 		if(classChoicesPacket)
 		{
-			Minecraft.getMinecraft().displayGuiScreen(new GuiTeamSelect(playerClasses));
+			Minecraft.getInstance().setScreen(new GuiTeamSelect(playerClasses));
 		}
 		else if(info)
 		{
 			GuiTeamSelect.teamChoices = teams;
 		}
-		else Minecraft.getMinecraft().displayGuiScreen(new GuiTeamSelect(teams));
+		else Minecraft.getInstance().setScreen(new GuiTeamSelect(teams));
 	}
 }

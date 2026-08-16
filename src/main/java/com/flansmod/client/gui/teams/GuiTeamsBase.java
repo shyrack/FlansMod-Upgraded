@@ -1,103 +1,81 @@
 package com.flansmod.client.gui.teams;
 
-import java.io.IOException;
-
-import org.lwjgl.opengl.GL11;
-
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiScreen;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.RenderHelper;
-import net.minecraft.client.renderer.RenderItem;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.EnumHand;
-import net.minecraft.util.ResourceLocation;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import org.lwjgl.glfw.GLFW;
 
-import com.flansmod.client.ClientProxy;
-import com.flansmod.client.model.CustomItemRenderType;
-import com.flansmod.common.guns.GunType;
-import com.flansmod.common.guns.ItemGun;
 import com.flansmod.common.teams.LoadoutPool;
 import com.flansmod.common.teams.PlayerLoadout;
 import com.flansmod.common.teams.PlayerRankData;
 import com.flansmod.common.types.EnumPaintjobRarity;
 
-public class GuiTeamsBase extends GuiScreen
+public class GuiTeamsBase extends Screen
 {
-	/**
-	 * Item renderer
-	 */
-	protected static RenderItem itemRenderer;
 	/**
 	 * Gui origin
 	 */
 	protected int guiOriginX, guiOriginY;
 	
 	protected Minecraft mc;
-	protected EntityPlayer player;
+	protected Player player;
 	
 	public GuiTeamsBase()
 	{
-		super();
-		mc = Minecraft.getMinecraft();
-		player = mc.player;
-		itemRenderer = mc.getRenderItem();
+		super(Component.literal(""));
+		player = Minecraft.getInstance().player;
 	}
 	
 	@Override
-	public void initGui()
+	public void init()
 	{
-		super.initGui();
+		super.init();
 	}
 	
-	@Override
-	public void drawScreen(int i, int j, float f)
-	{
-		super.drawScreen(i, j, f);
-	}
+	private static final Identifier loudoutBoxes = Identifier.fromNamespaceAndPath("flansmod", "gui/landingpage.png");
+	private static final Identifier ranks = Identifier.fromNamespaceAndPath("flansmod", "gui/ranks.png");
+	private static final Identifier loadoutEditor = Identifier.fromNamespaceAndPath("flansmod", "gui/loadouteditor.png");
 	
-	private static final ResourceLocation loudoutBoxes = new ResourceLocation("flansmod", "gui/LandingPage.png");
-	private static final ResourceLocation ranks = new ResourceLocation("flansmod", "gui/Ranks.png");
-	private static final ResourceLocation loadoutEditor = new ResourceLocation("flansmod", "gui/LoadoutEditor.png");
-	
-	protected void DrawLoadoutPanel(LoadoutPool pool, PlayerRankData data, int i, int j, int n)
+	protected void DrawLoadoutPanel(GuiGraphicsExtractor extractor, LoadoutPool pool, PlayerRankData data, int i, int j, int n)
 	{
-		mc.renderEngine.bindTexture(loudoutBoxes);
-		
 		int textureX = 512;
 		int textureY = 256;
 		
 		if(data.currentLevel >= pool.slotUnlockLevels[n])
 		{
-			drawModalRectWithCustomSizedTexture(i, j, 7 + 49 * n, 28, 46, 111, textureX, textureY);
+			extractor.blit(RenderPipelines.GUI_TEXTURED, loudoutBoxes, i, j, 7 + 49 * n, 28, 46, 111, textureX, textureY);
 			
 			PlayerLoadout loadout = data.loadouts[n];
 			if(loadout != null)
 			{
-				DrawGun(loadout.slots[0], i + 20, j + 28, 16f);
-				DrawGun(loadout.slots[1], i + 20, j + 46, 16f);
+				DrawGun(extractor, loadout.slots[0], i + 20, j + 28, 16f);
+				DrawGun(extractor, loadout.slots[1], i + 20, j + 46, 16f);
 				
-				drawSlotInventory(loadout.slots[0], i + 6, j + 54);
-				drawSlotInventory(loadout.slots[1], i + 24, j + 54);
-				drawSlotInventory(loadout.slots[2], i + 6, j + 72);
-				drawSlotInventory(loadout.slots[3], i + 24, j + 72);
+				drawSlotInventory(extractor, loadout.slots[0], i + 6, j + 54);
+				drawSlotInventory(extractor, loadout.slots[1], i + 24, j + 54);
+				drawSlotInventory(extractor, loadout.slots[2], i + 6, j + 72);
+				drawSlotInventory(extractor, loadout.slots[3], i + 24, j + 72);
 			}
 		}
 		else
 		{
 			
-			drawModalRectWithCustomSizedTexture(i, j, 259, 28, 46, 111, textureX, textureY);
-			drawCenteredString(fontRenderer, "Unlocks", i + 23, j + 23, 0xffffff);
-			drawCenteredString(fontRenderer, "at " + pool.slotUnlockLevels[n], i + 23, j + 40, 0xffffff);
+			extractor.blit(RenderPipelines.GUI_TEXTURED, loudoutBoxes, i, j, 259, 28, 46, 111, textureX, textureY);
+			extractor.centeredText(font, "Unlocks", i + 23, j + 23, 0xffffff);
+			extractor.centeredText(font, "at " + pool.slotUnlockLevels[n], i + 23, j + 40, 0xffffff);
 		}
 		
-		drawCenteredString(fontRenderer, "Slot " + (n + 1), i + 23, j + 5, 0xffffff);
+		extractor.centeredText(font, "Slot " + (n + 1), i + 23, j + 5, 0xffffff);
 	}
 	
-	protected void DrawRarityBackground(EnumPaintjobRarity rarity, int i, int j)
+	protected void DrawRarityBackground(GuiGraphicsExtractor extractor, EnumPaintjobRarity rarity, int i, int j)
 	{
-		mc.renderEngine.bindTexture(loadoutEditor);
 		int textureX = 512;
 		int textureY = 256;
 		
@@ -121,80 +99,55 @@ public class GuiTeamsBase extends GuiScreen
 			}
 			if(x > 0)
 			{
-				drawModalRectWithCustomSizedTexture(i, j, x, y, 16, 16, textureX, textureY);
+				extractor.blit(RenderPipelines.GUI_TEXTURED, loadoutEditor, i, j, x, y, 16, 16, textureX, textureY);
 			}
 		}
 	}
 	
-	protected void DrawGun(ItemStack stack, int x, int y, float scale)
+	protected void DrawGun(GuiGraphicsExtractor extractor, ItemStack stack, int x, int y, float scale)
 	{
-		if(stack != null && stack.getItem() instanceof ItemGun)
-		{
-			GunType gunType = ((ItemGun)stack.getItem()).GetType();
-			if(gunType.model != null)
-			{
-				GlStateManager.pushMatrix();
-				GlStateManager.color(1F, 1F, 1F, 1F);
-				
-				GlStateManager.translate(x, y, 100);
-				
-				GlStateManager.disableLighting();
-				GlStateManager.pushMatrix();
-				GlStateManager.rotate(180F, 1.0F, 0.0F, 0.0F);
-				GlStateManager.rotate(1F, 0.0F, 1.0F, 0.0F);
-				RenderHelper.enableStandardItemLighting();
-				
-				GlStateManager.popMatrix();
-				GlStateManager.enableRescaleNormal();
-				
-				GlStateManager.rotate(160, 1F, 0F, 0F);
-				GlStateManager.rotate(10, 0F, 1F, 0F);
-				GlStateManager.scale(-scale, scale, scale);
-				ClientProxy.gunRenderer.renderItem(CustomItemRenderType.ENTITY, EnumHand.MAIN_HAND, stack);
-				
-				RenderHelper.disableStandardItemLighting();
-				
-				GlStateManager.popMatrix();
-			}
-		}
+		drawSlotInventory(extractor, stack, x, y);
 	}
 	
-	protected void DrawRankIcon(int rank, int prestige, int x, int y, boolean doubleSize)
+	protected void DrawRankIcon(GuiGraphicsExtractor extractor, int rank, int prestige, int x, int y, boolean doubleSize)
 	{
-		mc.renderEngine.bindTexture(ranks);
-		
 		if(doubleSize)
 		{
-			drawModalRectWithCustomSizedTexture(guiOriginX + x, guiOriginY + y, rank * 32, prestige * 32, 32, 32, 1024, 512);
+			extractor.blit(RenderPipelines.GUI_TEXTURED, ranks, guiOriginX + x, guiOriginY + y, rank * 32, prestige * 32, 32, 32, 1024, 512);
 		}
 		else
-			drawModalRectWithCustomSizedTexture(guiOriginX + x, guiOriginY + y, rank * 16, prestige * 16, 16, 16, 512, 256);
+			extractor.blit(RenderPipelines.GUI_TEXTURED, ranks, guiOriginX + x, guiOriginY + y, rank * 16, prestige * 16, 16, 16, 512, 256);
 	}
 	
 	/**
 	 * Item stack renderering method
 	 */
-	protected void drawSlotInventory(ItemStack itemstack, int i, int j)
+	protected void drawSlotInventory(GuiGraphicsExtractor extractor, ItemStack itemstack, int i, int j)
 	{
 		if(itemstack == null || itemstack.isEmpty())
 			return;
-		itemRenderer.renderItemIntoGUI(itemstack, i, j);
-		itemRenderer.renderItemOverlayIntoGUI(fontRenderer, itemstack, i, j, null);
+		extractor.item(itemstack, i, j);
+		extractor.itemDecorations(font, itemstack, i, j);
 	}
 	
 	@Override
-	public boolean doesGuiPauseGame()
+	public boolean isPauseScreen()
 	{
 		return false;
 	}
 	
 	@Override
-	protected void keyTyped(char typedChar, int keyCode) throws IOException
+	public boolean keyPressed(KeyEvent event)
 	{
-		if(AllowEscape())
+		if(event.key() == GLFW.GLFW_KEY_ESCAPE)
 		{
-			super.keyTyped(typedChar, keyCode);
+			if(AllowEscape())
+			{
+				return super.keyPressed(event);
+			}
+			return true;
 		}
+		return super.keyPressed(event);
 	}
 	
 	protected boolean AllowEscape()

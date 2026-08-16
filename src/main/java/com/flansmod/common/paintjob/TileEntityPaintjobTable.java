@@ -1,167 +1,151 @@
 package com.flansmod.common.paintjob;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.inventory.IInventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.network.play.server.SPacketUpdateTileEntity;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.ITickable;
-import net.minecraft.util.text.ITextComponent;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.world.Container;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
 
-public class TileEntityPaintjobTable extends TileEntity implements IInventory, ITickable
+import com.flansmod.common.ModBlockEntities;
+import com.flansmod.common.util.ItemStackUtil;
+
+public class TileEntityPaintjobTable extends BlockEntity implements Container
 {
 	// Stack 0 is InfoType being painted. Stack 1 is paint cans
-	private ItemStack inventoryStacks[] = new ItemStack[2];
+	private ItemStack inventoryStacks[] = new ItemStack[]{ItemStack.EMPTY.copy(), ItemStack.EMPTY.copy()};
 	//private CustomPaintjob inProgressPaintjob;
 	
-	public TileEntityPaintjobTable()
+	public TileEntityPaintjobTable(BlockPos pos, BlockState state)
 	{
-		
+		super(ModBlockEntities.PAINTJOB_TABLE, pos, state);
 	}
 	
 	@Override
-	public String getName()
-	{
-		return "PaintjobTable";
-	}
-	
-	@Override
-	public boolean hasCustomName()
-	{
-		return false;
-	}
-	
-	@Override
-	public int getSizeInventory()
+	public int getContainerSize()
 	{
 		return 2;
 	}
 	
 	@Override
-	public ItemStack getStackInSlot(int index)
+	public ItemStack getItem(int index)
 	{
 		return inventoryStacks[index];
 	}
 	
 	@Override
-	public ItemStack decrStackSize(int index, int count)
+	public ItemStack removeItem(int index, int count)
 	{
-		if(getStackInSlot(index) != null)
+		ItemStack stack = inventoryStacks[index];
+		if(stack == null || stack.isEmpty())
+			return ItemStack.EMPTY.copy();
+		if(count >= stack.getCount())
 		{
-			if(count >= getStackInSlot(index).getCount())
-			{
-				ItemStack returnStack = getStackInSlot(index);
-				setInventorySlotContents(index, null);
-				return returnStack;
-			}
-			else
-			{
-				
-				return getStackInSlot(index).splitStack(count);
-			}
+			inventoryStacks[index] = ItemStack.EMPTY.copy();
+			return stack;
 		}
-		return null;
+		ItemStack split = stack.split(count);
+		setChanged();
+		return split;
 	}
 	
 	@Override
-	public void setInventorySlotContents(int index, ItemStack stack)
+	public ItemStack removeItemNoUpdate(int index)
+	{
+		ItemStack stack = inventoryStacks[index];
+		inventoryStacks[index] = ItemStack.EMPTY.copy();
+		return stack;
+	}
+	
+	@Override
+	public void setItem(int index, ItemStack stack)
 	{
 		inventoryStacks[index] = stack;
+		setChanged();
 	}
 	
 	@Override
-	public int getInventoryStackLimit()
+	public int getMaxStackSize()
 	{
 		return 64;
 	}
 	
 	@Override
-	public void openInventory(EntityPlayer player)
-	{
-	}
-	
-	@Override
-	public void closeInventory(EntityPlayer player)
-	{
-	}
-	
-	@Override
-	public boolean isItemValidForSlot(int index, ItemStack stack)
+	public boolean canPlaceItem(int index, ItemStack stack)
 	{
 		return true;
 	}
 	
 	@Override
-	public int getField(int id)
+	public void setChanged()
 	{
-		return 0;
+		super.setChanged();
 	}
 	
 	@Override
-	public void setField(int id, int value)
+	public boolean stillValid(Player player)
 	{
+		return true;
 	}
 	
 	@Override
-	public int getFieldCount()
+	public boolean isEmpty()
 	{
-		return 0;
+		return (inventoryStacks[0] == null || inventoryStacks[0].isEmpty()) && (inventoryStacks[1] == null || inventoryStacks[1].isEmpty());
 	}
 	
 	@Override
-	public void clear()
+	public void clearContent()
 	{
-		for(int i = 0; i < getSizeInventory(); i++)
+		for(int i = 0; i < getContainerSize(); i++)
 		{
-			setInventorySlotContents(i, null);
+			inventoryStacks[i] = ItemStack.EMPTY.copy();
 		}
 	}
 	
 	@Override
-	public NBTTagCompound writeToNBT(NBTTagCompound nbt)
+	protected void saveAdditional(net.minecraft.world.level.storage.ValueOutput output)
 	{
-		super.writeToNBT(nbt);
-		
+		super.saveAdditional(output);
+		CompoundTag nbt = new CompoundTag();
 		for(int i = 0; i < inventoryStacks.length; i++)
 		{
-			NBTTagCompound stackNBT = new NBTTagCompound();
-			if(getStackInSlot(i) != null)
-				getStackInSlot(i).writeToNBT(stackNBT);
-			nbt.setTag("stack_" + i, stackNBT);
+			ItemStackUtil.writeItemStack(nbt, "stack_" + i, inventoryStacks[i]);
 		}
-		
+		output.store("FlanData", CompoundTag.CODEC, nbt);
+	}
+	
+	@Override
+	protected void loadAdditional(net.minecraft.world.level.storage.ValueInput input)
+	{
+		super.loadAdditional(input);
+		CompoundTag nbt = input.read("FlanData", CompoundTag.CODEC).orElse(new CompoundTag());
+		for(int i = 0; i < inventoryStacks.length; i++)
+		{
+			inventoryStacks[i] = ItemStackUtil.readItemStack(nbt, "stack_" + i);
+		}
+	}
+	
+	@Override
+	public Packet<ClientGamePacketListener> getUpdatePacket()
+	{
+		return null;
+	}
+	
+	@Override
+	public CompoundTag getUpdateTag(HolderLookup.Provider registries)
+	{
+		CompoundTag nbt = new CompoundTag();
+		for(int i = 0; i < inventoryStacks.length; i++)
+		{
+			ItemStackUtil.writeItemStack(nbt, "stack_" + i, inventoryStacks[i]);
+		}
 		return nbt;
-	}
-	
-	@Override
-	public void readFromNBT(NBTTagCompound nbt)
-	{
-		super.readFromNBT(nbt);
-		
-		for(int i = 0; i < inventoryStacks.length; i++)
-		{
-			setInventorySlotContents(i, new ItemStack(nbt.getCompoundTag("stack_" + i)));
-		}
-	}
-	
-	@Override
-	public void update()
-	{
-	}
-	
-	@Override
-	public SPacketUpdateTileEntity getUpdatePacket()
-	{
-		NBTTagCompound nbt = new NBTTagCompound();
-		writeToNBT(nbt);
-		return new SPacketUpdateTileEntity(getPos(), getBlockMetadata(), nbt);
-	}
-	
-	@Override
-	public void onDataPacket(net.minecraft.network.NetworkManager net, SPacketUpdateTileEntity packet)
-	{
-		readFromNBT(packet.getNbtCompound());
 	}
 	
 	public ItemStack getPaintableStack()
@@ -179,30 +163,4 @@ public class TileEntityPaintjobTable extends TileEntity implements IInventory, I
 		return inventoryStacks[1];
 	}
 	
-	
-	@Override
-	public ITextComponent getDisplayName()
-	{
-		return null;
-	}
-	
-	@Override
-	public boolean isEmpty()
-	{
-		return inventoryStacks[0] == null || inventoryStacks[0].isEmpty();
-	}
-	
-	@Override
-	public ItemStack removeStackFromSlot(int index)
-	{
-		ItemStack stack = inventoryStacks[index];
-		inventoryStacks[index] = null;
-		return stack;
-	}
-	
-	@Override
-	public boolean isUsableByPlayer(EntityPlayer player)
-	{
-		return true;
-	}
 }

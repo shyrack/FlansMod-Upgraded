@@ -1,7 +1,9 @@
 package com.flansmod.client.debug;
 
-import net.minecraft.world.World;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.level.Level;
 
+import com.flansmod.common.ModEntities;
 import com.flansmod.common.vector.Vector3f;
 
 /**
@@ -13,22 +15,28 @@ public class EntityDebugDot extends EntityDebugColor
 	public int life = 1000;
 	
 	/**
-	 * @param w World for Entity Constructor
+	 * @param w Level for Entity Constructor
 	 */
-	public EntityDebugDot(World w)
+		public EntityDebugDot(EntityType<?> type, Level world)
 	{
-		super(w);
-		setSize(0.25F, 0.25F);
+		super(type, world);
+		this.world = level();
+	}
+
+public EntityDebugDot(Level w)
+	{
+		this(ModEntities.DEBUG_DOT, w);
+
 	}
 	
 	/**
 	 * Creates a white dot at the given location
 	 *
-	 * @param w   World for Entity Constructor
+	 * @param w   Level for Entity Constructor
 	 * @param pos Position of the dot
 	 * @param l   Lifetime given in ticks
 	 */
-	public EntityDebugDot(World w, Vector3f pos, int l)
+	public EntityDebugDot(Level w, Vector3f pos, int l)
 	{
 		this(w, pos, l, 1F, 1F, 1F);
 	}
@@ -37,26 +45,27 @@ public class EntityDebugDot extends EntityDebugColor
 	 * Creates a dot
 	 * Color values range from 0 (Nonexistent) to 1 (Fully Visible)
 	 *
-	 * @param w   World for Entity Constructor
+	 * @param w   Level for Entity Constructor
 	 * @param pos Position of the dot
 	 * @param l   Lifetime given in ticks
 	 * @param r   Red color value
 	 * @param g   Green color value
 	 * @param b   Blue color value
 	 */
-	public EntityDebugDot(World w, Vector3f pos, int l, float r, float g, float b)
+	public EntityDebugDot(Level w, Vector3f pos, int l, float r, float g, float b)
 	{
 		this(w);
-		setPosition(pos.x, pos.y, pos.z);
+		setPos(pos.x, pos.y, pos.z);
 		setColor(r, g, b);
 		life = l;
 	}
 	
 	@Override
-	public void onUpdate()
+	public void tick()
 	{
+		super.tick();
 		life--;
 		if(life <= 0)
-			setDead();
+			discard();
 	}
 }

@@ -1,15 +1,12 @@
 package com.flansmod.common.teams;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.text.TextComponentString;
-import net.minecraft.world.World;
-import net.minecraftforge.fml.common.FMLCommonHandler;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.level.Level;
 
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.PlayerData;
@@ -38,13 +35,13 @@ public class TeamsManagerClassic extends TeamsManager
 	}
 	
 	@Override
-	public void onPlayerLogout(EntityPlayer player)
+	public void onPlayerLogout(Player player)
 	{
 		super.onPlayerLogout(player);
 	}
 	
 	@Override
-	public void OnPlayerKilled(EntityPlayerMP victim, DamageSource source)
+	public void OnPlayerKilled(ServerPlayer victim, DamageSource source)
 	{
 		super.OnPlayerKilled(victim, source);
 		
@@ -63,14 +60,14 @@ public class TeamsManagerClassic extends TeamsManager
 	}
 	
 	@Override
-	public void onPlayerLogin(EntityPlayer player)
+	public void onPlayerLogin(Player player)
 	{
 		if(!enabled || currentRound == null)
 			return;
 		
-		if(player instanceof EntityPlayerMP)
+		if(player instanceof ServerPlayer)
 		{
-			EntityPlayerMP playerMP = (EntityPlayerMP)player;
+			ServerPlayer playerMP = (ServerPlayer)player;
 			sendTeamsMenuToPlayer(playerMP);
 			currentRound.gametype.playerJoined(playerMP);
 		}
@@ -79,7 +76,7 @@ public class TeamsManagerClassic extends TeamsManager
 	@Override
 	public void showTeamsMenuToAll(boolean info)
 	{
-		for(EntityPlayer player : getPlayers())
+		for(Player player : getPlayers())
 		{
 			PlayerData data = PlayerHandler.getPlayerData(player);
 			//Catch for broken player data
@@ -89,19 +86,19 @@ public class TeamsManagerClassic extends TeamsManager
 			if(data.builder && playerIsOp(player))
 				continue;
 			
-			sendTeamsMenuToPlayer((EntityPlayerMP)player, info);
+			sendTeamsMenuToPlayer((ServerPlayer)player, info);
 		}
 	}
 	
 	@Override
-	public void sendTeamsMenuToPlayer(EntityPlayerMP player, boolean info)
+	public void sendTeamsMenuToPlayer(ServerPlayer player, boolean info)
 	{
 		if(!enabled || currentRound == null || currentRound.teams == null)
 			return;
 		//Get the available teams from the gametype
 		Team[] availableTeams = currentRound.gametype.getTeamsCanSpawnAs(currentRound, player);
 		//Add in the spectators as an option and "none" if the player is an op
-		boolean playerIsOp = FMLCommonHandler.instance().getMinecraftServerInstance().getPlayerList().canSendCommands(player.getGameProfile());
+		boolean playerIsOp = FlansMod.serverInstance.getPlayerList().isOp(new net.minecraft.server.players.NameAndId(player.getGameProfile()));
 		Team[] allAvailableTeams = new Team[availableTeams.length + (playerIsOp ? 2 : 1)];
 		System.arraycopy(availableTeams, 0, allAvailableTeams, 0, availableTeams.length);
 		allAvailableTeams[availableTeams.length] = Team.spectators;
@@ -110,7 +107,7 @@ public class TeamsManagerClassic extends TeamsManager
 	}
 	
 	@Override
-	public void sendClassMenuToPlayer(EntityPlayerMP player)
+	public void sendClassMenuToPlayer(ServerPlayer player)
 	{
 		Team team = PlayerHandler.getPlayerData(player).newTeam;
 		if(team == null)
@@ -124,19 +121,19 @@ public class TeamsManagerClassic extends TeamsManager
 	}
 	
 	@Override
-	protected void ReadFromNBT(NBTTagCompound tags, World world)
+	protected void ReadFromNBT(CompoundTag tags, Level world)
 	{
 		super.ReadFromNBT(tags, world);
 	}
 	
 	@Override
-	protected void WriteToNBT(NBTTagCompound tags)
+	protected void WriteToNBT(CompoundTag tags)
 	{
 		super.WriteToNBT(tags);
 	}
 	
 	@Override
-	public void playerSelectedClass(EntityPlayerMP player, String className)
+	public void playerSelectedClass(ServerPlayer player, String className)
 	{
 		if(!enabled || currentRound == null)
 			return;
@@ -148,7 +145,7 @@ public class TeamsManagerClassic extends TeamsManager
 		//Validate class
 		if(!data.newTeam.classes.contains(playerClass))
 		{
-			player.sendMessage(new TextComponentString("You may not select " + playerClass.name + ". Please try again"));
+			player.sendSystemMessage(Component.literal("You may not select " + playerClass.name + ". Please try again"));
 			FlansMod.log.warn(player.getName() + " tried to pick an invalid class : " + playerClass.name);
 			//sendClassMenuToPlayer(player);
 			return;
@@ -158,10 +155,9 @@ public class TeamsManagerClassic extends TeamsManager
 	}
 	
 	@Override
-	@SideOnly(Side.CLIENT)
 	public void SelectTeam(Team team)
 	{
 		FlansMod.getPacketHandler().sendToServer(new PacketTeamSelect(team == null ? "null" : team.shortName, false));
-		Minecraft.getMinecraft().displayGuiScreen(null);
+		Minecraft.getInstance().setScreen(null);
 	}
 }

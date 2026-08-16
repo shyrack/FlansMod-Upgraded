@@ -1,6 +1,6 @@
 package com.flansmod.client.model;
 
-import net.minecraft.client.model.ModelBase;
+import com.flansmod.client.model.ModelBase;
 
 import com.flansmod.client.tmt.ModelRendererTurbo;
 import com.flansmod.common.guns.EntityMG;
@@ -31,7 +31,7 @@ public class ModelMG extends ModelBase
 	{
 		for(ModelRendererTurbo gunPart : gunModel)
 		{
-			gunPart.rotateAngleX = -(mg.prevRotationPitch + (mg.rotationPitch - mg.prevRotationPitch) * f6) / 180F * 3.141592653589793238462643383279502884197169399F;
+			gunPart.rotateAngleX = -(mg.xRotO + (mg.getXRot() - mg.xRotO) * f6) / 180F * 3.141592653589793238462643383279502884197169399F;
 			gunPart.render(f5);
 		}
 
@@ -40,7 +40,7 @@ public class ModelMG extends ModelBase
 
 		for(ModelRendererTurbo ammoPart : ammoModel)
 		{
-			ammoPart.rotateAngleX = -(mg.prevRotationPitch + (mg.rotationPitch - mg.prevRotationPitch) * f6) / 180F * 3.141592653589793238462643383279502884197169399F;
+			ammoPart.rotateAngleX = -(mg.xRotO + (mg.getXRot() - mg.xRotO) * f6) / 180F * 3.141592653589793238462643383279502884197169399F;
 			ammoPart.render(f5);
 		}
 	}

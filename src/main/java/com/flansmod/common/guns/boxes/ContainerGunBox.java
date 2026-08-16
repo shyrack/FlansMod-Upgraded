@@ -1,56 +1,69 @@
 package com.flansmod.common.guns.boxes;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.InventoryPlayer;
-import net.minecraft.inventory.Container;
-import net.minecraft.inventory.Slot;
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
 
-public class ContainerGunBox extends Container
+public class ContainerGunBox extends AbstractContainerMenu
 {
-	public InventoryPlayer inventory;
+	public Inventory inventory;
+	public GunBoxType type;
 	
-	public ContainerGunBox(InventoryPlayer inventoryplayer)
+	public ContainerGunBox(Inventory inventoryplayer)
 	{
+		this(0, inventoryplayer, null);
+	}
+	
+	public ContainerGunBox(int id, Inventory inventoryplayer)
+	{
+		this(id, inventoryplayer, null);
+	}
+	
+	public ContainerGunBox(int id, Inventory inventoryplayer, GunBoxType type)
+	{
+		super(null, id);
 		inventory = inventoryplayer;
+		this.type = type;
 		
 		//Main inventory slots
 		for(int row = 0; row < 3; row++)
 		{
 			for(int col = 0; col < 9; col++)
 			{
-				addSlotToContainer(new Slot(inventoryplayer, col + row * 9 + 9, 48 + col * 18, 177 + row * 18));
+				addSlot(new Slot(inventoryplayer, col + row * 9 + 9, 48 + col * 18, 177 + row * 18));
 			}
 		}
 		
 		//Quickbar slots
 		for(int col = 0; col < 9; col++)
 		{
-			addSlotToContainer(new Slot(inventoryplayer, col, 48 + col * 18, 235));
+			addSlot(new Slot(inventoryplayer, col, 48 + col * 18, 235));
 		}
 	}
 
 	@Override
-	public ItemStack transferStackInSlot(EntityPlayer player, int slotID)
+	public ItemStack quickMoveStack(Player player, int slotID)
 	{
 		ItemStack stack = ItemStack.EMPTY.copy();
-		Slot currentSlot = inventorySlots.get(slotID);
+		Slot currentSlot = slots.get(slotID);
 
-		if(currentSlot != null && currentSlot.getHasStack())
+		if(currentSlot != null && currentSlot.hasItem())
 		{
-			ItemStack slotStack = currentSlot.getStack();
+			ItemStack slotStack = currentSlot.getItem();
 			stack = slotStack.copy();
 
 			if(slotID != 0)
 			{
-				if(!mergeItemStack(slotStack, 0, 1, false))
+				if(!moveItemStackTo(slotStack, 0, 1, false))
 				{
 					return ItemStack.EMPTY.copy();
 				}
 			}
 			else
 			{
-				if(!mergeItemStack(slotStack, 1, inventorySlots.size(), true))
+				if(!moveItemStackTo(slotStack, 1, slots.size(), true))
 				{
 					return ItemStack.EMPTY.copy();
 				}
@@ -58,16 +71,16 @@ public class ContainerGunBox extends Container
 
 			if(slotStack.getCount() == 0)
 			{
-				currentSlot.putStack(ItemStack.EMPTY.copy());
+				currentSlot.set(ItemStack.EMPTY.copy());
 			}
 			else
 			{
-				currentSlot.onSlotChanged();
+				currentSlot.setChanged();
 			}
 
 			if(slotStack.getCount() == stack.getCount())
 			{
-				return null;
+				return ItemStack.EMPTY.copy();
 			}
 
 			currentSlot.onTake(player, slotStack);
@@ -77,7 +90,7 @@ public class ContainerGunBox extends Container
 	}
 
 	@Override
-	public boolean canInteractWith(EntityPlayer entityplayer)
+	public boolean stillValid(Player entityplayer)
 	{
 		return true;
 	}

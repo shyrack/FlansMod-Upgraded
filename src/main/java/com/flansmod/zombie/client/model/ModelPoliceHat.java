@@ -11,15 +11,15 @@ public class ModelPoliceHat extends ModelCustomArmour
 	public ModelPoliceHat()
 	{
 		headModel = new ModelRendererTurbo[9];
-		headModel[0] = new ModelRendererTurbo(this, 0, 0, textureX, textureY);
-		headModel[1] = new ModelRendererTurbo(this, 0, 12, textureX, textureY);
-		headModel[2] = new ModelRendererTurbo(this, 0, 19, textureX, textureY);
-		headModel[3] = new ModelRendererTurbo(this, 0, 23, textureX, textureY);
-		headModel[4] = new ModelRendererTurbo(this, 28, 0, textureX, textureY);
-		headModel[5] = new ModelRendererTurbo(this, 32, 7, textureX, textureY);
-		headModel[6] = new ModelRendererTurbo(this, 31, 3, textureX, textureY);
-		headModel[7] = new ModelRendererTurbo(this, 40, 3, textureX, textureY);
-		headModel[8] = new ModelRendererTurbo(this, 30, 17, textureX, textureY);
+		headModel[0] = new ModelRendererTurbo(null, 0, 0, textureX, textureY);
+		headModel[1] = new ModelRendererTurbo(null, 0, 12, textureX, textureY);
+		headModel[2] = new ModelRendererTurbo(null, 0, 19, textureX, textureY);
+		headModel[3] = new ModelRendererTurbo(null, 0, 23, textureX, textureY);
+		headModel[4] = new ModelRendererTurbo(null, 28, 0, textureX, textureY);
+		headModel[5] = new ModelRendererTurbo(null, 32, 7, textureX, textureY);
+		headModel[6] = new ModelRendererTurbo(null, 31, 3, textureX, textureY);
+		headModel[7] = new ModelRendererTurbo(null, 40, 3, textureX, textureY);
+		headModel[8] = new ModelRendererTurbo(null, 30, 17, textureX, textureY);
 
 		headModel[0].addBox(-4.5F, -8F, -4.5F, 9, 2, 9, 0F); // Box 0
 

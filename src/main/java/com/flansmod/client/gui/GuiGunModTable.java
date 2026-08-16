@@ -1,138 +1,79 @@
 package com.flansmod.client.gui;
 
-import java.io.IOException;
-import java.util.Random;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 
-import org.lwjgl.input.Mouse;
-import org.lwjgl.opengl.GL11;
-
-import net.minecraft.client.gui.inventory.GuiContainer;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.RenderHelper;
-import net.minecraft.entity.player.InventoryPlayer;
-import net.minecraft.init.Items;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.EnumHand;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.world.World;
-
-import com.flansmod.client.ClientProxy;
-import com.flansmod.client.model.CustomItemRenderType;
 import com.flansmod.common.FlansMod;
+import com.flansmod.common.util.FlansModUtil;
 import com.flansmod.common.guns.ContainerGunModTable;
 import com.flansmod.common.guns.GunType;
 import com.flansmod.common.guns.ItemGun;
 import com.flansmod.common.guns.Paintjob;
 import com.flansmod.common.network.PacketGunPaint;
 
-public class GuiGunModTable extends GuiContainer
+public class GuiGunModTable extends AbstractContainerScreen<ContainerGunModTable>
 {
-	private static final ResourceLocation texture = new ResourceLocation("flansmod", "gui/gunTable.png");
-	private static final Random rand = new Random();
+	private static final Identifier texture = Identifier.fromNamespaceAndPath("flansmod", "gui/guntable.png");
 	private Paintjob hoveringOver = null;
 	private int mouseX, mouseY;
-	private InventoryPlayer inventory;
+	private Inventory inventory;
 	
-	public GuiGunModTable(InventoryPlayer inv, World w)
+	public GuiGunModTable(Inventory inv, Level w)
 	{
-		super(new ContainerGunModTable(inv, w));
+		super(new ContainerGunModTable(inv, w), inv, Component.literal(""), 176, 256);
 		inventory = inv;
-		ySize = 256;
 	}
 	
 	@Override
-	protected void drawGuiContainerForegroundLayer(int x, int y)
+	protected void extractLabels(GuiGraphicsExtractor extractor, int mouseX, int mouseY)
 	{
-		fontRenderer.drawString("Inventory", 8, (ySize - 94) + 2, 0x404040);
-		fontRenderer.drawString("Gun Modification Table", 8, 6, 0x404040);
-		
-		ItemStack gunStack = inventorySlots.getSlot(0).getStack();
-		if(gunStack != null && gunStack.getItem() instanceof ItemGun)
-		{
-			ItemStack tempStack = gunStack.copy();
-			if(hoveringOver != null)
-				tempStack.setItemDamage(hoveringOver.ID);
-			GunType gunType = ((ItemGun)gunStack.getItem()).GetType();
-			if(gunType.model != null)
-			{
-				GlStateManager.pushMatrix();
-				GlStateManager.color(1F, 1F, 1F, 1F);
-				
-				GlStateManager.disableLighting();
-				GlStateManager.pushMatrix();
-				GlStateManager.rotate(180F, 1.0F, 0.0F, 0.0F);
-				GlStateManager.rotate(0F, 0.0F, 1.0F, 0.0F);
-				RenderHelper.enableStandardItemLighting();
-				GlStateManager.popMatrix();
-				GlStateManager.enableRescaleNormal();
-				
-				GlStateManager.translate(80, 48, 100);
-				
-				GlStateManager.rotate(160, 1F, 0F, 0F);
-				GlStateManager.rotate(20, 0F, 1F, 0F);
-				GlStateManager.scale(-50F, 50F, 50F);
-				//ClientProxy.gunRenderer.renderGun(gunStack, gunType, 1F / 16F, gunType.model, GunAnimations.defaults, 0F);
-				ClientProxy.gunRenderer.renderItem(CustomItemRenderType.ENTITY, EnumHand.MAIN_HAND, tempStack);
-				GlStateManager.popMatrix();
-			}
-		}
+		extractor.text(font, "Inventory", 8, (imageHeight - 94) + 2, 0x404040);
+		extractor.text(font, "Gun Modification Table", 8, 6, 0x404040);
 	}
 	
 	@Override
-	protected void drawGuiContainerBackgroundLayer(float f, int i, int j)
+	public void extractBackground(GuiGraphicsExtractor extractor, int mouseX, int mouseY, float partialTick)
 	{
-		GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+		super.extractBackground(extractor, mouseX, mouseY, partialTick);
+		int xOrigin = leftPos;
+		int yOrigin = topPos;
+		extractor.blit(RenderPipelines.GUI_TEXTURED, texture, xOrigin, yOrigin, 0F, 0F, imageWidth, imageHeight, 256, 256);
 		
-		mc.renderEngine.bindTexture(texture);
-		
-		int xOrigin = (width - xSize) / 2;
-		int yOrigin = (height - ySize) / 2;
-		drawTexturedModalRect(xOrigin, yOrigin, 0, 0, xSize, ySize);
-		
-		for(int z = 1; z < 13; z++)
-			inventorySlots.getSlot(z).yPos = -1000;
-		
-		ItemStack gunStack = inventorySlots.getSlot(0).getStack();
+		ItemStack gunStack = menu.getSlot(0).getItem();
 		if(gunStack != null && gunStack.getItem() instanceof ItemGun)
 		{
 			GunType gunType = ((ItemGun)gunStack.getItem()).GetType();
 			if(gunType.allowBarrelAttachments)
 			{
-				drawTexturedModalRect(xOrigin + 51, yOrigin + 107, 176, 122, 22, 22);
-				inventorySlots.getSlot(1).yPos = 110;
+				extractor.blit(RenderPipelines.GUI_TEXTURED, texture, xOrigin + 51, yOrigin + 107, 176, 122, 22, 22, 256, 256);
 			}
 			if(gunType.allowScopeAttachments)
 			{
-				drawTexturedModalRect(xOrigin + 77, yOrigin + 81, 202, 96, 22, 22);
-				inventorySlots.getSlot(2).yPos = 84;
+				extractor.blit(RenderPipelines.GUI_TEXTURED, texture, xOrigin + 77, yOrigin + 81, 202, 96, 22, 22, 256, 256);
 			}
 			if(gunType.allowStockAttachments)
 			{
-				drawTexturedModalRect(xOrigin + 103, yOrigin + 107, 228, 122, 22, 22);
-				inventorySlots.getSlot(3).yPos = 110;
+				extractor.blit(RenderPipelines.GUI_TEXTURED, texture, xOrigin + 103, yOrigin + 107, 228, 122, 22, 22, 256, 256);
 			}
 			if(gunType.allowGripAttachments)
 			{
-				drawTexturedModalRect(xOrigin + 77, yOrigin + 133, 202, 148, 22, 22);
-				inventorySlots.getSlot(4).yPos = 136;
+				extractor.blit(RenderPipelines.GUI_TEXTURED, texture, xOrigin + 77, yOrigin + 133, 202, 148, 22, 22, 256, 256);
 			}
 			
+			//EntityRenderer generic slot backgrounds
 			for(int x = 0; x < 2; x++)
 			{
 				for(int y = 0; y < 4; y++)
 				{
 					if(x + y * 2 < gunType.numGenericAttachmentSlots)
-						inventorySlots.getSlot(5 + x + y * 2).yPos = 83 + 18 * y;
-				}
-			}
-			
-			//Render generic slot backgrounds
-			for(int x = 0; x < 2; x++)
-			{
-				for(int y = 0; y < 4; y++)
-				{
-					if(x + y * 2 < gunType.numGenericAttachmentSlots)
-						drawTexturedModalRect(xOrigin + 9 + 18 * x, yOrigin + 82 + 18 * y, 178, 54, 18, 18);
+						extractor.blit(RenderPipelines.GUI_TEXTURED, texture, xOrigin + 9 + 18 * x, yOrigin + 82 + 18 * y, 178, 54, 18, 18, 256, 256);
 				}
 			}
 			
@@ -147,7 +88,7 @@ public class GuiGunModTable extends GuiContainer
 					if(2 * y + x >= numPaintjobs)
 						continue;
 					
-					drawTexturedModalRect(xOrigin + 131 + 18 * x, yOrigin + 82 + 18 * y, 178, 54, 18, 18);
+					extractor.blit(RenderPipelines.GUI_TEXTURED, texture, xOrigin + 131 + 18 * x, yOrigin + 82 + 18 * y, 178, 54, 18, 18, 256, 256);
 				}
 			}
 			
@@ -161,9 +102,9 @@ public class GuiGunModTable extends GuiContainer
 					
 					Paintjob paintjob = gunType.paintjobs.get(2 * y + x);
 					ItemStack stack = gunStack.copy();
-					//stack.getTagCompound().setString("Paint", paintjob.iconName);
-					stack.setItemDamage(paintjob.ID);
-					itemRender.renderItemIntoGUI(stack, xOrigin + 132 + x * 18, yOrigin + 83 + y * 18);
+					//FlansModUtil.getItemTag(stack).putString("Paint", paintjob.iconName);
+					stack.setDamageValue(paintjob.ID);
+					extractor.item(stack, xOrigin + 132 + x * 18, yOrigin + 83 + y * 18);
 				}
 			}
 		}
@@ -173,17 +114,17 @@ public class GuiGunModTable extends GuiContainer
 		{
 			int numDyes = hoveringOver.dyesNeeded.length;
 			//Only draw box if there are dyes needed
-			if(numDyes != 0 && !inventory.player.capabilities.isCreativeMode)
+			if(numDyes != 0 && !inventory.player.getAbilities().instabuild)
 			{
 				//Calculate which dyes we have in our inventory
 				boolean[] haveDyes = new boolean[numDyes];
 				for(int n = 0; n < numDyes; n++)
 				{
 					int amountNeeded = hoveringOver.dyesNeeded[n].getCount();
-					for(int s = 0; s < inventory.getSizeInventory(); s++)
+					for(int s = 0; s < inventory.getContainerSize(); s++)
 					{
-						ItemStack stack = inventory.getStackInSlot(s);
-						if(stack != null && stack.getItem() == Items.DYE && stack.getItemDamage() == hoveringOver.dyesNeeded[n].getItemDamage())
+						ItemStack stack = inventory.getItem(s);
+						if(stack != null && stack.getItem() == hoveringOver.dyesNeeded[n].getItem() && stack.getDamageValue() == hoveringOver.dyesNeeded[n].getDamageValue())
 						{
 							amountNeeded -= stack.getCount();
 						}
@@ -192,61 +133,45 @@ public class GuiGunModTable extends GuiContainer
 						haveDyes[n] = true;
 				}
 				
-				GlStateManager.color(1F, 1F, 1F, 1F);
-				GlStateManager.disableLighting();
-				mc.renderEngine.bindTexture(texture);
-				
-				int originX = mouseX + 6;
-				int originY = mouseY - 20;
+				int originX = this.mouseX + 6;
+				int originY = this.mouseY - 20;
 				
 				//If we have only one, use the double ended slot
 				if(numDyes == 1)
 				{
-					drawTexturedModalRect(originX, originY, (haveDyes[0] ? 201 : 178), 218, 22, 22);
+					extractor.blit(RenderPipelines.GUI_TEXTURED, texture, originX, originY, (haveDyes[0] ? 201 : 178), 218, 22, 22, 256, 256);
 				}
 				else
 				{
 					//First slot
-					drawTexturedModalRect(originX, originY, 178, (haveDyes[0] ? 195 : 172), 20, 22);
+					extractor.blit(RenderPipelines.GUI_TEXTURED, texture, originX, originY, 178, (haveDyes[0] ? 195 : 172), 20, 22, 256, 256);
 					//Middle slots
 					for(int s = 1; s < numDyes - 1; s++)
 					{
-						drawTexturedModalRect(originX + 2 + 18 * s, originY, 199, (haveDyes[s] ? 195 : 172), 18, 22);
+						extractor.blit(RenderPipelines.GUI_TEXTURED, texture, originX + 2 + 18 * s, originY, 199, (haveDyes[s] ? 195 : 172), 18, 22, 256, 256);
 					}
 					//Last slot
-					drawTexturedModalRect(originX + 2 + 18 * (numDyes - 1), originY, 218, (haveDyes[numDyes - 1] ? 195 : 172), 20, 22);
+					extractor.blit(RenderPipelines.GUI_TEXTURED, texture, originX + 2 + 18 * (numDyes - 1), originY, 218, (haveDyes[numDyes - 1] ? 195 : 172), 20, 22, 256, 256);
 				}
 				
 				for(int s = 0; s < numDyes; s++)
 				{
-					itemRender.renderItemIntoGUI(hoveringOver.dyesNeeded[s], originX + 3 + s * 18, originY + 3);
-					itemRender.renderItemOverlayIntoGUI(this.fontRenderer, hoveringOver.dyesNeeded[s], originX + 3 + s * 18, originY + 3, null);
+					extractor.item(hoveringOver.dyesNeeded[s], originX + 3 + s * 18, originY + 3);
+					extractor.itemDecorations(font, hoveringOver.dyesNeeded[s], originX + 3 + s * 18, originY + 3);
 				}
 			}
 		}
 	}
 	
 	@Override
-	public void drawScreen(int mouseX, int mouseY, float partialTicks)
+	public void mouseMoved(double mouseX, double mouseY)
 	{
-		super.drawScreen(mouseX, mouseY, partialTicks);
-		renderHoveredToolTip(mouseX, mouseY);
-	}
-	
-	@Override
-	public void handleMouseInput() throws IOException
-	{
-		super.handleMouseInput();
-		
-		mouseX = Mouse.getEventX() * this.width / this.mc.displayWidth;
-		mouseY = this.height - Mouse.getEventY() * this.height / this.mc.displayHeight - 1;
-		
-		int mouseXInGUI = mouseX - guiLeft;
-		int mouseYInGUI = mouseY - guiTop;
+		this.mouseX = (int)mouseX;
+		this.mouseY = (int)mouseY;
 		
 		hoveringOver = null;
 		
-		ItemStack gunStack = inventorySlots.getSlot(0).getStack();
+		ItemStack gunStack = menu.getSlot(0).getItem();
 		if(gunStack != null && gunStack.getItem() instanceof ItemGun)
 		{
 			GunType gunType = ((ItemGun)gunStack.getItem()).GetType();
@@ -261,11 +186,9 @@ public class GuiGunModTable extends GuiContainer
 						continue;
 					
 					Paintjob paintjob = gunType.paintjobs.get(2 * j + i);
-					ItemStack stack = gunStack.copy();
-					stack.getTagCompound().setString("Paint", paintjob.iconName);
-					int slotX = 131 + i * 18;
-					int slotY = 82 + j * 18;
-					if(mouseXInGUI >= slotX && mouseXInGUI < slotX + 18 && mouseYInGUI >= slotY && mouseYInGUI < slotY + 18)
+					int slotX = leftPos + 131 + i * 18;
+					int slotY = topPos + 82 + j * 18;
+					if(mouseX >= slotX && mouseX < slotX + 18 && mouseY >= slotY && mouseY < slotY + 18)
 						hoveringOver = paintjob;
 				}
 			}
@@ -273,20 +196,21 @@ public class GuiGunModTable extends GuiContainer
 	}
 	
 	@Override
-	protected void mouseClicked(int x, int y, int button) throws IOException
+	public boolean mouseClicked(MouseButtonEvent event, boolean bl)
 	{
-		super.mouseClicked(x, y, button);
-		if(button != 0)
-			return;
+		super.mouseClicked(event, bl);
+		if(event.button() != 0)
+			return true;
 		if(hoveringOver == null)
-			return;
+			return true;
 		
 		FlansMod.getPacketHandler().sendToServer(new PacketGunPaint(hoveringOver.ID));
-		((ContainerGunModTable)inventorySlots).clickPaintjob(hoveringOver.ID);
+		menu.clickPaintjob(hoveringOver.ID);
+		return true;
 	}
 	
 	@Override
-	public boolean doesGuiPauseGame()
+	public boolean isPauseScreen()
 	{
 		return false;
 	}

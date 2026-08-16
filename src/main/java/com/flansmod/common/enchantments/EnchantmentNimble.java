@@ -1,19 +1,17 @@
 package com.flansmod.common.enchantments;
 
-import net.minecraft.enchantment.Enchantment;
-import net.minecraft.enchantment.EnumEnchantmentType;
-import net.minecraft.inventory.EntityEquipmentSlot;
+import net.minecraft.core.HolderSet;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.EquipmentSlotGroup;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.enchantment.Enchantment;
 
-public class EnchantmentNimble extends Enchantment
+public class EnchantmentNimble
 {
-	protected EnchantmentNimble() 
+	public static Enchantment build(Identifier id, HolderSet<Item> supportedItems)
 	{
-		super(Rarity.UNCOMMON, EnchantmentModule.GLOVES, new EntityEquipmentSlot[] { EntityEquipmentSlot.OFFHAND } );
+		return Enchantment.enchantment(
+				Enchantment.definition(supportedItems, 3, 2, Enchantment.constantCost(5), Enchantment.constantCost(25), 5, EquipmentSlotGroup.OFFHAND))
+				.build(id);
 	}
-	
-	@Override
-    public int getMaxLevel()
-    {
-        return 3;
-    }
 }

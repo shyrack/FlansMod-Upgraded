@@ -1,13 +1,10 @@
 package com.flansmod.common.network;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.EnumHand;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.InteractionHand;
 
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.PlayerData;
@@ -15,6 +12,7 @@ import com.flansmod.common.PlayerHandler;
 import com.flansmod.common.enchantments.EnchantmentModule;
 import com.flansmod.common.guns.GunType;
 import com.flansmod.common.guns.ItemGun;
+import com.flansmod.common.guns.GunUtil;
 
 /**
  * This packet is send by the client to request a reload. The server checks if the player can reload and in this case actually reloads and sends a GunAnimationPacket as response.
@@ -29,33 +27,33 @@ public class PacketReload extends PacketBase
 	{
 	}
 	
-	public PacketReload(EnumHand hand, boolean isForced)
+	public PacketReload(InteractionHand hand, boolean isForced)
 	{
-		this.isOffHand = hand == EnumHand.OFF_HAND;
+		this.isOffHand = hand == InteractionHand.OFF_HAND;
 		this.isForced = isForced;
 	}
 	
 	@Override
-	public void encodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void encodeInto(ByteBuf data)
 	{
 		data.writeBoolean(isOffHand);
 		data.writeBoolean(isForced);
 	}
 	
 	@Override
-	public void decodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void decodeInto(ByteBuf data)
 	{
 		isOffHand = data.readBoolean();
 		isForced = data.readBoolean();
 	}
 	
 	@Override
-	public void handleServerSide(EntityPlayerMP playerEntity)
+	public void handleServerSide(ServerPlayer playerEntity)
 	{
-		EnumHand hand = isOffHand ? EnumHand.OFF_HAND : EnumHand.MAIN_HAND;
+		InteractionHand hand = isOffHand ? InteractionHand.OFF_HAND : InteractionHand.MAIN_HAND;
 		PlayerData data = PlayerHandler.getPlayerData(playerEntity);
-		ItemStack main = playerEntity.getHeldItemMainhand();
-		ItemStack off = playerEntity.getHeldItemOffhand();
+		ItemStack main = playerEntity.getMainHandItem();
+		ItemStack off = playerEntity.getOffhandItem();
 		ItemStack stack = isOffHand ? off : main;
 		boolean hasOffHand = main != null && !main.isEmpty() && off != null && !off.isEmpty();
 		ItemStack otherHand = isOffHand ? main : off;
@@ -63,7 +61,7 @@ public class PacketReload extends PacketBase
 		{
 			GunType type = ((ItemGun)stack.getItem()).GetType();
 			
-			if(((ItemGun)stack.getItem()).Reload(stack, playerEntity.world, playerEntity, playerEntity.inventory, hand, hasOffHand, isForced, playerEntity.capabilities.isCreativeMode))
+			if(((ItemGun)stack.getItem()).Reload(stack, playerEntity.level(), playerEntity, playerEntity.getInventory(), hand, hasOffHand, isForced, playerEntity.getAbilities().instabuild))
 			{
 				float reloadDelay = EnchantmentModule.ModifyReloadTime(type.reloadTime, playerEntity, otherHand);
 				
@@ -74,7 +72,7 @@ public class PacketReload extends PacketBase
 				else data.reloadingRight = true;
 				//Play reload sound
 				if(type.reloadSound != null)
-					PacketPlaySound.sendSoundPacket(playerEntity.posX, playerEntity.posY, playerEntity.posZ, FlansMod.soundRange, playerEntity.dimension, type.reloadSound, false);
+					PacketPlaySound.sendSoundPacket(playerEntity.getX(), playerEntity.getY(), playerEntity.getZ(), FlansMod.soundRange, GunUtil.getDimensionId(playerEntity.level()), type.reloadSound, false);
 			
 				FlansMod.getPacketHandler().sendTo(new PacketGunAnimation(hand, (int)reloadDelay, type.getPumpDelayAfterReload(), type.getPumpTime()), playerEntity);
 			}
@@ -82,8 +80,7 @@ public class PacketReload extends PacketBase
 	}
 	
 	@Override
-	@SideOnly(Side.CLIENT)
-	public void handleClientSide(EntityPlayer clientPlayer)
+	public void handleClientSide(Player clientPlayer)
 	{
 		FlansMod.log.warn("Recieved reload packet on client!");
 	}

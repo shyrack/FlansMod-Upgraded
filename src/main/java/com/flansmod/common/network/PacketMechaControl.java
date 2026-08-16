@@ -1,14 +1,20 @@
 package com.flansmod.common.network;
 
+import java.io.IOException;
+
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import net.minecraft.item.ItemStack;
-import net.minecraftforge.fml.common.network.ByteBufUtils;
+import io.netty.buffer.ByteBufInputStream;
+import io.netty.buffer.ByteBufOutputStream;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtIo;
 
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.driveables.EntityDriveable;
 import com.flansmod.common.driveables.mechas.EntityMecha;
 import com.flansmod.common.driveables.mechas.EnumMechaSlotType;
+import com.flansmod.common.guns.GunUtil;
+import com.flansmod.common.util.ItemStackUtil;
 
 public class PacketMechaControl extends PacketDriveableControl
 {
@@ -25,30 +31,57 @@ public class PacketMechaControl extends PacketDriveableControl
 		EntityMecha mecha = (EntityMecha)driveable;
 		legYaw = mecha.legAxes.getYaw();
 		legSwing = mecha.legSwing;
-		leftStack = mecha.inventory.getStackInSlot(EnumMechaSlotType.leftTool);
-		rightStack = mecha.inventory.getStackInSlot(EnumMechaSlotType.rightTool);
+		leftStack = mecha.inventory.getItem(EnumMechaSlotType.leftTool);
+		rightStack = mecha.inventory.getItem(EnumMechaSlotType.rightTool);
 	}
 	
 	@Override
-	public void encodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void encodeInto(ByteBuf data)
 	{
-		super.encodeInto(ctx, data);
+		super.encodeInto(data);
 		data.writeFloat(legYaw);
 		data.writeFloat(legSwing);
-		ByteBufUtils.writeItemStack(data, leftStack);
-		ByteBufUtils.writeItemStack(data, rightStack);
+		writeStack(data, leftStack);
+		writeStack(data, rightStack);
 	}
 	
 	@Override
-	public void decodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void decodeInto(ByteBuf data)
 	{
-		super.decodeInto(ctx, data);
+		super.decodeInto(data);
 		legYaw = data.readFloat();
 		legSwing = data.readFloat();
-		leftStack = ByteBufUtils.readItemStack(data);
-		rightStack = ByteBufUtils.readItemStack(data);
+		leftStack = readStack(data);
+		rightStack = readStack(data);
 		
-		data.release();
+	}
+	
+	private static void writeStack(ByteBuf data, ItemStack stack)
+	{
+		CompoundTag tags = new CompoundTag();
+		ItemStackUtil.writeItemStack(tags, "stack", stack);
+		try
+		{
+			NbtIo.write(tags, new ByteBufOutputStream(data));
+		}
+		catch(IOException e)
+		{
+			FlansMod.log.error("Failed to write mecha stack to buffer.", e);
+		}
+	}
+	
+	private static ItemStack readStack(ByteBuf data)
+	{
+		try
+		{
+			CompoundTag tags = NbtIo.read(new ByteBufInputStream(data));
+			return ItemStackUtil.readItemStack(tags, "stack");
+		}
+		catch(IOException e)
+		{
+			FlansMod.log.error("Failed to read mecha stack from buffer.", e);
+			return ItemStack.EMPTY.copy();
+		}
 	}
 	
 	@Override
@@ -60,8 +93,8 @@ public class PacketMechaControl extends PacketDriveableControl
 		mecha.legSwing = legSwing / 2F;
 		if(clientSide)
 		{
-			mecha.inventory.setInventorySlotContents(EnumMechaSlotType.leftTool, leftStack);
-			mecha.inventory.setInventorySlotContents(EnumMechaSlotType.rightTool, rightStack);
+			mecha.inventory.setItem(EnumMechaSlotType.leftTool, leftStack);
+			mecha.inventory.setItem(EnumMechaSlotType.rightTool, rightStack);
 		}
 		else
 		{
@@ -70,7 +103,7 @@ public class PacketMechaControl extends PacketDriveableControl
 					posY,
 					posZ,
 					FlansMod.driveableUpdateRange,
-					mecha.dimension);
+					GunUtil.getDimensionId(mecha.level()));
 		}
 	}
 }

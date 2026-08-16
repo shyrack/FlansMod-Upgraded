@@ -13,8 +13,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.SoundEvent;
+import net.minecraft.resources.Identifier;
+import net.minecraft.sounds.SoundEvent;
 
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.guns.GunType;
@@ -24,38 +24,38 @@ import com.flansmod.common.types.InfoType;
 
 public class FlansModResourceHandler
 {
-	private static HashMap<InfoType, ResourceLocation> iconMap = new HashMap<>();
-	private static HashMap<InfoType, ResourceLocation> textureMap = new HashMap<>();
-	private static HashMap<String, ResourceLocation> trailTextureMap = new HashMap<>();
-	private static HashMap<Paintjob, ResourceLocation> paintjobMap = new HashMap<>();
-	private static HashMap<Paintjob, ResourceLocation> paintjobIconMap = new HashMap<>();
-	private static HashMap<String, ResourceLocation> scopeMap = new HashMap<>();
+	private static HashMap<InfoType, Identifier> iconMap = new HashMap<>();
+	private static HashMap<InfoType, Identifier> textureMap = new HashMap<>();
+	private static HashMap<String, Identifier> trailTextureMap = new HashMap<>();
+	private static HashMap<Paintjob, Identifier> paintjobMap = new HashMap<>();
+	private static HashMap<Paintjob, Identifier> paintjobIconMap = new HashMap<>();
+	private static HashMap<String, Identifier> scopeMap = new HashMap<>();
 	private static HashMap<String, SoundEvent> soundMap = new HashMap<>();
-	private static HashMap<String, ResourceLocation> blockMap = new HashMap<>();
+	private static HashMap<String, Identifier> blockMap = new HashMap<>();
 	
-	public static ResourceLocation flag = new ResourceLocation("flansmod", "textures/items/flagpole.png");
-	public static ResourceLocation[] opStick = new ResourceLocation[]{new ResourceLocation("flansmod", "textures/items/opStick_ownership.png"),
-			new ResourceLocation("flansmod", "textures/items/opStick_connecting.png"), new ResourceLocation("flansmod", "textures/items/opStick_mapping.png"),
-			new ResourceLocation("flansmod", "textures/items/opStick_destruction.png")};
+	public static Identifier flag = Identifier.fromNamespaceAndPath("flansmod", "textures/items/flagpole.png");
+	public static Identifier[] opStick = new Identifier[]{Identifier.fromNamespaceAndPath("flansmod", "textures/items/opstick_ownership.png"),
+			Identifier.fromNamespaceAndPath("flansmod", "textures/items/opstick_connecting.png"), Identifier.fromNamespaceAndPath("flansmod", "textures/items/opstick_mapping.png"),
+			Identifier.fromNamespaceAndPath("flansmod", "textures/items/opstick_destruction.png")};
 	
-	public static ResourceLocation getIcon(InfoType infoType)
+	public static Identifier getIcon(InfoType infoType)
 	{
 		if(iconMap.containsKey(infoType))
 		{
 			return iconMap.get(infoType);
 		}
-		ResourceLocation resLoc = new ResourceLocation("flansmod", "textures/items/" + infoType.iconPath + ".png");
+		Identifier resLoc = Identifier.fromNamespaceAndPath("flansmod", "textures/items/" + infoType.iconPath + ".png");
 		iconMap.put(infoType, resLoc);
 		return resLoc;
 	}
 	
-	public static ResourceLocation getTexture(InfoType infoType)
+	public static Identifier getTexture(InfoType infoType)
 	{
 		if(textureMap.containsKey(infoType))
 		{
 			return textureMap.get(infoType);
 		}
-		ResourceLocation resLoc = new ResourceLocation("flansmod", "skins/" + infoType.texture + ".png");
+		Identifier resLoc = Identifier.fromNamespaceAndPath("flansmod", "skins/" + infoType.texture + ".png");
 		if(infoType.texture != null)
 		{
 			textureMap.put(infoType, resLoc);
@@ -64,87 +64,87 @@ public class FlansModResourceHandler
 		else return null;
 	}
 	
-	public static ResourceLocation getDeployableTexture(GunType gunType)
+	public static Identifier getDeployableTexture(GunType gunType)
 	{
 		if(textureMap.containsKey(gunType))
 		{
 			return textureMap.get(gunType);
 		}
-		ResourceLocation resLoc = new ResourceLocation("flansmod", "skins/" + gunType.deployableTexture + ".png");
+		Identifier resLoc = Identifier.fromNamespaceAndPath("flansmod", "skins/" + gunType.deployableTexture + ".png");
 		textureMap.put(gunType, resLoc);
 		return resLoc;
 	}
 	
-	public static ResourceLocation getScope(String scopeTexture)
+	public static Identifier getScope(String scopeTexture)
 	{
 		if(scopeMap.containsKey(scopeTexture))
 		{
 			return scopeMap.get(scopeTexture);
 		}
-		ResourceLocation resLoc = new ResourceLocation("flansmod", "gui/" + scopeTexture + ".png");
+		Identifier resLoc = Identifier.fromNamespaceAndPath("flansmod", "gui/" + scopeTexture + ".png");
 		scopeMap.put(scopeTexture, resLoc);
 		return resLoc;
 	}
 	
 	public static SoundEvent getSoundEvent(String sound)
 	{
-		if(soundMap.containsKey(sound))
+		String soundName = sound.toLowerCase();
+		if(soundMap.containsKey(soundName))
 		{
-			return soundMap.get(sound);
+			return soundMap.get(soundName);
 		}
-		ResourceLocation resLoc = new ResourceLocation("flansmod", sound);
-		SoundEvent event = new SoundEvent(resLoc);
-		event.setRegistryName(sound);
-		soundMap.put(sound, event);
+		Identifier resLoc = Identifier.fromNamespaceAndPath("flansmod", soundName);
+		SoundEvent event = SoundEvent.createVariableRangeEvent(resLoc);
+		soundMap.put(soundName, event);
 		return event;
 	}
 	
-	public static ResourceLocation getPaintjobTexture(Paintjob paintjob)
+	public static Identifier getPaintjobTexture(Paintjob paintjob)
 	{
 		if(paintjobMap.containsKey(paintjob))
 		{
 			return paintjobMap.get(paintjob);
 		}
-		ResourceLocation resLoc = new ResourceLocation("flansmod", "skins/" + paintjob.textureName + ".png");
+		Identifier resLoc = Identifier.fromNamespaceAndPath("flansmod", "skins/" + paintjob.textureName + ".png");
 		paintjobMap.put(paintjob, resLoc);
 		return resLoc;
 	}
 	
-	public static ResourceLocation getBlockTexture(String texturePath)
+	public static Identifier getBlockTexture(String texturePath)
 	{
 		if(blockMap.containsKey(texturePath))
 		{
 			return blockMap.get(texturePath);
 		}
-		ResourceLocation resLoc = new ResourceLocation("flansmod", "blocks/" + texturePath);
+		Identifier resLoc = Identifier.fromNamespaceAndPath("flansmod", "blocks/" + texturePath);
 		blockMap.put(texturePath, resLoc);
 		return resLoc;
 	}
 	
-	public static ResourceLocation getIcon(PaintableType paintableType, Paintjob paintjob)
+	public static Identifier getIcon(PaintableType paintableType, Paintjob paintjob)
 	{
 		if(paintjobIconMap.containsKey(paintjob))
 		{
 			return paintjobIconMap.get(paintjob);
 		}
-		ResourceLocation resLoc = new ResourceLocation("flansmod", "textures/items/" + paintjob.iconName + ".png");
+		Identifier resLoc = Identifier.fromNamespaceAndPath("flansmod", "textures/items/" + paintjob.iconName + ".png");
 		paintjobIconMap.put(paintjob, resLoc);
 		return resLoc;
 	}
 	
-	public static ResourceLocation getTrailTexture(String trailTexture)
+	public static Identifier getTrailTexture(String trailTexture)
 	{
 		if(trailTextureMap.containsKey(trailTexture))
 		{
 			return trailTextureMap.get(trailTexture);
 		}
-		ResourceLocation resLoc = new ResourceLocation("flansmod", "skins/" + trailTexture + ".png");
+		Identifier resLoc = Identifier.fromNamespaceAndPath("flansmod", "skins/" + trailTexture + ".png");
 		trailTextureMap.put(trailTexture, resLoc);
 		return resLoc;
 	}
 	
-	private static HashMap<Integer, ResourceLocation> customPaintjobSkins = new HashMap<>();
-	private static HashMap<Integer, ResourceLocation> customPaintjobIcons = new HashMap<>();
+	private static HashMap<Integer, Identifier> customPaintjobSkins = new HashMap<>();
+	private static HashMap<Integer, Identifier> customPaintjobIcons = new HashMap<>();
 	private static final int BYTES_PER_PIXEL = 4;
 	
 	public static boolean HasResourceForHash(int customPaintHash)
@@ -173,7 +173,7 @@ public class FlansModResourceHandler
 			}
 			ImageIO.write(image, "png", file);
 			
-			customPaintjobSkins.put(customPaintHash, new ResourceLocation("flansmod", internalLocation));
+			customPaintjobSkins.put(customPaintHash, Identifier.fromNamespaceAndPath("flansmod", internalLocation));
 		}
 		catch(IOException e)
 		{
@@ -196,7 +196,7 @@ public class FlansModResourceHandler
 			
 			ImageIO.write(image, "png", new File(location));
 			
-			customPaintjobIcons.put(customPaintHash, new ResourceLocation("flansmod", location));
+			customPaintjobIcons.put(customPaintHash, Identifier.fromNamespaceAndPath("flansmod", location));
 		}
 		catch(IOException e)
 		{
@@ -205,12 +205,12 @@ public class FlansModResourceHandler
 		}
 	}
 	
-	public static ResourceLocation GetSkinResourceFromHash(int customPaintHash)
+	public static Identifier GetSkinResourceFromHash(int customPaintHash)
 	{
 		return customPaintjobSkins.get(customPaintHash);
 	}
 	
-	public static ResourceLocation GetIconResourceFromHash(int customPaintHash)
+	public static Identifier GetIconResourceFromHash(int customPaintHash)
 	{
 		return customPaintjobIcons.get(customPaintHash);
 	}

@@ -1,22 +1,22 @@
 package com.flansmod.common.guns;
 
-import javax.annotation.Nullable;
-
 import com.flansmod.common.PlayerHandler;
 import com.flansmod.common.types.InfoType;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.util.EntityDamageSourceIndirect;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.util.text.ITextComponent;
-import net.minecraft.util.text.TextComponentString;
+import net.minecraft.core.Holder;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.damagesource.DamageScaling;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageType;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.Vec3;
 
-public class EntityDamageSourceFlan extends EntityDamageSourceIndirect{
+public class EntityDamageSourceFlan extends DamageSource{
 	
 	private InfoType weapon;
-	private EntityPlayer shooter;
+	private Player shooter;
 	private boolean headshot;
 	/**
 	 * @param s        Name of the damage source (Usually the shortName of the gun)
@@ -24,7 +24,7 @@ public class EntityDamageSourceFlan extends EntityDamageSourceIndirect{
 	 * @param player   The Player responsible for the damage
 	 * @param wep      The InfoType of weapon used
 	 */	
-	public EntityDamageSourceFlan(String s, Entity entity, EntityPlayer player, InfoType wep)
+	public EntityDamageSourceFlan(String s, Entity entity, Player player, InfoType wep)
 	{
 		this(s, entity, player, wep, false);
 	}
@@ -36,27 +36,49 @@ public class EntityDamageSourceFlan extends EntityDamageSourceIndirect{
 	 * @param wep      The InfoType of weapon used
 	 * @param headshot True if this was a headshot, false if not
 	 */
-	public EntityDamageSourceFlan(String s, Entity entity, EntityPlayer player, InfoType wep, boolean headshot)
+	public EntityDamageSourceFlan(String s, Entity entity, Player player, InfoType wep, boolean headshot)
 	{
-		super(s, entity, player);
+		super(makeType(s), entity, player);
 		weapon = wep;
 		shooter = player;
 		this.headshot = headshot;
 	}
 	
-	@Override
-	public ITextComponent getDeathMessage(EntityLivingBase living)
+	private static Holder<DamageType> makeType(String s)
 	{
-		if(!(living instanceof EntityPlayer) || shooter == null || PlayerHandler.getPlayerData(shooter) == null)
+		return Holder.direct(new DamageType(s, DamageScaling.WHEN_CAUSED_BY_LIVING_NON_PLAYER, 0.1F));
+	}
+	
+	/**
+	 * The projectile flag used to be set here. Modern damage types use tags for
+	 * this, so this is kept for API compatibility.
+	 */
+	public EntityDamageSourceFlan setProjectile()
+	{
+		return this;
+	}
+	
+	/**
+	 * The explosion flag used to be set here. Modern damage types use tags for
+	 * this, so this is kept for API compatibility.
+	 */
+	public EntityDamageSourceFlan setExplosion()
+	{
+		return this;
+	}
+	
+	public Component getDeathMessage(LivingEntity living)
+	{
+		if(!(living instanceof Player) || shooter == null || PlayerHandler.getPlayerData(shooter) == null)
 		{
 			if(shooter == null)
 			{
-				return new TextComponentString(living.getName() + " was shot");
+				return Component.literal(living.getName() + " was shot");
 			}
-			else return new TextComponentString(living.getName() + " was shot by " + shooter.getName());
+			else return Component.literal(living.getName() + " was shot by " + shooter.getName());
 		}
 
-		return new TextComponentString("#flansmod");
+		return Component.literal("#flansmod");
 	}
 	
 	/**
@@ -70,7 +92,7 @@ public class EntityDamageSourceFlan extends EntityDamageSourceIndirect{
 	/**
 	 * @return The Player responsible for this damage
 	 */
-	public EntityPlayer getCausedPlayer()
+	public Player getCausedPlayer()
 	{
 		return shooter;
 	}
@@ -83,12 +105,10 @@ public class EntityDamageSourceFlan extends EntityDamageSourceIndirect{
 		return headshot;
 	}
 	
-	@Override
-    @Nullable
-    public Vec3d getDamageLocation()
-    {
-		if(damageSourceEntity == null)
-			return new Vec3d(0d, 0d, 0d);
-        return super.getDamageLocation();
-    }
+	public Vec3 getDamageLocation()
+	{
+		if(getDirectEntity() == null)
+			return new Vec3(0d, 0d, 0d);
+		return getDirectEntity().position();
+	}
 }

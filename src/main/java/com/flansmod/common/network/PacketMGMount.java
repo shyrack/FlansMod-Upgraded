@@ -1,11 +1,8 @@
 package com.flansmod.common.network;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
 
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.guns.EntityMG;
@@ -20,15 +17,15 @@ public class PacketMGMount extends PacketBase
 	{
 	}
 	
-	public PacketMGMount(EntityPlayer player, EntityMG mg, boolean mounting)
+	public PacketMGMount(Player player, EntityMG mg, boolean mounting)
 	{
-		playerEntityId = player.getEntityId();
-		mgEntityId = mg.getEntityId();
+		playerEntityId = player.getId();
+		mgEntityId = mg.getId();
 		this.mounting = mounting;
 	}
 	
 	@Override
-	public void encodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void encodeInto(ByteBuf data)
 	{
 		data.writeInt(playerEntityId);
 		data.writeInt(mgEntityId);
@@ -36,7 +33,7 @@ public class PacketMGMount extends PacketBase
 	}
 	
 	@Override
-	public void decodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void decodeInto(ByteBuf data)
 	{
 		playerEntityId = data.readInt();
 		mgEntityId = data.readInt();
@@ -44,17 +41,16 @@ public class PacketMGMount extends PacketBase
 	}
 	
 	@Override
-	public void handleServerSide(EntityPlayerMP playerEntity)
+	public void handleServerSide(ServerPlayer playerEntity)
 	{
 		FlansMod.log.warn("Received MG mount packet on server. Skipping.");
 	}
 	
 	@Override
-	@SideOnly(Side.CLIENT)
-	public void handleClientSide(EntityPlayer clientPlayer)
+	public void handleClientSide(Player clientPlayer)
 	{
-		EntityPlayer player = (EntityPlayer)clientPlayer.world.getEntityByID(playerEntityId);
-		EntityMG mg = (EntityMG)clientPlayer.world.getEntityByID(mgEntityId);
+		Player player = (Player)clientPlayer.level().getEntity(playerEntityId);
+		EntityMG mg = (EntityMG)clientPlayer.level().getEntity(mgEntityId);
 		if(mg != null && player != null)
 			mg.mountGun(player, mounting);
 	}

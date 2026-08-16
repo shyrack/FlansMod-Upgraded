@@ -1,9 +1,8 @@
 package com.flansmod.common.network;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
 
 import com.flansmod.client.ClientRenderHooks;
 import com.flansmod.common.FlansMod;
@@ -30,7 +29,7 @@ public class PacketKillMessage extends PacketBase
 	}
 	
 	@Override
-	public void encodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void encodeInto(ByteBuf data)
 	{
 		data.writeBoolean(headshot);
 		writeUTF(data, killedBy.shortName);
@@ -39,7 +38,7 @@ public class PacketKillMessage extends PacketBase
 	}
 	
 	@Override
-	public void decodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void decodeInto(ByteBuf data)
 	{
 		headshot = data.readBoolean();
 		killedBy = InfoType.getType(readUTF(data));
@@ -48,13 +47,13 @@ public class PacketKillMessage extends PacketBase
 	}
 	
 	@Override
-	public void handleServerSide(EntityPlayerMP playerEntity)
+	public void handleServerSide(ServerPlayer playerEntity)
 	{
 		FlansMod.log.warn("Received kill message packet on the server. Skipping.");
 	}
 	
 	@Override
-	public void handleClientSide(EntityPlayer clientPlayer)
+	public void handleClientSide(Player clientPlayer)
 	{
 		ClientRenderHooks.addKillMessage(headshot, killedBy, killerName, killedName);
 	}

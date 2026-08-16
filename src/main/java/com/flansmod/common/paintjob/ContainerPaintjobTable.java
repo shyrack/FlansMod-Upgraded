@@ -1,69 +1,79 @@
 package com.flansmod.common.paintjob;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.InventoryPlayer;
-import net.minecraft.init.Items;
-import net.minecraft.inventory.Container;
-import net.minecraft.inventory.Slot;
-import net.minecraft.item.ItemStack;
-import net.minecraft.world.World;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.level.Level;
 
 import com.flansmod.common.guns.Paintjob;
 
-public class ContainerPaintjobTable extends Container
+public class ContainerPaintjobTable extends AbstractContainerMenu
 {
-	public InventoryPlayer playerInv;
+	public Inventory playerInv;
 	public TileEntityPaintjobTable table;
-	public World world;
+	public Level world;
 	
-	public ContainerPaintjobTable(InventoryPlayer i, World w, TileEntityPaintjobTable te)
+	public ContainerPaintjobTable(Inventory i, Level w, TileEntityPaintjobTable te)
 	{
-		playerInv = i;
+		this(0, i, te);
 		world = w;
+	}
+	
+	public ContainerPaintjobTable(int id, Inventory i, TileEntityPaintjobTable te)
+	{
+		super(null, id);
+		playerInv = i;
 		table = te;
+		world = te.getLevel();
 		
 		// Gun slot
-		addSlotToContainer(new Slot(table, 0, 187, 139));
+		addSlot(new Slot(table, 0, 187, 139));
 		// Paint cans slot
-		addSlotToContainer(new Slot(table, 1, 187, 193));
+		addSlot(new Slot(table, 1, 187, 193));
 		
 		// Main inventory slots
 		for(int row = 0; row < 3; row++)
 		{
 			for(int col = 0; col < 9; col++)
 			{
-				addSlotToContainer(new Slot(playerInv, col + row * 9 + 9, 8 + col * 18, 184 + row * 18));
+				addSlot(new Slot(playerInv, col + row * 9 + 9, 8 + col * 18, 184 + row * 18));
 			}
 			
 		}
 		// Quickbar slots
 		for(int col = 0; col < 9; col++)
 		{
-			addSlotToContainer(new Slot(playerInv, col, 8 + col * 18, 242));
+			addSlot(new Slot(playerInv, col, 8 + col * 18, 242));
 		}
 	}
 	
 	@Override
-	public void onContainerClosed(EntityPlayer player)
+	public void removed(Player player)
 	{
 		// Save out paintjob?
 	}
 	
 	@Override
-	public boolean canInteractWith(EntityPlayer entityplayer)
+	public boolean stillValid(Player entityplayer)
 	{
 		return true;
 	}
 	
 	@Override
-	public ItemStack transferStackInSlot(EntityPlayer player, int slotID)
+	public ItemStack quickMoveStack(Player player, int slotID)
 	{
 		ItemStack stack = ItemStack.EMPTY.copy();
-		Slot currentSlot = inventorySlots.get(slotID);
+		Slot currentSlot = slots.get(slotID);
 		
-		if(currentSlot != null && currentSlot.getHasStack())
+		if(currentSlot != null && currentSlot.hasItem())
 		{
-			ItemStack slotStack = currentSlot.getStack();
+			ItemStack slotStack = currentSlot.getItem();
 			stack = slotStack.copy();
 			
 			if(slotID >= 1)
@@ -72,7 +82,7 @@ public class ContainerPaintjobTable extends Container
 			}
 			else
 			{
-				if(!mergeItemStack(slotStack, 1, inventorySlots.size(), true))
+				if(!moveItemStackTo(slotStack, 1, slots.size(), true))
 				{
 					return ItemStack.EMPTY.copy();
 				}
@@ -80,11 +90,11 @@ public class ContainerPaintjobTable extends Container
 			
 			if(slotStack.getCount() == 0)
 			{
-				currentSlot.putStack(ItemStack.EMPTY.copy());
+				currentSlot.set(ItemStack.EMPTY.copy());
 			}
 			else
 			{
-				currentSlot.onSlotChanged();
+				currentSlot.setChanged();
 			}
 			
 			if(slotStack.getCount() == stack.getCount())
@@ -122,16 +132,16 @@ public class ContainerPaintjobTable extends Container
 			
 			int numDyes = paintjob.dyesNeeded.length;
 			
-			if(!playerInv.player.capabilities.isCreativeMode)
+			if(!playerInv.player.getAbilities().instabuild)
 			{
 				//Calculate which dyes we have in our inventory
 				for(int n = 0; n < numDyes; n++)
 				{
 					int amountNeeded = paintjob.dyesNeeded[n].getCount();
-					for(int s = 0; s < playerInv.getSizeInventory(); s++)
+					for(int s = 0; s < playerInv.getContainerSize(); s++)
 					{
-						ItemStack stack = playerInv.getStackInSlot(s);
-						if(stack != null && stack.getItem() == Items.DYE && stack.getItemDamage() == paintjob.dyesNeeded[n].getItemDamage())
+						ItemStack stack = playerInv.getItem(s);
+						if(stack != null && stack.getItem() == paintjob.dyesNeeded[n].getItem())
 						{
 							amountNeeded -= stack.getCount();
 						}
@@ -144,14 +154,14 @@ public class ContainerPaintjobTable extends Container
 				for(int n = 0; n < numDyes; n++)
 				{
 					int amountNeeded = paintjob.dyesNeeded[n].getCount();
-					for(int s = 0; s < playerInv.getSizeInventory(); s++)
+					for(int s = 0; s < playerInv.getContainerSize(); s++)
 					{
 						if(amountNeeded <= 0)
 							continue;
-						ItemStack stack = playerInv.getStackInSlot(s);
-						if(stack != null && stack.getItem() == Items.DYE && stack.getItemDamage() == paintjob.dyesNeeded[n].getItemDamage())
+						ItemStack stack = playerInv.getItem(s);
+						if(stack != null && stack.getItem() == paintjob.dyesNeeded[n].getItem())
 						{
-							ItemStack consumed = playerInv.decrStackSize(s, amountNeeded);
+							ItemStack consumed = playerInv.removeItem(s, amountNeeded);
 							amountNeeded -= consumed.getCount();
 						}
 					}
@@ -159,8 +169,9 @@ public class ContainerPaintjobTable extends Container
 			}
 			
 			//Paint the gun. This line is only reached if the player is in creative or they have had their dyes taken already
-			//gunStack.getTagCompound().setString("Paint", paintjob.iconName);
-			paintableStack.setItemDamage(paintjob.ID);
+			CompoundTag tag = paintableStack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+			tag.putInt("Paint", paintjob.ID);
+			paintableStack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
 		}
 	}
 }

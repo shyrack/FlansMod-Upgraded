@@ -1,12 +1,11 @@
 package com.flansmod.client.gui.teams;
 
-import org.lwjgl.opengl.GL11;
-
-import net.minecraft.client.gui.GuiButton;
-import net.minecraft.client.gui.ScaledResolution;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.fml.client.FMLClientHandler;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 
 import com.flansmod.client.teams.ClientTeamsData;
 import com.flansmod.common.FlansMod;
@@ -19,7 +18,7 @@ public class GuiChooseLoadout extends GuiTeamsBase
 	/**
 	 * The background image
 	 */
-	private static final ResourceLocation texture = new ResourceLocation("flansmod", "gui/LandingPage.png");
+	private static final Identifier texture = Identifier.fromNamespaceAndPath("flansmod", "gui/landingpage.png");
 	
 	public GuiChooseLoadout()
 	{
@@ -27,15 +26,12 @@ public class GuiChooseLoadout extends GuiTeamsBase
 	}
 	
 	@Override
-	public void initGui()
+	public void init()
 	{
-		super.initGui();
+		super.init();
 		
-		ScaledResolution scaledresolution = new ScaledResolution(mc);
-		int w = scaledresolution.getScaledWidth();
-		int h = scaledresolution.getScaledHeight();
-		guiOriginX = w / 2 - 128;
-		guiOriginY = h / 2 - 99;
+		guiOriginX = width / 2 - 128;
+		guiOriginY = height / 2 - 99;
 		
 		PlayerRankData data = ClientTeamsData.theRankData;
 		LoadoutPool pool = ClientTeamsData.currentPool;
@@ -48,47 +44,28 @@ public class GuiChooseLoadout extends GuiTeamsBase
 		
 		for(int i = 0; i < 5; i++)
 		{
+			final int loadout = i;
 			if(data.currentLevel >= pool.slotUnlockLevels[i])
 			{
-				buttonList.add(
-						new GuiButton(i, width / 2 - 128 + 12 + 49 * i, height / 2 - 99 + 117, 36, 20, "Select"));
+				addRenderableWidget(
+						Button.builder(Component.literal("Select"), b ->
+						{
+							TeamsManagerRanked.ChooseLoadout(loadout);
+							Minecraft.getInstance().setScreen(null);
+						}).bounds(width / 2 - 128 + 12 + 49 * i, height / 2 - 99 + 117, 36, 20).build());
 			}
 		}
 		
-		buttonList.add(new GuiButton(5, width / 2 - 128 + 7, height / 2 - 99 + 144, 88, 20, "<< Change Team"));
+		addRenderableWidget(Button.builder(Component.literal("<< Change Team"), b -> ClientTeamsData.OpenTeamSelectPage()).bounds(width / 2 - 128 + 7, height / 2 - 99 + 144, 88, 20).build());
 	}
 	
 	@Override
-	protected void actionPerformed(GuiButton button)
+	public void extractRenderState(GuiGraphicsExtractor extractor, int mouseX, int mouseY, float partialTick)
 	{
-		if(button.id >= 0 && button.id < 5)
-		{
-			TeamsManagerRanked.ChooseLoadout(button.id);
-			FMLClientHandler.instance().getClient().displayGuiScreen(null);
-		}
+		extractMenuBackground(extractor);
 		
-		if(button.id == 5)
-		{
-			//Go back to team select
-			ClientTeamsData.OpenTeamSelectPage();
-		}
-	}
-	
-	@Override
-	public void drawScreen(int i, int j, float f)
-	{
-		ScaledResolution scaledresolution = new ScaledResolution(mc);
-		int w = scaledresolution.getScaledWidth();
-		int h = scaledresolution.getScaledHeight();
-		drawDefaultBackground();
-		GlStateManager.enableBlend();
-		
-		GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
-		guiOriginX = w / 2 - 128;
-		guiOriginY = h / 2 - 99;
-		
-		//Bind the background texture
-		mc.renderEngine.bindTexture(texture);
+		guiOriginX = width / 2 - 128;
+		guiOriginY = height / 2 - 99;
 		
 		int textureX = 512;
 		int textureY = 256;
@@ -102,23 +79,21 @@ public class GuiChooseLoadout extends GuiTeamsBase
 		}
 		
 		//Draw the background
-		drawModalRectWithCustomSizedTexture(guiOriginX, guiOriginY, 0, 0, 256, 143, textureX, textureY);
-		drawModalRectWithCustomSizedTexture(guiOriginX, guiOriginY + 143, 256, 180, 256, 76, textureX, textureY);
+		extractor.blit(RenderPipelines.GUI_TEXTURED, texture, guiOriginX, guiOriginY, 0F, 0F, 256, 143, textureX, textureY);
+		extractor.blit(RenderPipelines.GUI_TEXTURED, texture, guiOriginX, guiOriginY + 143, 256, 180, 256, 76, textureX, textureY);
 		
 		// Draw text
-		drawCenteredString(fontRenderer, "Choose a loadout", guiOriginX + 128, guiOriginY + 12, 0xffffff);
+		extractor.centeredText(font, "Choose a loadout", guiOriginX + 128, guiOriginY + 12, 0xffffff);
 		
 		// Draw loadout panels
 		for(int n = 0; n < 5; n++)
 		{
-			DrawLoadoutPanel(pool, data, guiOriginX + 7 + 49 * n, guiOriginY + 28, n);
+			DrawLoadoutPanel(extractor, pool, data, guiOriginX + 7 + 49 * n, guiOriginY + 28, n);
 		}
-		
-		super.drawScreen(i, j, f);
 	}
 	
 	@Override
-	public boolean doesGuiPauseGame()
+	public boolean isPauseScreen()
 	{
 		return false;
 	}

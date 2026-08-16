@@ -2,12 +2,8 @@ package com.flansmod.client.model;
 
 import java.util.HashMap;
 
-import net.minecraft.client.model.ModelBase;
-import net.minecraft.client.renderer.BufferBuilder;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
-import net.minecraft.util.math.AxisAlignedBB;
+import com.flansmod.client.model.ModelBase;
+import net.minecraft.world.phys.AABB;
 
 import com.flansmod.client.tmt.ModelRendererTurbo;
 import com.flansmod.common.driveables.DriveableType;
@@ -117,41 +113,32 @@ public class ModelDriveable extends ModelBase
 	
 	/**
      * Renders a box with the bounds of the AABB trasnlated by an offset.
-     * Copied from Render.class, but without the forced white colour
      */
-    public static void renderOffsetAABB(AxisAlignedBB boundingBox, double x, double y, double z)
+    public static void renderOffsetAABB(com.mojang.blaze3d.vertex.VertexConsumer consumer, com.mojang.blaze3d.vertex.PoseStack.Pose pose, AABB boundingBox, double x, double y, double z)
     {
-        GlStateManager.disableTexture2D();
-        Tessellator tessellator = Tessellator.getInstance();
-        BufferBuilder bufferbuilder = tessellator.getBuffer();
-        bufferbuilder.setTranslation(x, y, z);
-        bufferbuilder.begin(7, DefaultVertexFormats.POSITION_NORMAL);
-        bufferbuilder.pos(boundingBox.minX, boundingBox.maxY, boundingBox.minZ).normal(0.0F, 0.0F, -1.0F).endVertex();
-        bufferbuilder.pos(boundingBox.maxX, boundingBox.maxY, boundingBox.minZ).normal(0.0F, 0.0F, -1.0F).endVertex();
-        bufferbuilder.pos(boundingBox.maxX, boundingBox.minY, boundingBox.minZ).normal(0.0F, 0.0F, -1.0F).endVertex();
-        bufferbuilder.pos(boundingBox.minX, boundingBox.minY, boundingBox.minZ).normal(0.0F, 0.0F, -1.0F).endVertex();
-        bufferbuilder.pos(boundingBox.minX, boundingBox.minY, boundingBox.maxZ).normal(0.0F, 0.0F, 1.0F).endVertex();
-        bufferbuilder.pos(boundingBox.maxX, boundingBox.minY, boundingBox.maxZ).normal(0.0F, 0.0F, 1.0F).endVertex();
-        bufferbuilder.pos(boundingBox.maxX, boundingBox.maxY, boundingBox.maxZ).normal(0.0F, 0.0F, 1.0F).endVertex();
-        bufferbuilder.pos(boundingBox.minX, boundingBox.maxY, boundingBox.maxZ).normal(0.0F, 0.0F, 1.0F).endVertex();
-        bufferbuilder.pos(boundingBox.minX, boundingBox.minY, boundingBox.minZ).normal(0.0F, -1.0F, 0.0F).endVertex();
-        bufferbuilder.pos(boundingBox.maxX, boundingBox.minY, boundingBox.minZ).normal(0.0F, -1.0F, 0.0F).endVertex();
-        bufferbuilder.pos(boundingBox.maxX, boundingBox.minY, boundingBox.maxZ).normal(0.0F, -1.0F, 0.0F).endVertex();
-        bufferbuilder.pos(boundingBox.minX, boundingBox.minY, boundingBox.maxZ).normal(0.0F, -1.0F, 0.0F).endVertex();
-        bufferbuilder.pos(boundingBox.minX, boundingBox.maxY, boundingBox.maxZ).normal(0.0F, 1.0F, 0.0F).endVertex();
-        bufferbuilder.pos(boundingBox.maxX, boundingBox.maxY, boundingBox.maxZ).normal(0.0F, 1.0F, 0.0F).endVertex();
-        bufferbuilder.pos(boundingBox.maxX, boundingBox.maxY, boundingBox.minZ).normal(0.0F, 1.0F, 0.0F).endVertex();
-        bufferbuilder.pos(boundingBox.minX, boundingBox.maxY, boundingBox.minZ).normal(0.0F, 1.0F, 0.0F).endVertex();
-        bufferbuilder.pos(boundingBox.minX, boundingBox.minY, boundingBox.maxZ).normal(-1.0F, 0.0F, 0.0F).endVertex();
-        bufferbuilder.pos(boundingBox.minX, boundingBox.maxY, boundingBox.maxZ).normal(-1.0F, 0.0F, 0.0F).endVertex();
-        bufferbuilder.pos(boundingBox.minX, boundingBox.maxY, boundingBox.minZ).normal(-1.0F, 0.0F, 0.0F).endVertex();
-        bufferbuilder.pos(boundingBox.minX, boundingBox.minY, boundingBox.minZ).normal(-1.0F, 0.0F, 0.0F).endVertex();
-        bufferbuilder.pos(boundingBox.maxX, boundingBox.minY, boundingBox.minZ).normal(1.0F, 0.0F, 0.0F).endVertex();
-        bufferbuilder.pos(boundingBox.maxX, boundingBox.maxY, boundingBox.minZ).normal(1.0F, 0.0F, 0.0F).endVertex();
-        bufferbuilder.pos(boundingBox.maxX, boundingBox.maxY, boundingBox.maxZ).normal(1.0F, 0.0F, 0.0F).endVertex();
-        bufferbuilder.pos(boundingBox.maxX, boundingBox.minY, boundingBox.maxZ).normal(1.0F, 0.0F, 0.0F).endVertex();
-        tessellator.draw();
-        bufferbuilder.setTranslation(0.0D, 0.0D, 0.0D);
-        GlStateManager.enableTexture2D();
+        float minX = (float)(boundingBox.minX + x);
+        float minY = (float)(boundingBox.minY + y);
+        float minZ = (float)(boundingBox.minZ + z);
+        float maxX = (float)(boundingBox.maxX + x);
+        float maxY = (float)(boundingBox.maxY + y);
+        float maxZ = (float)(boundingBox.maxZ + z);
+        line(consumer, pose, minX, minY, minZ, maxX, minY, minZ);
+        line(consumer, pose, maxX, minY, minZ, maxX, minY, maxZ);
+        line(consumer, pose, maxX, minY, maxZ, minX, minY, maxZ);
+        line(consumer, pose, minX, minY, maxZ, minX, minY, minZ);
+        line(consumer, pose, minX, maxY, minZ, maxX, maxY, minZ);
+        line(consumer, pose, maxX, maxY, minZ, maxX, maxY, maxZ);
+        line(consumer, pose, maxX, maxY, maxZ, minX, maxY, maxZ);
+        line(consumer, pose, minX, maxY, maxZ, minX, maxY, minZ);
+        line(consumer, pose, minX, minY, minZ, minX, maxY, minZ);
+        line(consumer, pose, maxX, minY, minZ, maxX, maxY, minZ);
+        line(consumer, pose, maxX, minY, maxZ, maxX, maxY, maxZ);
+        line(consumer, pose, minX, minY, maxZ, minX, maxY, maxZ);
+    }
+
+    private static void line(com.mojang.blaze3d.vertex.VertexConsumer consumer, com.mojang.blaze3d.vertex.PoseStack.Pose pose, float x0, float y0, float z0, float x1, float y1, float z1)
+    {
+        consumer.addVertex(pose, x0, y0, z0).setColor(1F, 1F, 1F, 1F);
+        consumer.addVertex(pose, x1, y1, z1).setColor(1F, 1F, 1F, 1F);
     }
 }

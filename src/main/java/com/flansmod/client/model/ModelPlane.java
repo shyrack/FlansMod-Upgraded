@@ -306,7 +306,7 @@ public class ModelPlane extends ModelDriveable
 				aTopWingModel.render(f5);
 			}
 		}
-		//Render guns
+		//EntityRenderer guns
 		for(EntitySeat seat : plane.getSeats())
 		{
 			//If the seat has a gun model attached

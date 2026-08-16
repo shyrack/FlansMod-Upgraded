@@ -1,11 +1,14 @@
 package com.flansmod.client.debug;
 
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.network.datasync.DataParameter;
-import net.minecraft.network.datasync.DataSerializers;
-import net.minecraft.network.datasync.EntityDataManager;
-import net.minecraft.world.World;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 
+import com.flansmod.common.ModEntities;
 import com.flansmod.common.vector.Vector3f;
 
 /**
@@ -15,25 +18,31 @@ import com.flansmod.common.vector.Vector3f;
 public class EntityDebugVector extends EntityDebugColor
 {
 	
-	private static final DataParameter<Float> POINTING_X = EntityDataManager.createKey(EntityDebugVector.class, DataSerializers.FLOAT);
-	private static final DataParameter<Float> POINTING_Y = EntityDataManager.createKey(EntityDebugVector.class, DataSerializers.FLOAT);
-	private static final DataParameter<Float> POINTING_Z = EntityDataManager.createKey(EntityDebugVector.class, DataSerializers.FLOAT);
+	private static final EntityDataAccessor<Float> POINTING_X = SynchedEntityData.defineId(EntityDebugVector.class, EntityDataSerializers.FLOAT);
+	private static final EntityDataAccessor<Float> POINTING_Y = SynchedEntityData.defineId(EntityDebugVector.class, EntityDataSerializers.FLOAT);
+	private static final EntityDataAccessor<Float> POINTING_Z = SynchedEntityData.defineId(EntityDebugVector.class, EntityDataSerializers.FLOAT);
 	
 	public int life = 1000;
 	
 	/**
-	 * @param w World for Entity Constructor
+	 * @param w Level for Entity Constructor
 	 */
-	public EntityDebugVector(World w)
+		public EntityDebugVector(EntityType<?> type, Level world)
 	{
-		super(w);
-		setSize(0.25F, 0.25F);
+		super(type, world);
+		this.world = level();
+	}
+
+public EntityDebugVector(Level w)
+	{
+		this(ModEntities.DEBUG_VECTOR, w);
+
 	}
 	
 	/**
 	 * Spawns an EntityDebug Vector
 	 *
-	 * @param w World for Entity Constructor
+	 * @param w Level for Entity Constructor
 	 * @param u Position where the Vector starts
 	 * @param v Position where the Vector ends
 	 * @param i Lifetime given in ticks
@@ -41,60 +50,61 @@ public class EntityDebugVector extends EntityDebugColor
 	 * @param g Green Color Value
 	 * @param b Blue Color Value
 	 */
-	public EntityDebugVector(World w, Vector3f u, Vector3f v, int i, float r, float g, float b)
+	public EntityDebugVector(Level w, Vector3f u, Vector3f v, int i, float r, float g, float b)
 	{
 		this(w);
-		setPosition(u.x, u.y, u.z);
+		setPos(u.x, u.y, u.z);
 		setPointing(v.x, v.y, v.z);
 		setColor(r, g, b);
 		life = i;
 	}
 	
 	/**
-	 * @param w World for Entity Constructor
+	 * @param w Level for Entity Constructor
 	 * @param u Position where the Vector starts
 	 * @param v Position where the Vector ends
 	 * @param i Lifetime given in ticks
 	 */
-	public EntityDebugVector(World w, Vector3f u, Vector3f v, int i)
+	public EntityDebugVector(Level w, Vector3f u, Vector3f v, int i)
 	{
 		this(w, u, v, i, 1F, 1F, 1F);
 	}
 	
 	@Override
-	public void onUpdate()
+	public void tick()
 	{
+		super.tick();
 		life--;
 		if(life <= 0)
-			setDead();
+			discard();
 	}
 	
 	
 	@Override
-	protected void entityInit()
+	protected void defineSynchedData(SynchedEntityData.Builder builder)
 	{
-		super.entityInit();
-		this.dataManager.register(POINTING_X, 1F);
-		this.dataManager.register(POINTING_Y, 1F);
-		this.dataManager.register(POINTING_Z, 1F);
+		super.defineSynchedData(builder);
+		builder.define(POINTING_X, 1F);
+		builder.define(POINTING_Y, 1F);
+		builder.define(POINTING_Z, 1F);
 	}
 	
 	@Override
-	protected void readEntityFromNBT(NBTTagCompound nbttagcompound)
+	protected void readAdditionalSaveData(ValueInput nbttagcompound)
 	{
-		super.readEntityFromNBT(nbttagcompound);
-		this.dataManager.set(POINTING_X, nbttagcompound.getFloat("pointing_x"));
-		this.dataManager.set(POINTING_Y, nbttagcompound.getFloat("pointing_y"));
-		this.dataManager.set(POINTING_Z, nbttagcompound.getFloat("pointing_z"));
+		super.readAdditionalSaveData(nbttagcompound);
+		this.entityData.set(POINTING_X, nbttagcompound.getFloatOr("pointing_x", 0F));
+		this.entityData.set(POINTING_Y, nbttagcompound.getFloatOr("pointing_y", 0F));
+		this.entityData.set(POINTING_Z, nbttagcompound.getFloatOr("pointing_z", 0F));
 	}
 	
 	@Override
-	protected void writeEntityToNBT(NBTTagCompound nbttagcompound)
+	protected void addAdditionalSaveData(ValueOutput nbttagcompound)
 	{
-		super.writeEntityToNBT(nbttagcompound);
-		nbttagcompound.setFloat("pointing_x", getPointingX());
-		nbttagcompound.setFloat("pointing_y", getPointingY());
-		nbttagcompound.setFloat("pointing_z", getPointingZ());
+		super.addAdditionalSaveData(nbttagcompound);
+		nbttagcompound.putFloat("pointing_x", getPointingX());
+		nbttagcompound.putFloat("pointing_y", getPointingY());
+		nbttagcompound.putFloat("pointing_z", getPointingZ());
 	}
 	
 	/**
@@ -102,7 +112,7 @@ public class EntityDebugVector extends EntityDebugColor
 	 */
 	public void setPointingX(Float x)
 	{
-		dataManager.set(POINTING_X, x);
+		this.entityData.set(POINTING_X, x);
 	}
 	
 	/**
@@ -110,7 +120,7 @@ public class EntityDebugVector extends EntityDebugColor
 	 */
 	public Float getPointingX()
 	{
-		return dataManager.get(POINTING_X);
+		return this.entityData.get(POINTING_X);
 	}
 	
 	/**
@@ -118,7 +128,7 @@ public class EntityDebugVector extends EntityDebugColor
 	 */
 	public void setPointingY(Float y)
 	{
-		dataManager.set(POINTING_Y, y);
+		this.entityData.set(POINTING_Y, y);
 	}
 	
 	/**
@@ -126,7 +136,7 @@ public class EntityDebugVector extends EntityDebugColor
 	 */
 	public Float getPointingY()
 	{
-		return dataManager.get(POINTING_Y);
+		return this.entityData.get(POINTING_Y);
 	}
 	
 	/**
@@ -134,7 +144,7 @@ public class EntityDebugVector extends EntityDebugColor
 	 */
 	public void setPointingZ(Float z)
 	{
-		dataManager.set(POINTING_Z, z);
+		this.entityData.set(POINTING_Z, z);
 	}
 	
 	/**
@@ -142,7 +152,7 @@ public class EntityDebugVector extends EntityDebugColor
 	 */
 	public Float getPointingZ()
 	{
-		return dataManager.get(POINTING_Z);
+		return this.entityData.get(POINTING_Z);
 	}
 	
 	/**

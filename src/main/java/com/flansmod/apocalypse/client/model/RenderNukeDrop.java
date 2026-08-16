@@ -1,154 +1,86 @@
 package com.flansmod.apocalypse.client.model;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.OpenGlHelper;
-import net.minecraft.client.renderer.RenderHelper;
-import net.minecraft.client.renderer.entity.Render;
-import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.entity.Entity;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.world.World;
-import net.minecraftforge.client.event.RenderWorldLastEvent;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.fml.client.registry.IRenderFactory;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-
 import com.flansmod.apocalypse.common.entity.EntityNukeDrop;
-import com.flansmod.apocalypse.common.entity.EntityTeleporter;
 
-public class RenderNukeDrop extends Render<EntityNukeDrop>
+import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.entity.EntityRenderer;
+import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.resources.Identifier;
+
+import com.flansmod.client.model.ModelRenderer;
+
+public class RenderNukeDrop extends EntityRenderer<EntityNukeDrop, RenderNukeDrop.State>
 {
-	private static final ResourceLocation texture = new ResourceLocation("flansmodapocalypse", "textures/entity/NukeDrop.png");
-	private ModelNukeDrop model;
-	
-	public RenderNukeDrop(RenderManager rm)
+	public static class State extends EntityRenderState
 	{
-		super(rm);
-		model = new ModelNukeDrop();
-		MinecraftForge.EVENT_BUS.register(this);
+		public boolean onGround;
+		public int timeSinceExplosion;
+		public float partialTick;
 	}
 	
-	public void render(EntityNukeDrop entity, double x, double y, double z, float p_76986_8_, float partialTicks)
+	private final ModelNukeDrop model = new ModelNukeDrop();
+	private final PoseStack poseStack = new PoseStack();
+	private static final Identifier texture = Identifier.fromNamespaceAndPath("flansmodapocalypse", "textures/entity/nukedrop.png");
+	
+	public RenderNukeDrop(EntityRendererProvider.Context context)
 	{
-		bindEntityTexture(entity);
-		
-		EntityNukeDrop nuke = entity;
-		
-		GlStateManager.pushMatrix();
-		GlStateManager.translate(x, y, z);
-		
-		if(entity.onGround)
+		super(context);
+	}
+	
+	@Override
+	public State createRenderState()
+	{
+		return new State();
+	}
+	
+	@Override
+	public void extractRenderState(EntityNukeDrop entity, State state, float partialTick)
+	{
+		super.extractRenderState(entity, state, partialTick);
+		state.onGround = entity.onGround();
+		state.timeSinceExplosion = entity.timeSinceExplosion;
+		state.partialTick = partialTick;
+	}
+	
+	@Override
+	public void submit(State state, PoseStack pose, SubmitNodeCollector collector, CameraRenderState camera)
+	{
+		// TODO APOCALYPSE: 1.12.2 rendered the explosion ball with alpha blending; alpha is not supported here
+		pose.pushPose();
+		if(state.onGround)
 		{
 			//Exploded
-			float alpha = ((float)nuke.timeSinceExplosion / (float)EntityNukeDrop.explosionLength);
-			alpha = 1F - alpha * alpha;
-			alpha *= 0.5F;
-			
-			GlStateManager.enableAlpha();
-			
-			RenderHelper.disableStandardItemLighting();
-			GlStateManager.shadeModel(7425);
-			GlStateManager.enableBlend();
-			GlStateManager.blendFunc(770, 1);
-			GlStateManager.disableCull();
-			
-			GlStateManager.pushMatrix();
-			float scale = 1F - 1F / ((float)nuke.timeSinceExplosion / 5F + 1);
+			float scale = 1F - 1F / ((float)state.timeSinceExplosion / 5F + 1);
 			scale *= 100F * scale;
-			GlStateManager.scale(-scale, scale, scale);
-			
-			GlStateManager.color(1F, 1F, 1F, alpha);
-			
-			model.renderBall(0.0625F);
-			GlStateManager.popMatrix();
-			
-			
-			GlStateManager.enableCull();
-			GlStateManager.disableBlend();
-			GlStateManager.shadeModel(7424);
-			RenderHelper.enableStandardItemLighting();
+			pose.scale(-scale, scale, scale);
+			collector.submitCustomGeometry(pose, RenderTypes.entityCutout(texture), (p, consumer) ->
+			{
+				poseStack.pushPose();
+				poseStack.last().set(p);
+				ModelRenderer.beginRender(poseStack, consumer, state.lightCoords, OverlayTexture.NO_OVERLAY);
+				model.renderBall(0.0625F);
+				ModelRenderer.endRender();
+				poseStack.popPose();
+			});
 		}
 		else
 		{
 			//Falling
-			model.renderNuke(0.0625F);
-		}
-		
-		GlStateManager.popMatrix();
-	}
-	
-	@Override
-	protected ResourceLocation getEntityTexture(EntityNukeDrop entity)
-	{
-		return texture;
-	}
-	
-	@SubscribeEvent
-	public void renderWorld(RenderWorldLastEvent event)
-	{
-		//Get the world
-		World world = Minecraft.getMinecraft().world;
-		if(world == null)
-			return;
-		
-		//Get the camera frustrum for clipping
-		Entity camera = Minecraft.getMinecraft().getRenderViewEntity();
-		double x = camera.lastTickPosX + (camera.posX - camera.lastTickPosX) * event.getPartialTicks();
-		double y = camera.lastTickPosY + (camera.posY - camera.lastTickPosY) * event.getPartialTicks();
-		double z = camera.lastTickPosZ + (camera.posZ - camera.lastTickPosZ) * event.getPartialTicks();
-		
-		//Frustum frustrum = new Frustum();
-		//frustrum.setPosition(x, y, z);
-		
-		//Push
-		GlStateManager.pushMatrix();
-		//Setup lighting
-		Minecraft.getMinecraft().entityRenderer.enableLightmap();
-		GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
-		GlStateManager.enableLighting();
-		GlStateManager.disableBlend();
-		
-		RenderHelper.enableStandardItemLighting();
-		
-		GlStateManager.translate(-(float)x, -(float)y, -(float)z);
-		for(Object entity : world.loadedEntityList)
-		{
-			if(entity instanceof EntityNukeDrop)
+			collector.submitCustomGeometry(pose, RenderTypes.entityCutout(texture), (p, consumer) ->
 			{
-				EntityNukeDrop nuke = (EntityNukeDrop)entity;
-				int i = nuke.getBrightnessForRender();
-				
-				if(nuke.isBurning())
-				{
-					i = 15728880;
-				}
-				
-				int j = i % 65536;
-				int k = i / 65536;
-				OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, (float)j / 1.0F, (float)k / 1.0F);
-				GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
-				render(nuke,
-						nuke.prevPosX + (nuke.posX - nuke.prevPosX) * event.getPartialTicks(),
-						nuke.prevPosY + (nuke.posY - nuke.prevPosY) * event.getPartialTicks(),
-						nuke.prevPosZ + (nuke.posZ - nuke.prevPosZ) * event.getPartialTicks(), 0F, event.getPartialTicks());
-			}
+				poseStack.pushPose();
+				poseStack.last().set(p);
+				ModelRenderer.beginRender(poseStack, consumer, state.lightCoords, OverlayTexture.NO_OVERLAY);
+				model.renderNuke(0.0625F);
+				ModelRenderer.endRender();
+				poseStack.popPose();
+			});
 		}
-		
-		//Reset Lighting
-		Minecraft.getMinecraft().entityRenderer.disableLightmap();
-		GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
-		GlStateManager.disableLighting();
-		//Pop
-		GlStateManager.popMatrix();
-	}
-	
-	public static class Factory implements IRenderFactory<EntityNukeDrop>
-	{
-		@Override
-		public Render<EntityNukeDrop> createRenderFor(RenderManager manager)
-		{
-			return new RenderNukeDrop(manager);
-		}
+		pose.popPose();
 	}
 }

@@ -1,12 +1,14 @@
 package com.flansmod.common.driveables.mechas;
 
+import com.flansmod.common.ModItems;
 import java.util.Collections;
 import java.util.List;
 
-import net.minecraft.client.util.ITooltipFlag;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.world.World;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
 
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.types.IFlanItem;
@@ -16,21 +18,27 @@ public class ItemMechaAddon extends Item implements IFlanItem
 {
 	public MechaItemType type;
 	
+	public ItemMechaAddon(Item.Properties properties)
+	{
+		super(properties.stacksTo(1));
+	}
+	
 	public ItemMechaAddon(MechaItemType type1)
 	{
+		this(new Item.Properties().stacksTo(1).setId(ModItems.itemKey(type1)));
 		type = type1;
-		setMaxStackSize(1);
 		type.item = this;
-		setRegistryName(type.shortName);
-		setCreativeTab(FlansMod.tabFlanMechas);
 	}
 	
 	@Override
-	public void addInformation(ItemStack stack, World world, List<String> lines, ITooltipFlag b)
+	public void appendHoverText(ItemStack stack, TooltipContext context, TooltipDisplay display, java.util.function.Consumer<Component> tooltip, TooltipFlag flag)
 	{
-		if(type.description != null)
+		if(type != null && type.description != null)
 		{
-			Collections.addAll(lines, type.description.split("_"));
+			for(String line : type.description.split("_"))
+			{
+				tooltip.accept(Component.literal(line));
+			}
 		}
 	}
 	
@@ -38,5 +46,10 @@ public class ItemMechaAddon extends Item implements IFlanItem
 	public InfoType getInfoType()
 	{
 		return type;
+	}
+	
+	public Item setTranslationKey(String key)
+	{
+		return this;
 	}
 }

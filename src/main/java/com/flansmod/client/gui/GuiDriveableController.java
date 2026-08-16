@@ -1,216 +1,176 @@
 package com.flansmod.client.gui;
 
-import java.io.IOException;
-
-import org.lwjgl.input.Keyboard;
-import org.lwjgl.input.Mouse;
-
-import net.minecraft.client.gui.GuiScreen;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.fml.common.gameevent.InputEvent;
+import net.minecraft.client.CameraType;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.player.Player;
+import org.lwjgl.glfw.GLFW;
 
 import com.flansmod.api.IControllable;
 import com.flansmod.client.FlansModClient;
 import com.flansmod.client.handlers.KeyInputHandler;
 import com.flansmod.common.FlansMod;
 
-public class GuiDriveableController extends GuiScreen
+public class GuiDriveableController extends Screen
 {
 	private IControllable plane;
 	private boolean leftMouseHeld;
 	private boolean rightMouseHeld;
+	private double lastMouseX, lastMouseY;
 	
 	public GuiDriveableController(IControllable thePlane)
 	{
-		super();
+		super(Component.literal(""));
 		plane = thePlane;
 	}
 	
 	@Override
-	public void initGui()
+	public void init()
 	{
-		if(mc.gameSettings.thirdPersonView == 1)
-			mc.setRenderViewEntity((plane.getCamera() == null ? mc.player : plane.getCamera()));
+		if(Minecraft.getInstance().options.getCameraType() == CameraType.THIRD_PERSON_BACK)
+			Minecraft.getInstance().setCameraEntity((plane.getCamera() == null ? Minecraft.getInstance().player : plane.getCamera()));
 	}
 	
 	@Override
-	public void onGuiClosed()
+	public void onClose()
 	{
-		mc.mouseHelper.ungrabMouseCursor();
-		mc.setRenderViewEntity(mc.player);
+		Minecraft.getInstance().mouseHandler.releaseMouse();
+		Minecraft.getInstance().setCameraEntity(Minecraft.getInstance().player);
 	}
 	
 	@Override
-	public void handleMouseInput()
+	public boolean keyPressed(KeyEvent event)
 	{
-		EntityPlayer player = (EntityPlayer)plane.getControllingEntity();
+		int i = event.key();
+		
+		if(i == GLFW.GLFW_KEY_F2)
+		{
+			Minecraft mc = Minecraft.getInstance();
+			mc.options.setCameraType(mc.options.getCameraType().cycle());
+			if(mc.options.getCameraType() == CameraType.THIRD_PERSON_BACK)
+				mc.setCameraEntity((plane.getCamera() == null ? mc.player : plane.getCamera()));
+			else mc.setCameraEntity(mc.player);
+		}
+		if(KeyInputHandler.debugKey.matches(event))
+		{
+			FlansMod.DEBUG = !FlansMod.DEBUG;
+		}
+		if(KeyInputHandler.reloadModelsKey.matches(event))
+		{
+			FlansModClient.reloadModels(false);
+		}
+		return true;
+	}
+	
+	@Override
+	public void tick()
+	{
+		Minecraft mc = Minecraft.getInstance();
+		if(mc.options.getCameraType() == CameraType.THIRD_PERSON_BACK)
+			mc.setCameraEntity((plane.getCamera() == null ? mc.player : plane.getCamera()));
+		else mc.setCameraEntity(mc.player);
+		
+		Player player = (Player)plane.getControllingEntity();
 		if(player != mc.player)
 		{
-			mc.displayGuiScreen(null);
+			mc.setScreen(null);
 			return;
 		}
-		
-		int dWheel = Mouse.getDWheel();
-		if(dWheel != 0)
+		if(!mc.mouseHandler.isMouseGrabbed())
 		{
-			player.inventory.changeCurrentItem(dWheel);
+			mc.mouseHandler.grabMouse();
 		}
 		
 		//Right mouse. Fires shells, drops bombs. Is not a holding thing
-		if(Mouse.isButtonDown(1))
+		if(mc.mouseHandler.isRightPressed())
 			plane.pressKey(8, player, true);
 		
-		if(!leftMouseHeld && Mouse.isButtonDown(0)) //Left mouse, for MGs. Is a holding thing
+		if(!leftMouseHeld && mc.mouseHandler.isLeftPressed()) //Left mouse, for MGs. Is a holding thing
 		{
 			leftMouseHeld = true;
 			plane.updateKeyHeldState(9, true);
 		}
-		if(leftMouseHeld && !Mouse.isButtonDown(0))
+		if(leftMouseHeld && !mc.mouseHandler.isLeftPressed())
 		{
 			leftMouseHeld = false;
 			plane.updateKeyHeldState(9, false);
 		}
-		if(!rightMouseHeld && Mouse.isButtonDown(1)) //Right mouse
+		if(!rightMouseHeld && mc.mouseHandler.isRightPressed()) //Right mouse
 		{
 			rightMouseHeld = true;
 			plane.updateKeyHeldState(8, true);
 		}
-		if(rightMouseHeld && !Mouse.isButtonDown(1))
+		if(rightMouseHeld && !mc.mouseHandler.isRightPressed())
 		{
 			rightMouseHeld = false;
 			plane.updateKeyHeldState(8, false);
 		}
 		
-		MinecraftForge.EVENT_BUS.post(new InputEvent.MouseInputEvent());
-	}
-	
-	@Override
-	protected void keyTyped(char c, int i)
-	{
-
-		
-		if(i == 63)
+		if(plane != null && !plane.isDead() && plane.getControllingEntity() != null && plane.getControllingEntity() instanceof Player)
 		{
-			mc.gameSettings.thirdPersonView = (mc.gameSettings.thirdPersonView + 1) % 3;
-			if(mc.gameSettings.thirdPersonView == 1)
-				mc.setRenderViewEntity((plane.getCamera() == null ? mc.player : plane.getCamera()));
-			else mc.setRenderViewEntity(mc.player);
-		}
-		if(i == KeyInputHandler.debugKey.getKeyCode())
-		{
-			FlansMod.DEBUG = !FlansMod.DEBUG;
-		}
-		if(i == KeyInputHandler.reloadModelsKey.getKeyCode())
-		{
-			FlansModClient.reloadModels(false);
-		}
-		
-		MinecraftForge.EVENT_BUS.post(new InputEvent.KeyInputEvent());
-	}
-	
-	@Override
-	public void updateScreen()
-	{
-		if(mc.gameSettings.thirdPersonView == 1)
-			mc.setRenderViewEntity((plane.getCamera() == null ? mc.player : plane.getCamera()));
-		else mc.setRenderViewEntity(mc.player);
-	}
-	
-	@Override
-	public void handleInput()
-	{
-		EntityPlayer player = (EntityPlayer)plane.getControllingEntity();
-		if(player != mc.player)
-		{
-			mc.displayGuiScreen(null);
-			return;
-		}
-		if(!Mouse.isGrabbed())
-		{
-			mc.mouseHelper.grabMouseCursor();
-		}
-		handleMouseInput();
-		
-		for(; Keyboard.next(); )
-		{
-			try
-			{
-				handleKeyboardInput();
-			}
-			catch(IOException e)
-			{
-			}
-		}
-		
-		int l = Mouse.getDX();
-		int m = Mouse.getDY();
-		
-		plane.onMouseMoved(l, m);
-		
-		if(plane != null && !plane.isDead() && plane.getControllingEntity() != null && plane.getControllingEntity() instanceof EntityPlayer)
-		{
-			if(FlansMod.proxy.keyDown(mc.gameSettings.keyBindForward.getKeyCode()))//KeyInputHandler.accelerateKey.getKeyCode()))
+			if(mc.options.keyUp.isDown())
 			{
 				plane.pressKey(0, player, true);
 			}
-			if(FlansMod.proxy.keyDown(mc.gameSettings.keyBindBack.getKeyCode()))//KeyInputHandler.decelerateKey.getKeyCode()))
+			if(mc.options.keyDown.isDown())
 			{
 				plane.pressKey(1, player, true);
 			}
-			if(FlansMod.proxy.keyDown(mc.gameSettings.keyBindLeft.getKeyCode()))//KeyInputHandler.leftKey.getKeyCode()))
+			if(mc.options.keyLeft.isDown())
 			{
 				plane.pressKey(2, player, true);
 			}
-			if(FlansMod.proxy.keyDown(mc.gameSettings.keyBindRight.getKeyCode()))//KeyInputHandler.rightKey.getKeyCode()))
+			if(mc.options.keyRight.isDown())
 			{
 				plane.pressKey(3, player, true);
 			}
-			if(FlansMod.proxy.keyDown(mc.gameSettings.keyBindJump.getKeyCode()))//KeyInputHandler.upKey.getKeyCode()))
+			if(mc.options.keyJump.isDown())
 			{
 				plane.pressKey(4, player, true);
 			}
-			if(FlansMod.proxy.keyDown(KeyInputHandler.downKey.getKeyCode()))
+			if(KeyInputHandler.downKey.isDown())
 			{
 				plane.pressKey(5, player, true);
 			}
-			if(FlansMod.proxy.keyDown(mc.gameSettings.keyBindSneak.getKeyCode()))//KeyInputHandler.exitKey.getKeyCode()))
+			if(mc.options.keyShift.isDown())
 			{
 				plane.pressKey(6, player, true);
 			}
-			if(FlansMod.proxy.keyDown(KeyInputHandler.vehicleMenuKey.getKeyCode()))
+			if(KeyInputHandler.vehicleMenuKey.isDown())
 			{
 				plane.pressKey(7, player, true);
 			}
-			if(FlansMod.proxy.keyDown(KeyInputHandler.bombKey.getKeyCode()))
+			if(KeyInputHandler.bombKey.isDown())
 			{
 				plane.pressKey(8, player, true);
 			}
-			if(FlansMod.proxy.keyDown(KeyInputHandler.gunKey.getKeyCode()))
+			if(KeyInputHandler.gunKey.isDown())
 			{
 				plane.pressKey(9, player, true);
 			}
-			if(FlansMod.proxy.keyDown(KeyInputHandler.controlSwitchKey.getKeyCode()))
+			if(KeyInputHandler.controlSwitchKey.isDown())
 			{
 				plane.pressKey(10, player, true);
 			}
-			if(FlansMod.proxy.keyDown(KeyInputHandler.leftRollKey.getKeyCode()))
+			if(KeyInputHandler.leftRollKey.isDown())
 			{
 				plane.pressKey(11, player, true);
 			}
-			if(FlansMod.proxy.keyDown(KeyInputHandler.rightRollKey.getKeyCode()))
+			if(KeyInputHandler.rightRollKey.isDown())
 			{
 				plane.pressKey(12, player, true);
 			}
-			if(FlansMod.proxy.keyDown(KeyInputHandler.gearKey.getKeyCode()))
+			if(KeyInputHandler.gearKey.isDown())
 			{
 				plane.pressKey(13, player, true);
 			}
-			if(FlansMod.proxy.keyDown(KeyInputHandler.doorKey.getKeyCode()))
+			if(KeyInputHandler.doorKey.isDown())
 			{
 				plane.pressKey(14, player, true);
 			}
-			if(FlansMod.proxy.keyDown(KeyInputHandler.modeKey.getKeyCode()))
+			if(KeyInputHandler.modeKey.isDown())
 			{
 				plane.pressKey(15, player, true);
 			}
@@ -218,12 +178,28 @@ public class GuiDriveableController extends GuiScreen
 		}
 		else
 		{
-			mc.displayGuiScreen(null);
+			mc.setScreen(null);
 		}
 	}
 	
 	@Override
-	public boolean doesGuiPauseGame()
+	public void mouseMoved(double mouseX, double mouseY)
+	{
+		Minecraft mc = Minecraft.getInstance();
+		float scale = mc.getWindow().getGuiScale();
+		int dx = (int)Math.round((mouseX - lastMouseX) * scale);
+		int dy = (int)Math.round((mouseY - lastMouseY) * scale);
+		lastMouseX = mouseX;
+		lastMouseY = mouseY;
+		
+		if(plane != null)
+		{
+			plane.onMouseMoved(dx, dy);
+		}
+	}
+	
+	@Override
+	public boolean isPauseScreen()
 	{
 		return false;
 	}

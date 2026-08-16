@@ -5,10 +5,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
-import net.minecraft.client.model.ModelBase;
-import net.minecraft.item.ItemStack;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import com.flansmod.client.model.ModelBase;
+import net.minecraft.world.item.ItemStack;
 
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.types.EnumType;
@@ -161,8 +159,7 @@ public class PartType extends InfoType
 		}
 		catch(Exception e)
 		{
-			FlansMod.log.error("Reading part file failed.");
-			FlansMod.log.throwing(e);
+			FlansMod.log.error("Reading part file failed.", e);
 		}
 	}
 	
@@ -214,7 +211,6 @@ public class PartType extends InfoType
 	}
 	
 	@Override
-	@SideOnly(Side.CLIENT)
 	public ModelBase GetModel()
 	{
 		return null;

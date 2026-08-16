@@ -4,16 +4,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.EntityDamageSource;
-import net.minecraft.util.EntityDamageSourceIndirect;
-import net.minecraft.util.math.Vec3d;
-import net.minecraftforge.fml.common.FMLCommonHandler;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.phys.Vec3;
 
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.PlayerData;
@@ -65,30 +62,30 @@ public abstract class Gametype
 	{
 	}
 	
-	public Team[] getTeamsCanSpawnAs(TeamsRound currentRound, EntityPlayer player)
+	public Team[] getTeamsCanSpawnAs(TeamsRound currentRound, Player player)
 	{
 		return currentRound.teams;
 	}
 	
-	public void playerJoined(EntityPlayerMP player)
+	public void playerJoined(ServerPlayer player)
 	{
 	}
 	
-	public void playerRespawned(EntityPlayerMP player)
+	public void playerRespawned(ServerPlayer player)
 	{
 	}
 	
-	public void playerQuit(EntityPlayerMP player)
+	public void playerQuit(ServerPlayer player)
 	{
 	}
 	
 	//Return true if damage should be dealt.
-	public boolean playerAttacked(EntityPlayerMP player, DamageSource source)
+	public boolean playerAttacked(ServerPlayer player, DamageSource source)
 	{
 		return true;
 	}
 	
-	public void playerKilled(EntityPlayerMP player, DamageSource source)
+	public void playerKilled(ServerPlayer player, DamageSource source)
 	{
 	}
 	
@@ -100,20 +97,20 @@ public abstract class Gametype
 	{
 	}
 	
-	public void baseClickedByPlayer(ITeamBase base, EntityPlayerMP player)
+	public void baseClickedByPlayer(ITeamBase base, ServerPlayer player)
 	{
 	}
 	
-	public void objectClickedByPlayer(ITeamObject object, EntityPlayerMP player)
+	public void objectClickedByPlayer(ITeamObject object, ServerPlayer player)
 	{
 	}
 	
-	public boolean playerCanLoot(ItemStack stack, InfoType infoType, EntityPlayer player, Team playerTeam)
+	public boolean playerCanLoot(ItemStack stack, InfoType infoType, Player player, Team playerTeam)
 	{
 		return true;
 	}
 	
-	public abstract Vec3d getSpawnPoint(EntityPlayerMP player);
+	public abstract Vec3 getSpawnPoint(ServerPlayer player);
 	
 	//Return whether or not the variable exists
 	public boolean setVariable(String variable, String value)
@@ -121,9 +118,9 @@ public abstract class Gametype
 		return false;
 	}
 	
-	public abstract void readFromNBT(NBTTagCompound tags);
+	public abstract void readFromNBT(CompoundTag tags);
 	
-	public abstract void saveToNBT(NBTTagCompound tags);
+	public abstract void saveToNBT(CompoundTag tags);
 	
 	public boolean sortScoreboardByTeam()
 	{
@@ -138,7 +135,7 @@ public abstract class Gametype
 	/**
 	 * Whether "attacker" can attack "victim"
 	 */
-	public boolean playerCanAttack(EntityPlayerMP attacker, Team attackerTeam, EntityPlayerMP victim, Team victimTeam)
+	public boolean playerCanAttack(ServerPlayer attacker, Team attackerTeam, ServerPlayer victim, Team victimTeam)
 	{
 		return true;
 	}
@@ -150,19 +147,19 @@ public abstract class Gametype
 	{
 	}
 	
-	public void playerChoseTeam(EntityPlayerMP player, Team team, Team newTeam)
+	public void playerChoseTeam(ServerPlayer player, Team team, Team newTeam)
 	{
 	}
 	
-	public void playerChoseNewClass(EntityPlayerMP player, IPlayerClass playerClass)
+	public void playerChoseNewClass(ServerPlayer player, IPlayerClass playerClass)
 	{
 	}
 	
-	public void playerDefected(EntityPlayerMP player, Team team, Team newTeam)
+	public void playerDefected(ServerPlayer player, Team team, Team newTeam)
 	{
 	}
 	
-	public void playerEnteredTheGame(EntityPlayerMP player, Team team, IPlayerClass playerClass)
+	public void playerEnteredTheGame(ServerPlayer player, Team team, IPlayerClass playerClass)
 	{
 	}
 	
@@ -170,32 +167,38 @@ public abstract class Gametype
 	// Helper methods - Do not override
 	//--------------------------------------
 	
-	public EntityPlayerMP getPlayer(String username)
+	public ServerPlayer getPlayer(String username)
 	{
-		return FMLCommonHandler.instance().getMinecraftServerInstance().getPlayerList().getPlayerByUsername(username);
+		return FlansMod.serverInstance == null ? null : FlansMod.serverInstance.getPlayerList().getPlayerByName(username);
 	}
 	
-	public static PlayerData getPlayerData(EntityPlayerMP player)
+	public static PlayerData getPlayerData(ServerPlayer player)
 	{
 		return PlayerHandler.getPlayerData(player);
 	}
 	
-	public static void sendPacketToPlayer(PacketBase packet, EntityPlayerMP player)
+	public static void sendPacketToPlayer(PacketBase packet, ServerPlayer player)
 	{
 		FlansMod.getPacketHandler().sendTo(packet, player);
 	}
 	
 	public static String[] getPlayerNames()
 	{
-		return FMLCommonHandler.instance().getMinecraftServerInstance().getOnlinePlayerNames();
+		if(FlansMod.serverInstance == null)
+			return new String[0];
+		List<ServerPlayer> players = FlansMod.serverInstance.getPlayerList().getPlayers();
+		String[] names = new String[players.size()];
+		for(int i = 0; i < players.size(); i++)
+			names[i] = players.get(i).getName().getString();
+		return names;
 	}
 	
-	public static List<EntityPlayerMP> getPlayers()
+	public static List<ServerPlayer> getPlayers()
 	{
-		return FMLCommonHandler.instance().getMinecraftServerInstance().getPlayerList().getPlayers();
+		return FlansMod.serverInstance == null ? java.util.Collections.emptyList() : FlansMod.serverInstance.getPlayerList().getPlayers();
 	}
 	
-	public static void givePoints(EntityPlayerMP player, int points)
+	public static void givePoints(ServerPlayer player, int points)
 	{
 		PlayerData data = getPlayerData(player);
 		data.score += points;
@@ -203,19 +206,11 @@ public abstract class Gametype
 			data.team.score += points;
 	}
 	
-	public static EntityPlayerMP getPlayerFromDamageSource(DamageSource source)
+	public static ServerPlayer getPlayerFromDamageSource(DamageSource source)
 	{
-		EntityPlayerMP attacker = null;
-		if(source instanceof EntityDamageSource)
-		{
-			if(source.getTrueSource() instanceof EntityPlayerMP)
-				attacker = (EntityPlayerMP)source.getTrueSource();
-		}
-		if(source instanceof EntityDamageSourceIndirect)
-		{
-			if(source.getTrueSource() instanceof EntityPlayerMP)
-				attacker = (EntityPlayerMP)source.getTrueSource();
-		}
+		ServerPlayer attacker = null;
+		if(source.getEntity() instanceof ServerPlayer)
+			attacker = (ServerPlayer)source.getEntity();
 		return attacker;
 	}
 	

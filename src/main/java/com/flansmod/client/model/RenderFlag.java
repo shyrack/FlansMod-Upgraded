@@ -1,88 +1,81 @@
 package com.flansmod.client.model;
 
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.entity.Render;
-import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.fml.client.registry.IRenderFactory;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.entity.EntityRenderer;
+import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.resources.Identifier;
 
-import com.flansmod.client.FlansModClient;
 import com.flansmod.common.teams.EntityFlag;
 import com.flansmod.common.teams.EntityFlagpole;
-import com.flansmod.common.teams.Team;
 
-public class RenderFlag extends Render<EntityFlag>
+public class RenderFlag extends EntityRenderer<EntityFlag, RenderFlag.State>
 {
-	private static final ResourceLocation texture = new ResourceLocation("flansmod", "teamsMod/Flagpole.png");
-	
+	private static final Identifier texture = Identifier.fromNamespaceAndPath("flansmod", "teamsmod/flagpole.png");
+
+	public static class State extends EntityRenderState
+	{
+		public EntityFlag flag;
+		public float yaw;
+		public boolean ridingFlagpole;
+	}
+
 	public ModelFlagpole modelFlagpole;
 	public static float angle;
-	
-	public RenderFlag(RenderManager renderManager)
+	private final PoseStack poseStack = new PoseStack();
+
+	public RenderFlag(EntityRendererProvider.Context context)
 	{
-		super(renderManager);
+		super(context);
 		modelFlagpole = new ModelFlagpole();
 	}
-	
+
 	@Override
-	public void doRender(EntityFlag flag, double d, double d1, double d2, float f, float f1)
+	public State createRenderState()
 	{
-		bindEntityTexture(flag);
-		int teamID = flag.getTeamID();
-		Team team = FlansModClient.getTeam(teamID);
-		if(team == null)
+		return new State();
+	}
+
+	@Override
+	public void extractRenderState(EntityFlag flag, State state, float partialTick)
+	{
+		super.extractRenderState(flag, state, partialTick);
+		state.flag = flag;
+		state.yaw = flag.getYRot();
+		state.ridingFlagpole = flag.getVehicle() instanceof EntityFlagpole;
+	}
+
+	@Override
+	public void submit(State state, PoseStack pose, SubmitNodeCollector collector, CameraRenderState camera)
+	{
+		pose.pushPose();
+		pose.mulPose(Axis.YP.rotationDegrees(state.yaw));
+
+		if(!state.ridingFlagpole)
 		{
-			//Give each team a default colour
-			switch(teamID)
-			{
-				case 0: GlStateManager.color(0x80 / 255F, 0x80 / 255F, 0x80 / 255F);
-					break; //No team
-				case 1: GlStateManager.color(0x40 / 255F, 0x40 / 255F, 0x40 / 255F);
-					break; //Spectators
-				case 2: GlStateManager.color(0xa1 / 255F, 0x7f / 255F, 0xff / 255F);
-					break; //Team 1
-				case 3: GlStateManager.color(0xff / 255F, 0x7f / 255F, 0xb6 / 255F);
-					break; //Team 2
-			}
+			pose.mulPose(Axis.YP.rotationDegrees(angle));
+			pose.translate(0.5F, 0F, 0F);
 		}
 		else
 		{
-			int colour = team.teamColour;
-			GlStateManager.color(((colour >> 16) & 0xff) / 255F, ((colour >> 8) & 0xff) / 255F, (colour & 0xff) / 255F);
+			pose.translate(0F, 0.5F, 0F);
 		}
-		
-		GlStateManager.pushMatrix();
-		GlStateManager.translate((float)d, (float)d1, (float)d2);
-		GlStateManager.rotate(f, 0.0F, 1.0F, 0.0F);
-		
-		if(!(flag.getRidingEntity() instanceof EntityFlagpole))
+
+		pose.scale(-1F, -1F, 1F);
+		collector.submitCustomGeometry(pose, RenderTypes.entityCutout(texture), (p, consumer) ->
 		{
-			GlStateManager.rotate(angle, 0.0F, 1.0F, 0.0F);
-			GlStateManager.translate(0.5F, 0F, 0F);
-		}
-		else
-		{
-			GlStateManager.translate(0F, 0.5F, 0F);
-		}
-		
-		GlStateManager.scale(-1F, -1F, 1F);
-		modelFlagpole.renderFlag(0.0F, 0.0F, -0.1F, 0.0F, 0.0F, 0.0625F, flag);
-		GlStateManager.popMatrix();
-		GlStateManager.color(1F, 1F, 1F);
-	}
-	
-	@Override
-	protected ResourceLocation getEntityTexture(EntityFlag entity)
-	{
-		return texture;
-	}
-	
-	public static class Factory implements IRenderFactory<EntityFlag>
-	{
-		@Override
-		public Render<EntityFlag> createRenderFor(RenderManager manager)
-		{
-			return new RenderFlag(manager);
-		}
+			poseStack.pushPose();
+			poseStack.last().set(p);
+			ModelRenderer.beginRender(poseStack, consumer, state.lightCoords, OverlayTexture.NO_OVERLAY);
+			modelFlagpole.renderFlag(0.0F, 0.0F, -0.1F, 0.0F, 0.0F, 0.0625F, state.flag);
+			ModelRenderer.endRender();
+			poseStack.popPose();
+		});
+		pose.popPose();
 	}
 }

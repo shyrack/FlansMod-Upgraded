@@ -1,85 +1,90 @@
 package com.flansmod.client;
 
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.inventory.EntityEquipmentSlot;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.EnumHandSide;
-import net.minecraft.world.World;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.HumanoidArm;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 
+import com.flansmod.common.ModEntities;
 import com.flansmod.common.driveables.EntityDriveable;
 import com.flansmod.common.vector.Vector3f;
 
-public class EntityCamera extends EntityLivingBase
+public class EntityCamera extends LivingEntity
 {
+	protected Level world;
+
 	public EntityDriveable driveable;
-	
-	public EntityCamera(World world)
+
+	public EntityCamera(EntityType<? extends LivingEntity> type, Level world)
 	{
-		super(world);
-		setSize(0F, 0F);
+		super(type, world);
+		this.world = level();
 	}
-	
-	public EntityCamera(World world, EntityDriveable d)
+
+	public EntityCamera(Level world)
+	{
+		this(ModEntities.CAMERA, world);
+	}
+
+	public EntityCamera(Level world, EntityDriveable d)
 	{
 		this(world);
 		driveable = d;
-		setPosition(d.posX, d.posY, d.posZ);
+		setPos(d.getX(), d.getY(), d.getZ());
 	}
-	
+
 	@Override
-	public void onUpdate()
+	public void tick()
 	{
-		prevPosX = posX;
-		prevPosY = posY;
-		prevPosZ = posZ;
-		
+		super.tick();
+
+		xo = getX();
+		yo = getY();
+		zo = getZ();
+
 		Vector3f cameraPosition = new Vector3f();
 		cameraPosition = driveable.axes.findLocalVectorGlobally(cameraPosition);
-		
+
 		// Lerp it
-		double dX = driveable.posX + cameraPosition.x - posX;
-		double dY = driveable.posY + cameraPosition.y - posY;
-		double dZ = driveable.posZ + cameraPosition.z - posZ;
-		
+		double dX = driveable.getX() + cameraPosition.x - getX();
+		double dY = driveable.getY() + cameraPosition.y - getY();
+		double dZ = driveable.getZ() + cameraPosition.z - getZ();
+
 		float lerpAmount = 0.1F;
-		
-		setPosition(posX + dX * lerpAmount, posY + dY * lerpAmount, posZ + dZ * lerpAmount);
-		
-		rotationYaw = driveable.axes.getYaw() - 90;
-		rotationPitch = driveable.axes.getPitch();
-		
-		while(rotationYaw - prevRotationYaw >= 180F)
+
+		setPos(getX() + dX * lerpAmount, getY() + dY * lerpAmount, getZ() + dZ * lerpAmount);
+
+		setYRot(driveable.axes.getYaw() - 90);
+		setXRot(driveable.axes.getPitch());
+
+		while(getYRot() - yRotO >= 180F)
 		{
-			rotationYaw -= 360F;
+			setYRot(getYRot() - 360F);
 		}
-		while(rotationYaw - prevRotationYaw < -180F)
+		while(getYRot() - yRotO < -180F)
 		{
-			rotationYaw += 360F;
+			setYRot(getYRot() + 360F);
 		}
 	}
-	
+
 	@Override
-	public Iterable<ItemStack> getArmorInventoryList()
-	{
-		return null;
-	}
-	
-	@Override
-	public ItemStack getItemStackFromSlot(EntityEquipmentSlot slotIn)
+	public ItemStack getItemBySlot(EquipmentSlot slotIn)
 	{
 		return ItemStack.EMPTY.copy();
 	}
-	
+
 	@Override
-	public void setItemStackToSlot(EntityEquipmentSlot slotIn, ItemStack stack)
+	public void setItemSlot(EquipmentSlot slotIn, ItemStack stack)
 	{
-	
+
 	}
-	
+
 	@Override
-	public EnumHandSide getPrimaryHand()
+	public HumanoidArm getMainArm()
 	{
-		return EnumHandSide.RIGHT;
+		return HumanoidArm.RIGHT;
 	}
-	
+
 }

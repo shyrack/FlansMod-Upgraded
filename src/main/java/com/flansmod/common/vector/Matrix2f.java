@@ -2,10 +2,8 @@ package com.flansmod.common.vector;
 
 import java.util.Set;
 
-import net.minecraftforge.fml.common.FMLCommonHandler;
-import net.minecraftforge.fml.relauncher.Side;
-
 import com.flansmod.client.FlansModClient;
+import com.flansmod.common.FlansMod;
 import com.flansmod.common.types.InfoType;
 
 public class Matrix2f
@@ -45,7 +43,7 @@ public class Matrix2f
 		
 		if(matrix.value != matrix.coords.hash)
 		{
-			if(FMLCommonHandler.instance().getEffectiveSide() == Side.CLIENT)
+			if(FlansMod.isClient())
 			{
 				FlansModClient.numVehicleExceptions++;
 			}

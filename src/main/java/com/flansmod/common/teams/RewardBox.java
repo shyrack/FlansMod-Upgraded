@@ -79,7 +79,7 @@ public class RewardBox extends InfoType
 		{
 			totalWeight += weightPerRarity[paintjob1.rarity.ordinal()];
 		}
-		float pick = FlansMod.Pick(totalWeight);
+		float pick = Gametype.rand.nextFloat() * totalWeight;
 		for(Paintjob paintjob : paintjobs)
 		{
 			pick -= weightPerRarity[paintjob.rarity.ordinal()];

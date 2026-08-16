@@ -1,119 +1,86 @@
 package com.flansmod.client.gui;
 
-import java.io.IOException;
-
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL12;
-
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.gui.GuiScreen;
-import net.minecraft.client.gui.ScaledResolution;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.OpenGlHelper;
-import net.minecraft.client.renderer.RenderHelper;
-import net.minecraft.client.renderer.RenderItem;
-import net.minecraft.entity.player.InventoryPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.fml.client.FMLClientHandler;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.ItemStack;
+import org.lwjgl.glfw.GLFW;
 
 import com.flansmod.common.teams.ArmourBoxType;
 import com.flansmod.common.teams.ArmourBoxType.ArmourBoxEntry;
 
-public class GuiArmourBox extends GuiScreen
+public class GuiArmourBox extends Screen
 {
-	private static final ResourceLocation texture = new ResourceLocation("flansmod", "gui/armourBox.png");
-	private InventoryPlayer inventory;
-	private Minecraft mc;
-	private static RenderItem itemRenderer;
+	private static final Identifier texture = Identifier.fromNamespaceAndPath("flansmod", "gui/armourbox.png");
+	private Inventory inventory;
 	private ArmourBoxType type;
 	private int page;
 	private int guiOriginX;
 	private int guiOriginY;
 	private int scroll;
 	
-	public GuiArmourBox(InventoryPlayer playerinventory, ArmourBoxType type)
+	public GuiArmourBox(Inventory playerinventory, ArmourBoxType type)
 	{
+		super(Component.literal(""));
 		inventory = playerinventory;
-		mc = FMLClientHandler.instance().getClient();
-		itemRenderer = mc.getRenderItem();
 		this.type = type;
 		page = 0;
 	}
 
 	@Override
-	public void updateScreen()
+	public void tick()
 	{
-		super.updateScreen();
+		super.tick();
 		scroll++;
 	}
 	
 	@Override
-	public void drawScreen(int i, int j, float f)
+	public void extractRenderState(GuiGraphicsExtractor extractor, int mouseX, int mouseY, float partialTick)
 	{
-		ScaledResolution scaledresolution = new ScaledResolution(mc);
-		int k = scaledresolution.getScaledWidth();
-		int l = scaledresolution.getScaledHeight();
-		FontRenderer fontrenderer = mc.fontRenderer;
-		drawDefaultBackground();
-		GlStateManager.enableBlend();
-		mc.renderEngine.bindTexture(texture);
-		GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+		extractMenuBackground(extractor);
+		int k = Minecraft.getInstance().getWindow().getGuiScaledWidth();
+		int l = Minecraft.getInstance().getWindow().getGuiScaledHeight();
+		Font fontrenderer = font;
 		int m = guiOriginX = k / 2 - 88;
 		int n = guiOriginY = l / 2 - 91;
-		drawTexturedModalRect(m, n, 0, 0, 176, 182);
-
-		//No idea why this works, but it makes the text bind its texture correctly
-		//mc.renderEngine.bindTexture("/terrain.png");
-		//TODO : Investigate
+		extractor.blit(RenderPipelines.GUI_TEXTURED, texture, m, n, 0F, 0F, 176, 182, 256, 256);
 		
-		drawCenteredString(fontRenderer, type.name, k / 2, n + 5, 0xffffff);
-		mc.renderEngine.bindTexture(texture);
+		extractor.centeredText(fontrenderer, Component.literal(type.name), k / 2, n + 5, 0xffffff);
 		
 		// Grey out buttons when they are unavaliable
 		if(page == 0)
-			drawTexturedModalRect(m + 77, n + 87, 176, 0, 10, 10);
+			extractor.blit(RenderPipelines.GUI_TEXTURED, texture, m + 77, n + 87, 176F, 0F, 10, 10, 256, 256);
 		if(page >= type.pages.size() - 1)
-			drawTexturedModalRect(m + 89, n + 87, 186, 0, 10, 10);
-
-		RenderHelper.enableGUIStandardItemLighting();
-		GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
-		GlStateManager.enableRescaleNormal();
-		OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, 240F, 240F);
+			extractor.blit(RenderPipelines.GUI_TEXTURED, texture, m + 89, n + 87, 186F, 0F, 10, 10, 256, 256);
 
 		// Fill the gun panels with guns
-		drawRecipe(fontrenderer, m, n, page);
+		drawRecipe(extractor, fontrenderer, m, n, page);
 		// Draw the inventory slots (not real slots)
 		for(int row = 0; row < 3; row++)
 		{
 			for(int col = 0; col < 9; col++)
 			{
-				drawSlotInventory(inventory.getStackInSlot(col + (row + 1) * 9), m + 8 + col * 18, n + 100 + row * 18);
+				drawSlotInventory(extractor, inventory.getItem(col + (row + 1) * 9), m + 8 + col * 18, n + 100 + row * 18);
 			}
 		}
 		for(int col = 0; col < 9; col++)
 		{
-			drawSlotInventory(inventory.getStackInSlot(col), m + 8 + col * 18, n + 158);
+			drawSlotInventory(extractor, inventory.getItem(col), m + 8 + col * 18, n + 158);
 		}
-
-		GlStateManager.disableBlend();
 	}
 	
-	/**
-	 * @param fontrenderer
-	 * @param m            : x position to render in
-	 * @param n            : y position to render in
-	 * @param q            : armour page
-	 */
-	private void drawRecipe(FontRenderer fontrenderer, int m, int n, int q)
+	private void drawRecipe(GuiGraphicsExtractor extractor, Font fontrenderer, int m, int n, int q)
 	{
 		ArmourBoxEntry page = type.pages.get(q);
 		if(page != null)
 		{
-			GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
-			//fontRenderer.drawString(type.guns[q].name, m + 9, n + 22, 0xffffffff);
-			
 			//Iterate over x
 			for(int i = 0; i < 2; i++)
 			{
@@ -122,7 +89,7 @@ public class GuiArmourBox extends GuiScreen
 				{
 					if(page.armours[i * 2 + j] != null)
 					{
-						drawSlotInventory(new ItemStack(page.armours[i * 2 + j].item), m + 9 + 83 * i, n + 44 + 22 * j);
+						drawSlotInventory(extractor, new ItemStack(page.armours[i * 2 + j].item), m + 9 + 83 * i, n + 44 + 22 * j);
 						int numParts = page.requiredStacks[i * 2 + j].size();
 						//Find which 3 parts to render
 						int startPart = 0;
@@ -133,39 +100,32 @@ public class GuiArmourBox extends GuiScreen
 						
 						for(int p = 0; p < (numParts < 3 ? numParts : 3); p++)
 						{
-							drawSlotInventory(page.requiredStacks[i * 2 + j].get(startPart + p), m + 30 + p * 19 + 83 * i, n + 44 + 22 * j);
+							drawSlotInventory(extractor, page.requiredStacks[i * 2 + j].get(startPart + p), m + 30 + p * 19 + 83 * i, n + 44 + 22 * j);
 						}
 					}
 				}
 			}
 
 			//Draw the armour name at the top
-			RenderHelper.disableStandardItemLighting();
-			drawCenteredString(fontrenderer, page.name, m + 87, n + 25, 0xffffff);
-			RenderHelper.enableGUIStandardItemLighting();
+			extractor.centeredText(fontrenderer, Component.literal(page.name), m + 87, n + 25, 0xffffff);
 		}
 	}
 	
-	private void drawSlotInventory(ItemStack itemstack, int i, int j)
+	private void drawSlotInventory(GuiGraphicsExtractor extractor, ItemStack itemstack, int i, int j)
 	{
 		if(itemstack == null || itemstack.isEmpty())
 			return;
-		RenderHelper.enableGUIStandardItemLighting();
-		itemRenderer.renderItemIntoGUI(itemstack, i, j);
-		itemRenderer.renderItemOverlayIntoGUI(fontRenderer, itemstack, i, j, null);
+		extractor.item(itemstack, i, j);
+		extractor.itemDecorations(font, itemstack, i, j);
 	}
 	
 	@Override
-	protected void mouseClicked(int i, int j, int k)
+	public boolean mouseClicked(MouseButtonEvent event, boolean bl)
 	{
-		try
-		{
-			super.mouseClicked(i, j, k);
-		}
-		catch(IOException e)
-		{
-			
-		}
+		super.mouseClicked(event, bl);
+		int i = (int)event.x();
+		int j = (int)event.y();
+		int k = event.button();
 		int m = i - guiOriginX;
 		int n = j - guiOriginY;
 		if(k == 0 || k == 1)
@@ -198,19 +158,21 @@ public class GuiArmourBox extends GuiScreen
 				}
 			}
 		}
+		return true;
 	}
 	
 	@Override
-	protected void keyTyped(char c, int i)
+	public boolean keyPressed(KeyEvent event)
 	{
-		if(i == 1 || i == mc.gameSettings.keyBindInventory.getKeyCode())
+		if(event.key() == GLFW.GLFW_KEY_ESCAPE || Minecraft.getInstance().options.keyInventory.matches(event))
 		{
-			mc.player.closeScreen();
+			Minecraft.getInstance().setScreen(null);
 		}
+		return true;
 	}
 
 	@Override
-	public boolean doesGuiPauseGame()
+	public boolean isPauseScreen()
 	{
 		return false;
 	}

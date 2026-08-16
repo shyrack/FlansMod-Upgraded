@@ -1,10 +1,8 @@
 package com.flansmod.common.network;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraftforge.fml.relauncher.Side;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
 
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.PlayerData;
@@ -25,31 +23,31 @@ public class PacketVoteCast extends PacketBase
 	}
 	
 	@Override
-	public void encodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void encodeInto(ByteBuf data)
 	{
 		data.writeByte(vote);
 	}
 	
 	@Override
-	public void decodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void decodeInto(ByteBuf data)
 	{
 		vote = data.readByte();
 	}
 	
 	@Override
-	public void handleServerSide(EntityPlayerMP playerEntity)
+	public void handleServerSide(ServerPlayer playerEntity)
 	{
 		if(vote < 0 || vote > TeamsManager.getInstance().voteOptions.length)
 		{
 			FlansMod.log.warn("Invalid vote " + vote + " from " + playerEntity.getName());
 			return;
 		}
-		PlayerData data = PlayerHandler.getPlayerData(playerEntity, Side.SERVER);
+		PlayerData data = PlayerHandler.getPlayerData(playerEntity);
 		data.vote = vote;
 	}
 	
 	@Override
-	public void handleClientSide(EntityPlayer clientPlayer)
+	public void handleClientSide(Player clientPlayer)
 	{
 		FlansMod.log.warn("Received vote cast packet on client. Skipping.");
 	}

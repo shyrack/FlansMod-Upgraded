@@ -3,11 +3,11 @@ package com.flansmod.common.teams;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.phys.Vec3;
 
 import com.flansmod.common.PlayerData;
 
@@ -46,16 +46,16 @@ public class GametypeDM extends Gametype
 	}
 	
 	@Override
-	public void playerQuit(EntityPlayerMP player)
+	public void playerQuit(ServerPlayer player)
 	{
 	}
 	
 	@Override
-	public boolean playerAttacked(EntityPlayerMP player, DamageSource source)
+	public boolean playerAttacked(ServerPlayer player, DamageSource source)
 	{
 		if(getPlayerData(player) == null || getPlayerData(player).team == null)
 			return false;
-		EntityPlayerMP attacker = getPlayerFromDamageSource(source);
+		ServerPlayer attacker = getPlayerFromDamageSource(source);
 		if(attacker != null)
 		{
 			if(getPlayerData(attacker) == null || getPlayerData(attacker).team == null)
@@ -71,9 +71,9 @@ public class GametypeDM extends Gametype
 	}
 	
 	@Override
-	public void playerKilled(EntityPlayerMP player, DamageSource source)
+	public void playerKilled(ServerPlayer player, DamageSource source)
 	{
-		EntityPlayerMP attacker = getPlayerFromDamageSource(source);
+		ServerPlayer attacker = getPlayerFromDamageSource(source);
 		if(attacker != null)
 		{
 			if(attacker == player)
@@ -104,19 +104,19 @@ public class GametypeDM extends Gametype
 	}
 	
 	@Override
-	public void baseClickedByPlayer(ITeamBase base, EntityPlayerMP player)
+	public void baseClickedByPlayer(ITeamBase base, ServerPlayer player)
 	{
 		
 	}
 	
 	@Override
-	public void objectClickedByPlayer(ITeamObject object, EntityPlayerMP player)
+	public void objectClickedByPlayer(ITeamObject object, ServerPlayer player)
 	{
 		
 	}
 	
 	@Override
-	public Vec3d getSpawnPoint(EntityPlayerMP player)
+	public Vec3 getSpawnPoint(ServerPlayer player)
 	{
 		if(teamsManager.currentRound == null)
 			return null;
@@ -140,14 +140,14 @@ public class GametypeDM extends Gametype
 		if(validSpawnPoints.size() > 0)
 		{
 			BlockPos spawnPoint = validSpawnPoints.get(rand.nextInt(validSpawnPoints.size()));
-			return new Vec3d(spawnPoint.getX() + 0.5D, spawnPoint.getY(), spawnPoint.getZ() + 0.5D);
+			return new Vec3(spawnPoint.getX() + 0.5D, spawnPoint.getY(), spawnPoint.getZ() + 0.5D);
 		}
 		
 		return null;
 	}
 	
 	@Override
-	public void playerRespawned(EntityPlayerMP player)
+	public void playerRespawned(ServerPlayer player)
 	{
 		
 	}
@@ -164,15 +164,15 @@ public class GametypeDM extends Gametype
 	}
 	
 	@Override
-	public void readFromNBT(NBTTagCompound tags)
+	public void readFromNBT(CompoundTag tags)
 	{
-		scoreLimit = tags.getInteger("DMScoreLimit");
+		scoreLimit = tags.getIntOr("DMScoreLimit", 0);
 	}
 	
 	@Override
-	public void saveToNBT(NBTTagCompound tags)
+	public void saveToNBT(CompoundTag tags)
 	{
-		tags.setInteger("DMScoreLimit", scoreLimit);
+		tags.putInt("DMScoreLimit", scoreLimit);
 	}
 	
 	

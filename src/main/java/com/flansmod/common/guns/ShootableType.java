@@ -2,10 +2,7 @@ package com.flansmod.common.guns;
 
 import java.util.HashMap;
 
-import net.minecraft.client.model.ModelBase;
-import net.minecraftforge.fml.common.FMLCommonHandler;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import com.flansmod.client.model.ModelBase;
 
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.types.InfoType;
@@ -17,7 +14,6 @@ public abstract class ShootableType extends InfoType
 	/**
 	 * The model to render for this grenade in the world
 	 */
-	@SideOnly(Side.CLIENT)
 	public ModelBase model;
 	/**
 	 * Whether trail particles are given off
@@ -133,7 +129,7 @@ public abstract class ShootableType extends InfoType
 		try
 		{
 			//Model and Texture
-			if(FMLCommonHandler.instance().getSide().isClient() && split[0].equals("Model"))
+			if(FlansMod.isClient() && split[0].equals("Model"))
 				model = FlansMod.proxy.loadModel(split[1], shortName, ModelBase.class);
 				
 				//Item Stuff
@@ -203,8 +199,7 @@ public abstract class ShootableType extends InfoType
 		}
 		catch(Exception e)
 		{
-			FlansMod.log.error("Reading grenade file failed: " + shortName);
-			FlansMod.log.throwing(e);
+			FlansMod.log.error("Reading grenade file failed: " + shortName, e);
 		}
 	}
 	
@@ -224,7 +219,6 @@ public abstract class ShootableType extends InfoType
 	}
 	
 	@Override
-	@SideOnly(Side.CLIENT)
 	public ModelBase GetModel()
 	{
 		return model;

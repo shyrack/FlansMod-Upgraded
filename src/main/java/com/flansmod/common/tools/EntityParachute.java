@@ -1,137 +1,138 @@
 package com.flansmod.common.tools;
 
-import javax.annotation.Nullable;
 import java.util.List;
 
-import io.netty.buffer.ByteBuf;
-import net.minecraft.block.material.Material;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.MoverType;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.RayTraceResult;
-import net.minecraft.world.World;
-import net.minecraftforge.fml.common.network.ByteBufUtils;
-import net.minecraftforge.fml.common.registry.IEntityAdditionalSpawnData;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.MoverType;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.core.BlockPos;
+import net.minecraft.util.Mth;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.level.Level;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.server.level.ServerLevel;
 
 import com.flansmod.common.FlansMod;
+import com.flansmod.common.ModEntities;
 
-public class EntityParachute extends Entity implements IEntityAdditionalSpawnData
+public class EntityParachute extends Entity
 {
 	public ToolType type;
 	
-	public EntityParachute(World w)
+	/** The level this entity is in, mirrors the 1.12.2 world field */
+	protected Level world;
+		public EntityParachute(EntityType<?> type, Level world)
 	{
-		super(w);
-		ignoreFrustumCheck = true;
-		FlansMod.log.debug(w.isRemote ? "Client paraspawn" : "Server paraspawn");
+		super(type, world);
+		this.world = level();
+	}
+
+public EntityParachute(Level w)
+	{
+		this(ModEntities.PARACHUTE, w);
+		this.world = level();
+		FlansMod.log.debug(w.isClientSide() ? "Client paraspawn" : "Server paraspawn");
 	}
 	
-	public EntityParachute(World w, ToolType t, EntityPlayer player)
+	public EntityParachute(Level w, ToolType t, Player player)
 	{
 		this(w);
 		type = t;
-		setPosition(player.posX, player.posY, player.posZ);
+		setPos(player.getX(), player.getY(), player.getZ());
 	}
 	
 	@Override
-	public void onUpdate()
+	public void tick()
 	{
-		super.onUpdate();
+		super.tick();
 		
-		if(!world.isRemote && (getControllingPassenger() == null || getControllingPassenger().getRidingEntity() != this))
+		if(!world.isClientSide() && (getControllingPassenger() == null || getControllingPassenger().getVehicle() != this))
 		{
-			setDead();
+			discard();
 		}
 		
 		if(getControllingPassenger() != null)
 			getControllingPassenger().fallDistance = 0F;
 		
-		motionY = -0.1D;
+		double motionX = getDeltaMovement().x;
+		double motionY = -0.1D;
+		double motionZ = getDeltaMovement().z;
 		
-		if(getControllingPassenger() != null && getControllingPassenger() instanceof EntityLivingBase)
+		if(getControllingPassenger() != null && getControllingPassenger() instanceof LivingEntity)
 		{
 			float speedMultiplier = 0.002F;
-			double moveForwards = ((EntityLivingBase)this.getControllingPassenger()).moveForward;
-			double moveStrafing = ((EntityLivingBase)this.getControllingPassenger()).moveStrafing;
-			double sinYaw = -Math.sin((getControllingPassenger().rotationYaw * (float)Math.PI / 180.0F));
-			double cosYaw = Math.cos((this.getControllingPassenger().rotationYaw * (float)Math.PI / 180.0F));
+			double moveForwards = ((LivingEntity)this.getControllingPassenger()).zza;
+			double moveStrafing = ((LivingEntity)this.getControllingPassenger()).xxa;
+			double sinYaw = -Math.sin((getControllingPassenger().getYRot() * (float)Math.PI / 180.0F));
+			double cosYaw = Math.cos((this.getControllingPassenger().getYRot() * (float)Math.PI / 180.0F));
 			motionX += (moveForwards * sinYaw + moveStrafing * cosYaw) * speedMultiplier;
 			motionZ += (moveForwards * cosYaw - moveStrafing * sinYaw) * speedMultiplier;
 			
-			prevRotationYaw = rotationYaw;
-			rotationYaw = getControllingPassenger().rotationYaw;
+			yRotO = getYRot();
+			setYRot(getControllingPassenger().getYRot());
 		}
 		
 		motionX *= 0.8F;
 		motionZ *= 0.8F;
 		
-		move(MoverType.SELF, motionX, motionY, motionZ);
+		move(MoverType.SELF, new Vec3(motionX, motionY, motionZ));
 		
-		if(onGround || world.getBlockState(new BlockPos(MathHelper.floor(posX), MathHelper.floor(posY), MathHelper.floor(posZ))).getMaterial() == Material.WATER)
+		if(onGround() || world.getFluidState(new BlockPos(Mth.floor(getX()), Mth.floor(getY()), Mth.floor(getZ()))).is(net.minecraft.tags.FluidTags.WATER))
 		{
-			setDead();
+			discard();
 		}
 	}
 	
 	@Override
-	public void fall(float par1, float k)
+	public boolean causeFallDamage(double par1, float k, DamageSource source)
 	{
 		//Ignore fall damage
+		return false;
 	}
 	
 	@Override
-	public boolean attackEntityFrom(DamageSource source, float f)
+	public boolean hurtServer(ServerLevel level, DamageSource source, float f)
 	{
-		setDead();
+		discard();
 		return true;
 	}
 	
 	@Override
-	protected void entityInit()
+	protected void defineSynchedData(SynchedEntityData.Builder builder)
 	{
 	}
 	
-	@Nullable
 	@Override
-	public Entity getControllingPassenger()
+	public LivingEntity getControllingPassenger()
 	{
 		List<Entity> list = this.getPassengers();
-		return list.isEmpty() ? null : list.get(0);
+		return list.isEmpty() ? null : (LivingEntity)list.get(0);
 	}
 	
 	@Override
-	protected void readEntityFromNBT(NBTTagCompound tags)
+	protected void readAdditionalSaveData(net.minecraft.world.level.storage.ValueInput input)
 	{
-		type = ToolType.getType(tags.getString("Type"));
+		CompoundTag tags = input.read("FlanData", CompoundTag.CODEC).orElse(new CompoundTag());
+		type = ToolType.getType(tags.getStringOr("Type", ""));
 	}
 	
 	@Override
-	protected void writeEntityToNBT(NBTTagCompound tags)
+	protected void addAdditionalSaveData(net.minecraft.world.level.storage.ValueOutput output)
 	{
-		tags.setString("Type", type.shortName);
+		CompoundTag tags = new CompoundTag();
+		if(type != null)
+			tags.putString("Type", type.shortName);
+		output.store("FlanData", CompoundTag.CODEC, tags);
 	}
 	
-	@Override
-	public ItemStack getPickedResult(RayTraceResult target)
+	public ItemStack getPickedResult(HitResult target)
 	{
-		return new ItemStack(type.item, 1, 0);
-	}
-	
-	@Override
-	public void writeSpawnData(ByteBuf buffer)
-	{
-		ByteBufUtils.writeUTF8String(buffer, type.shortName);
-	}
-	
-	@Override
-	public void readSpawnData(ByteBuf additionalData)
-	{
-		type = ToolType.getType(ByteBufUtils.readUTF8String(additionalData));
+		return new ItemStack(type.item);
 	}
 }

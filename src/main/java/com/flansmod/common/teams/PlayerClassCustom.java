@@ -3,7 +3,7 @@ package com.flansmod.common.teams;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.item.ItemStack;
 
 import com.flansmod.client.gui.teams.EnumLoadoutSlot;
 import com.flansmod.common.teams.LoadoutPool.LoadoutEntryInfoType;

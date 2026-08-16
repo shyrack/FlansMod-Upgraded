@@ -9,9 +9,8 @@
 
 package com.flansmod.ww2.client.model;
 
-import net.minecraft.client.model.ModelBase;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.entity.Entity;
+import com.flansmod.client.model.ModelBase;
+import net.minecraft.world.entity.Entity;
 
 import com.flansmod.client.tmt.ModelRendererTurbo;
 
@@ -597,7 +596,9 @@ public class ModelFragGrenade2 extends ModelBase
 	public void render(Entity entity, float f, float f1, float f2, float f3, float f4, float f5)
 	{
 		
-		GlStateManager.scale(0.2F, 0.2F, 0.2F);
+		com.flansmod.client.model.ModelRenderer.RenderContext rpgCtx = com.flansmod.client.model.ModelRenderer.getRenderContext();
+		if(rpgCtx != null && rpgCtx.poseStack != null)
+			rpgCtx.poseStack.scale(0.2F, 0.2F, 0.2F);
 		
 		for(int i = 0; i < 96; i++)
 		{

@@ -3,36 +3,41 @@ package com.flansmod.common.driveables;
 import java.util.ArrayList;
 import java.util.List;
 
-import io.netty.buffer.ByteBuf;
-import net.minecraft.block.material.Material;
-import net.minecraft.block.state.IBlockState;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.client.Minecraft;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.item.EntityItem;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.init.Items;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.EnumParticleTypes;
-import net.minecraft.util.NonNullList;
-import net.minecraft.util.math.AxisAlignedBB;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.RayTraceResult;
-import net.minecraft.util.math.RayTraceResult.Type;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.GameType;
-import net.minecraft.world.World;
-import net.minecraft.world.WorldServer;
-import net.minecraftforge.common.ForgeHooks;
-import net.minecraftforge.fml.common.network.ByteBufUtils;
-import net.minecraftforge.fml.common.registry.IEntityAdditionalSpawnData;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.MoverType;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.NonNullList;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.core.BlockPos;
+import net.minecraft.util.Mth;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.HitResult.Type;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.tags.FluidTags;
+import net.minecraft.tags.DamageTypeTags;
+import net.minecraft.world.level.gamerules.GameRules;
 
 import com.flansmod.api.IControllable;
 import com.flansmod.api.IExplodeable;
@@ -41,6 +46,7 @@ import com.flansmod.client.FlansModClient;
 import com.flansmod.client.debug.EntityDebugVector;
 import com.flansmod.client.handlers.KeyInputHandler;
 import com.flansmod.common.FlansMod;
+import com.flansmod.common.ModEntities;
 import com.flansmod.common.RotatedAxes;
 import com.flansmod.common.driveables.DriveableType.ParticleEmitter;
 import com.flansmod.common.driveables.mechas.ContainerMechaInventory;
@@ -70,9 +76,8 @@ import com.flansmod.common.vector.Vector3f;
 
 import static com.flansmod.common.util.BlockUtil.destroyBlock;
 
-public abstract class EntityDriveable extends Entity implements IControllable, IExplodeable, IEntityAdditionalSpawnData
+public abstract class EntityDriveable extends Entity implements IControllable, IExplodeable
 {
-	public boolean syncFromServer = true;
 	/** Ticks since last server update. Use to smoothly transition to new position */
 	public int serverPositionTransitionTicker;
 	/** Server side position, as synced by PacketVehicleControl packets */
@@ -124,7 +129,7 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 	
 	private float yOffset;
 	
-	public EntityLivingBase camera;
+	public LivingEntity camera;
 	
 	private int[] emitterTimers;
 	
@@ -143,25 +148,52 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 
 	/** Damage factor of unbreakable block such as bedrock when collided */
 	public float unbreakableBlockDamage = 100F;
-
-	public EntityDriveable(World world)
+	
+	/** Step height for this driveable, set from the type */
+	protected float stepHeight = 0F;
+	
+	/** The level this entity is in, mirrors the 1.12.2 world field */
+	protected Level world;
+	
+	private static final EntityDataAccessor<String> TYPE =
+		SynchedEntityData.defineId(EntityDriveable.class, EntityDataSerializers.STRING);
+	private static final EntityDataAccessor<String> ENGINE =
+		SynchedEntityData.defineId(EntityDriveable.class, EntityDataSerializers.STRING);
+	private static final EntityDataAccessor<Float> FUEL =
+		SynchedEntityData.defineId(EntityDriveable.class, EntityDataSerializers.FLOAT);
+	private static final EntityDataAccessor<Integer> PAINT =
+		SynchedEntityData.defineId(EntityDriveable.class, EntityDataSerializers.INT);
+	
+	public EntityDriveable(EntityType<?> type, Level world)
 	{
-		super(world);
+		super(type, world);
+		this.world = level();
 		axes = new RotatedAxes();
 		prevAxes = new RotatedAxes();
-		preventEntitySpawning = true;
-		setSize(1F, 1F);
 		yOffset = 6F / 16F;
-		ignoreFrustumCheck = true;
 	}
 	
-	public EntityDriveable(World world, DriveableType t, DriveableData d)
+	public EntityDriveable(Level world)
+	{
+		this(ModEntities.PLANE, world);
+	}
+	
+	public EntityDriveable(Level world, DriveableType t, DriveableData d)
 	{
 		this(world);
 		driveableType = t.shortName;
 		driveableData = d;
+		entityData.set(TYPE, driveableType);
+		entityData.set(ENGINE, driveableData.engine != null ? driveableData.engine.shortName : "");
+		entityData.set(FUEL, driveableData.fuelInTank);
+		entityData.set(PAINT, driveableData.paintjobID);
 	}
 
+	@Override
+	public float maxUpStep()
+	{
+		return stepHeight;
+	}
 	
 	protected void initType(DriveableType type, boolean firstSpawn, boolean clientSide)
 	{
@@ -172,14 +204,14 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 			for(int i = 0; i < type.numPassengers + 1; i++)
 			{
 				seats[i] = new EntitySeat(world, this, i);
-				world.spawnEntity(seats[i]);
+				world.addFreshEntity(seats[i]);
 				seats[i].startRiding(this);
 			}
 			
 			for(int i = 0; i < wheels.length; i++)
 			{
 				wheels[i] = new EntityWheel(world, this, i);
-				world.spawnEntity(wheels[i]);
+				world.addFreshEntity(wheels[i]);
 				wheels[i].startRiding(this);
 			}
 		}
@@ -189,99 +221,56 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 		emitterTimers = new int[type.emitters.size()];
 		for(int i = 0; i < type.emitters.size(); i++)
 		{
-			emitterTimers[i] = rand.nextInt(type.emitters.get(i).emitRate);
+			emitterTimers[i] = random.nextInt(type.emitters.get(i).emitRate);
 		}
-	}
-	
-	@SideOnly(Side.CLIENT)
-	@Override
-	public boolean isInRangeToRender3d(double x, double y, double z)
-	{
-		double dX = this.posX - x;
-		double dY = this.posY - y;
-		double dZ = this.posZ - z;
-		double distSq = dX * dX + dY * dY + dZ * dZ;
-		double maxDist = 200.0D * getRenderDistanceWeight();
-		return distSq < maxDist * maxDist;
+		
+		if(driveableData == null)
+			driveableData = new DriveableData();
+		driveableType = type.shortName;
+		entityData.set(TYPE, driveableType);
+		entityData.set(ENGINE, driveableData.engine != null ? driveableData.engine.shortName : "");
+		entityData.set(FUEL, driveableData.fuelInTank);
+		entityData.set(PAINT, driveableData.paintjobID);
 	}
 	
 	@Override
-	protected void writeEntityToNBT(NBTTagCompound tag)
+	protected void defineSynchedData(SynchedEntityData.Builder builder)
 	{
-		driveableData.writeToNBT(tag);
-		tag.setString("Type", driveableType);
-		tag.setFloat("RotationYaw", axes.getYaw());
-		tag.setFloat("RotationPitch", axes.getPitch());
-		tag.setFloat("RotationRoll", axes.getRoll());
+		builder.define(TYPE, "");
+		builder.define(ENGINE, "");
+		builder.define(FUEL, 0F);
+		builder.define(PAINT, 0);
 	}
 	
 	@Override
-	protected void readEntityFromNBT(NBTTagCompound tag)
+	protected void addAdditionalSaveData(net.minecraft.world.level.storage.ValueOutput output)
 	{
-		driveableType = tag.getString("Type");
+		CompoundTag tag = new CompoundTag();
+		if(driveableData != null)
+			driveableData.writeToNBT(tag);
+		tag.putString("Type", driveableType == null ? "" : driveableType);
+		tag.putFloat("RotationYaw", axes.getYaw());
+		tag.putFloat("RotationPitch", axes.getPitch());
+		tag.putFloat("RotationRoll", axes.getRoll());
+		output.store("FlanData", CompoundTag.CODEC, tag);
+	}
+	
+	@Override
+	protected void readAdditionalSaveData(net.minecraft.world.level.storage.ValueInput input)
+	{
+		CompoundTag tag = input.read("FlanData", CompoundTag.CODEC).orElse(new CompoundTag());
+		driveableType = tag.getStringOr("Type", "");
 		driveableData = new DriveableData(tag);
+		entityData.set(TYPE, driveableType);
+		entityData.set(ENGINE, driveableData.engine != null ? driveableData.engine.shortName : "");
+		entityData.set(FUEL, driveableData.fuelInTank);
+		entityData.set(PAINT, driveableData.paintjobID);
 		initType(DriveableType.getDriveable(driveableType), false, false);
 		
-		prevRotationYaw = tag.getFloat("RotationYaw");
-		prevRotationPitch = tag.getFloat("RotationPitch");
-		prevRotationRoll = tag.getFloat("RotationRoll");
-		axes = new RotatedAxes(prevRotationYaw, prevRotationPitch, prevRotationRoll);
-	}
-	
-	@Override
-	public void writeSpawnData(ByteBuf data)
-	{
-		ByteBufUtils.writeUTF8String(data, driveableType);
-		
-		NBTTagCompound tag = new NBTTagCompound();
-		driveableData.writeToNBT(tag);
-		ByteBufUtils.writeTag(data, tag);
-		
-		data.writeFloat(axes.getYaw());
-		data.writeFloat(axes.getPitch());
-		data.writeFloat(axes.getRoll());
-		
-		// Write damage
-		for(EnumDriveablePart ep : EnumDriveablePart.values())
-		{
-			DriveablePart part = getDriveableData().parts.get(ep);
-			data.writeInt(part.health);
-			data.writeBoolean(part.onFire);
-		}
-	}
-	
-	@Override
-	public void readSpawnData(ByteBuf data)
-	{
-		try
-		{
-			driveableType = ByteBufUtils.readUTF8String(data);
-			driveableData = new DriveableData(ByteBufUtils.readTag(data));
-			initType(getDriveableType(), false, true);
-			
-			axes.setAngles(data.readFloat(), data.readFloat(), data.readFloat());
-			prevRotationYaw = axes.getYaw();
-			prevRotationPitch = axes.getPitch();
-			prevRotationRoll = axes.getRoll();
-			
-			// Read damage
-			for(EnumDriveablePart ep : EnumDriveablePart.values())
-			{
-				DriveablePart part = getDriveableData().parts.get(ep);
-				part.health = data.readInt();
-				part.onFire = data.readBoolean();
-			}
-			
-		}
-		catch(Exception e)
-		{
-			FlansMod.log.error("Failed to retrieve plane type from server.");
-			super.setDead();
-			FlansMod.log.throwing(e);
-		}
-		
-		camera = new EntityCamera(world, this);
-		world.spawnEntity(camera);
+		yRotO = tag.getFloatOr("RotationYaw", 0F);
+		xRotO = tag.getFloatOr("RotationPitch", 0F);
+		prevRotationRoll = tag.getFloatOr("RotationRoll", 0F);
+		axes = new RotatedAxes(yRotO, xRotO, prevRotationRoll);
 	}
 	
 	/**
@@ -294,9 +283,7 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 	@Override
 	public abstract void onMouseMoved(int deltaX, int deltaY);
 	
-	@Override
-	@SideOnly(Side.CLIENT)
-	public EntityLivingBase getCamera()
+	public LivingEntity getCamera()
 	{
 		return camera;
 	}
@@ -306,129 +293,73 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 		return getDriveableType().numPassengers >= seat && seats[seat].getControllingPassenger() == null;
 	}
 	
-	@Override
-	protected boolean canTriggerWalking()
+	public boolean isPushable()
 	{
 		return false;
-	}
-	
-	@Override
-	protected void entityInit()
-	{
-	}
-	
-	@Override
-	public AxisAlignedBB getCollisionBox(Entity entity)
-	{
-		return null;
-	}
-	
-	@Override
-	public boolean canBePushed()
-	{
-		return false;
-	}
-	
-	@Override
-	public double getMountedYOffset()
-	{
-		return -0.3D;
-	}
-	
-	@Override
-	public double getYOffset()
-	{
-		return yOffset;
 	}
 	
 	/**
 	 * Pass generic damage to the core
 	 */
 	@Override
+	public boolean hurtServer(ServerLevel level, DamageSource damagesource, float i)
+	{
+		return attackEntityFrom(damagesource, i);
+	}
+	
 	public boolean attackEntityFrom(DamageSource damagesource, float i)
 	{
-		return world.isRemote || isDead || attackPart(EnumDriveablePart.core, damagesource, i);
+		return world.isClientSide() || isRemoved() || attackPart(EnumDriveablePart.core, damagesource, i);
 	}
 	
-	@Override
-	public void setDead()
-	{
-		super.setDead();
-		
-		if(world.isRemote)
-			camera.setDead();
-		
-		for(EntitySeat seat : seats)
-		{
-			if(seat != null)
-				seat.reallySetDead();
-		}
-		for(EntityWheel wheel : wheels)
-		{
-			if(wheel != null)
-				wheel.reallySetDead();
-		}
-	}
-	
-	@SideOnly(Side.CLIENT)
 	private void reportVehicleError()
 	{
 		FlansMod.log.warn("Vehicle error in " + this);
 		FlansModClient.numVehicleExceptions++;
 	}
 	
-	@Override
-	public boolean canBeCollidedWith()
+	public void setDead()
 	{
-		return !isDead;
+		if(world.isClientSide() && camera != null)
+			camera.discard();
+		
+		if(seats != null)
+		{
+			for(EntitySeat seat : seats)
+			{
+				if(seat != null)
+					seat.reallySetDead();
+			}
+		}
+		if(wheels != null)
+		{
+			for(EntityWheel wheel : wheels)
+			{
+				if(wheel != null)
+					wheel.reallySetDead();
+			}
+		}
+		
+		discard();
+	}
+	
+	public boolean canBeCollidedWith(Entity other)
+	{
+		return !isRemoved();
 	}
 	
 	@Override
-	public void applyEntityCollision(Entity entity)
+	public void push(Entity entity)
 	{
 		if(!isPartOfThis(entity))
-			super.applyEntityCollision(entity);
-	}
-	
-	@Override
-	public void setPositionAndRotationDirect(double d, double d1, double d2, float f, float f1, int i, boolean b)
-	{
-		if(ticksExisted > 1)
-			return;
-		if(!(getControllingPassenger() instanceof EntityPlayer) || !FlansMod.proxy.isThePlayer(
-			(EntityPlayer)getControllingPassenger()))
-		{
-			if(syncFromServer)
-			{
-				serverPositionTransitionTicker = i + 5;
-			}
-			else
-			{
-				double var10 = d - posX;
-				double var12 = d1 - posY;
-				double var14 = d2 - posZ;
-				double var16 = var10 * var10 + var12 * var12 + var14 * var14;
-				
-				if(var16 <= 1.0D)
-				{
-					return;
-				}
-				
-				serverPositionTransitionTicker = 3;
-			}
-			serverPosX = d;
-			serverPosY = d1;
-			serverPosZ = d2;
-			serverYaw = f;
-			serverPitch = f1;
-		}
+			super.push(entity);
 	}
 	
 	public void setPositionRotationAndMotion(double x, double y, double z, float yaw, float pitch, float roll,
 											 double motX, double motY, double motZ, float velYaw, float velPitch,
 											 float velRoll, float throttle, float steeringYaw)
 	{
-		if(world.isRemote)
+		if(world.isClientSide())
 		{
 			serverPosX = x;
 			serverPosY = y;
@@ -440,37 +371,26 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 		}
 		else
 		{
-			setPosition(x, y, z);
-			prevRotationYaw = yaw;
-			prevRotationPitch = pitch;
+			setPos(x, y, z);
+			yRotO = yaw;
+			xRotO = pitch;
 			prevRotationRoll = roll;
 			setRotation(yaw, pitch, roll);
 		}
 		// Set the motions regardless of side.
-		motionX = motX;
-		motionY = motY;
-		motionZ = motZ;
+		setDeltaMovement(motX, motY, motZ);
 		angularVelocity = new Vector3f(velYaw, velPitch, velRoll);
 		this.throttle = throttle;
 	}
 	
-	
 	@Override
-	public void setVelocity(double d, double d1, double d2)
-	{
-		motionX = d;
-		motionY = d1;
-		motionZ = d2;
-	}
-	
-	@Override
-	public boolean serverHandleKeyPress(int key, EntityPlayer player)
+	public boolean serverHandleKeyPress(int key, Player player)
 	{
 		switch(key)
 		{
 			case 6:
 				if(getSeat(0).getControllingPassenger() != null)
-					getSeat(0).removePassengers();
+					getSeat(0).getControllingPassenger().stopRiding();
 				return true;
 			case 8:
 				if(getDriveableType().modeSecondary == EnumFireMode.SEMIAUTO) // Secondary
@@ -489,15 +409,14 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 	}
 	
 	@Override
-	@SideOnly(Side.CLIENT)
-	public boolean pressKey(int key, EntityPlayer player, boolean isOnEvent)
+	public boolean pressKey(int key, Player player, boolean isOnEvent)
 	{
 		switch(key)
 		{
 			case 6: //Exit
 			{
-				Minecraft mc = Minecraft.getMinecraft();
-				mc.setRenderViewEntity(mc.player);
+				Minecraft mc = Minecraft.getInstance();
+				mc.setCameraEntity(mc.player);
 				FlansMod.getPacketHandler().sendToServer(new PacketDriveableKey(key));
 				return true;
 			}
@@ -540,7 +459,7 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 	@Override
 	public void updateKeyHeldState(int key, boolean held)
 	{
-		if(world.isRemote)
+		if(world.isClientSide())
 		{
 			FlansMod.getPacketHandler().sendToServer(new PacketDriveableKeyHeld(key, held));
 		}
@@ -564,7 +483,7 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 		List<ShootPoint> shootPoints = type.shootPoints(secondary);
 		EnumWeaponType weaponType = type.weaponType(secondary);
 		boolean driverIsLivingEntity = seats[0] != null
-				&& seats[0].getControllingPassenger() instanceof EntityLivingBase;
+				&& seats[0].getControllingPassenger() instanceof LivingEntity;
 		boolean gunHasDelayRemaining = getShootDelay(secondary) > 0;
 		boolean gunHasShootPoints = !shootPoints.isEmpty();
 
@@ -589,15 +508,15 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 	
 	public boolean driverIsCreative()
 	{
-		EntityPlayer driver = getDriver();
+		Player driver = getDriver();
 		return driver != null && driver.isCreative();
 	}
 	
-	public EntityPlayer getDriver()
+	public Player getDriver()
 	{
-		if(seats != null && seats[0] != null && seats[0].getControllingPassenger() instanceof EntityPlayer)
+		if(seats != null && seats[0] != null && seats[0].getControllingPassenger() instanceof Player)
 		{
-			return ((EntityPlayer)seats[0].getControllingPassenger());
+			return ((Player)seats[0].getControllingPassenger());
 		}
 		else
 		{
@@ -659,11 +578,11 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 						gunType.bulletSpread,
 						gunType.bulletSpeed,
 						gunType.spreadPattern);
-				FiredShot shot = new FiredShot(fireableGun, bulletType, this, (EntityPlayerMP)getDriver());
+				FiredShot shot = new FiredShot(fireableGun, bulletType, this, (ServerPlayer)getDriver());
 				
 				ShootBulletHandler handler = isExtraBullet ->
 				{
-					ammoItemStack.damageItem(1, getDriver());
+					ammoItemStack.setDamageValue(ammoItemStack.getDamageValue() + 1);
 					if(ammoItemStack.isEmpty())
 					{
 						driveableData.ammo[getDriveableType().numPassengerGunners + shootPointIndex] = ItemStack.EMPTY
@@ -671,7 +590,7 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 					}
 				};
 				
-				Vector3f gunVector = Vector3f.add(gunVec, new Vector3f(posX, posY, posZ), null);
+				Vector3f gunVector = Vector3f.add(gunVec, new Vector3f((float)getX(), (float)getY(), (float)getZ()), null);
 				
 				ShotHandler.fireGun(world,
 						shot,
@@ -686,7 +605,7 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 							gunVector.y,
 							gunVector.z,
 							FlansMod.soundRange,
-							world.provider.getDimension(),
+							0,
 							type.shootSound(secondary),
 							false);
 				}
@@ -702,7 +621,7 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 			for(int i = driveableData.getMissileInventoryStart();
 				i < driveableData.getMissileInventoryStart() + type.numMissileSlots; i++)
 			{
-				ItemStack shell = driveableData.getStackInSlot(i);
+				ItemStack shell = driveableData.getItem(i);
 				if(shell != null && shell.getItem() instanceof ItemBullet && type.isValidAmmo(
 					((ItemBullet)shell.getItem()).type, weaponType))
 				{
@@ -721,7 +640,7 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 			for(int i = driveableData.getBombInventoryStart();
 				i < driveableData.getBombInventoryStart() + type.numBombSlots; i++)
 			{
-				ItemStack bomb = driveableData.getStackInSlot(i);
+				ItemStack bomb = driveableData.getItem(i);
 				if(bomb != null && bomb.getItem() instanceof ItemBullet && type.isValidAmmo(
 					((ItemBullet)bomb.getItem()).type, weaponType))
 				{
@@ -734,7 +653,7 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 	
 	public double getSpeed()
 	{
-		return Math.sqrt(motionX * motionX + motionY * motionY + motionZ * motionZ);
+		return Math.sqrt(getDeltaMovement().x * getDeltaMovement().x + getDeltaMovement().y * getDeltaMovement().y + getDeltaMovement().z * getDeltaMovement().z);
 	}
 	
 	public Vector3f getOrigin(ShootPoint shootPoint)
@@ -764,7 +683,7 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 	private void shootProjectile(final Integer slot, Vector3f gunVec, Vector3f lookVector, DriveableType type,
 								 Boolean secondary, float speed)
 	{
-		ItemStack bullet = driveableData.getStackInSlot(slot);
+		ItemStack bullet = driveableData.getItem(slot);
 		ItemBullet bulletItem = (ItemBullet)bullet.getItem();
 		int damageMultiplier = secondary ? type.damageModifierSecondary : type.damageModifierPrimary;
 		
@@ -774,26 +693,26 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 			bulletItem.type.bulletSpread,
 			speed,
 			EnumSpreadPattern.circle);
-		FiredShot shot = new FiredShot(fireableGun, bulletItem.type, this, (EntityPlayerMP)getDriver());
+		FiredShot shot = new FiredShot(fireableGun, bulletItem.type, this, (ServerPlayer)getDriver());
 		
 		ShootBulletHandler handler = isExtraBullet ->
 		{
 			if(!driverIsCreative())
 			{
-				ItemStack bulletStack = driveableData.getStackInSlot(slot);
-				bulletStack.setItemDamage(bulletStack.getItemDamage() + 1);
-				if(bulletStack.getItemDamage() == bulletStack.getMaxDamage())
+				ItemStack bulletStack = driveableData.getItem(slot);
+				bulletStack.setDamageValue(bulletStack.getDamageValue() + 1);
+				if(bulletStack.getDamageValue() == bulletStack.getMaxDamage())
 				{
-					bulletStack.setItemDamage(0);
+					bulletStack.setDamageValue(0);
 					bulletStack.setCount(bulletStack.getCount() - 1);
 					if(bulletStack.getCount() == 0)
 						bulletStack = ItemStack.EMPTY.copy();
 				}
-				driveableData.setInventorySlotContents(slot, bulletStack);
+				driveableData.setItem(slot, bulletStack);
 			}
 		};
 		
-		Vector3f gunVector = Vector3f.add(gunVec, new Vector3f(posX, posY, posZ), null);
+		Vector3f gunVector = Vector3f.add(gunVec, new Vector3f((float)getX(), (float)getY(), (float)getZ()), null);
 		
 		ShotHandler.fireGun(world, shot, bulletItem.type.numBullets, gunVector, lookVector, handler);
 		
@@ -804,7 +723,7 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 				gunVector.y,
 				gunVector.z,
 				FlansMod.soundRange,
-				world.provider.getDimension(),
+				0,
 				type.shootSound(secondary),
 				false);
 		}
@@ -813,15 +732,22 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 	}
 	
 	@Override
-	public void onUpdate()
+	public void tick()
 	{
-		super.onUpdate();
+		super.tick();
 		
-		prevRotationYaw = axes.getYaw();
-		prevRotationPitch = axes.getPitch();
-		prevRotationRoll = axes.getRoll();
-		
+		// If we don't have the driveable data (i.e. client side spawn), grab it from the synched data
+		if(driveableData == null || driveableType == null || driveableType.isEmpty())
+		{
+			loadClientData();
+		}
 		DriveableType type = getDriveableType();
+		if(type == null)
+			return;
+		
+		yRotO = axes.getYaw();
+		xRotO = axes.getPitch();
+		prevRotationRoll = axes.getRoll();
 		
 		// Do a full check of our passengers for wheels or seats
 		for(Entity passenger : getPassengers())
@@ -834,7 +760,7 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 					if(seats[seat.getExpectedSeatID()] != null)
 					{
 						FlansMod.log.error("Driveable already had a seat in place");
-						seats[seat.getExpectedSeatID()].setDead();
+						seats[seat.getExpectedSeatID()].discard();
 					}
 					
 					seats[seat.getExpectedSeatID()] = seat;
@@ -848,7 +774,7 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 					if(wheels[wheel.getExpectedWheelID()] != null)
 					{
 						FlansMod.log.error("Driveable already had a wheel in place");
-						wheels[wheel.getExpectedWheelID()].setDead();
+						wheels[wheel.getExpectedWheelID()].discard();
 					}
 					wheels[wheel.getExpectedWheelID()] = wheel;
 				}
@@ -877,13 +803,13 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 		
 		if(!readyForUpdates)
 		{
-			if(!world.isRemote)
+			if(!world.isClientSide())
 			{
 				// Well heck, if it's bork, let's make new ones
 				initType(type, true, false);
 			}
 			// If we end up stuck like this on a client, handle updates from server
-			if(world.isRemote)
+			if(world.isClientSide())
 			{
 				// The driveable is currently moving towards its server position. Continue doing so.
 				if(serverPositionTransitionTicker > 0)
@@ -898,14 +824,14 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 		}
 		
 		// Reset weapon key held states if necessary
-		if(world.isRemote)
+		if(world.isClientSide())
 		{
-			if(primaryShootHeld && !KeyInputHandler.primaryVehicleInteract.isKeyDown())
+			if(primaryShootHeld && !KeyInputHandler.primaryVehicleInteract.isDown())
 			{
 				primaryShootHeld = false;
 				updateKeyHeldState(9, false);
 			}
-			if(secondaryShootHeld && !KeyInputHandler.secondaryVehicleInteract.isKeyDown())
+			if(secondaryShootHeld && !KeyInputHandler.secondaryVehicleInteract.isDown())
 			{
 				secondaryShootHeld = false;
 				updateKeyHeldState(8, false);
@@ -930,47 +856,38 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 					{
 						Vector3f v = axes.findLocalVectorGlobally(new Vector3f(x, y, z));
 						
-						int blockX = (int)Math.round(posX + v.x);
-						int blockY = (int)Math.round(posY + v.y);
-						int blockZ = (int)Math.round(posZ + v.z);
-						IBlockState block = world.getBlockState(new BlockPos(blockX, blockY, blockZ));
+						int blockX = (int)Math.round(getX() + v.x);
+						int blockY = (int)Math.round(getY() + v.y);
+						int blockZ = (int)Math.round(getZ() + v.z);
+						BlockState block = world.getBlockState(new BlockPos(blockX, blockY, blockZ));
 						
-						boolean cancelled = false;
-						if(getDriver() != null)
+						if(type.materialsHarvested.contains(block.getBlock()) && block.getDestroySpeed(world,
+							new BlockPos(blockX, blockY, blockZ)) >= 0F)
 						{
-							int eventOutcome = ForgeHooks.onBlockBreakEvent(world,
-								driverIsCreative() ? GameType.CREATIVE : getDriver().capabilities.allowEdit
-									? GameType.SURVIVAL : GameType.ADVENTURE,
-								(EntityPlayerMP)getDriver(), new BlockPos(blockX, blockY, blockZ));
-							cancelled = eventOutcome == -1;
-						}
-						if(!cancelled)
-						{
-							if(type.materialsHarvested.contains(block.getMaterial()) && block.getBlockHardness(world,
-								new BlockPos(blockX, blockY, blockZ)) >= 0F)
+							// Add the item stack to mecha inventory
+							NonNullList<ItemStack> stacks = NonNullList.create();
+							if(!world.isClientSide())
 							{
-								// Add the item stack to mecha inventory
-								NonNullList<ItemStack> stacks = NonNullList.create();
-								block.getBlock().getDrops(stacks, world, new BlockPos(blockX, blockY, blockZ),
-									world.getBlockState(new BlockPos(blockX, blockY, blockZ)), 0);
-								for(ItemStack stack : stacks)
+								BlockPos pos = new BlockPos(blockX, blockY, blockZ);
+								List<ItemStack> drops = Block.getDrops(world.getBlockState(pos), (ServerLevel)world, pos, null);
+								stacks.addAll(drops);
+							}
+							for(ItemStack stack : stacks)
+							{
+								if(!InventoryHelper.add(driveableData, stack,
+									driverIsCreative()) && !world.isClientSide() && ((ServerLevel)world).getGameRules().get(GameRules.BLOCK_DROPS))
 								{
-									if(!InventoryHelper.addItemStackToInventory(driveableData, stack,
-										driverIsCreative()) && !world.isRemote && world.getGameRules().getBoolean(
-										"doTileDrops"))
-									{
-										world.spawnEntity(
-											new EntityItem(world, blockX + 0.5F, blockY + 0.5F, blockZ + 0.5F,
-												stack));
-									}
+									world.addFreshEntity(
+										new ItemEntity(world, blockX + 0.5F, blockY + 0.5F, blockZ + 0.5F,
+											stack));
 								}
-								// Destroy block
-								if(!world.isRemote)
-								{
-									WorldServer worldServer = (WorldServer)world;
-									BlockPos pos = new BlockPos(blockX, blockY, blockZ);
-									destroyBlock(worldServer, pos, getDriver(), false);
-								}
+							}
+							// Destroy block
+							if(!world.isClientSide())
+							{
+								ServerLevel worldServer = (ServerLevel)world;
+								BlockPos pos = new BlockPos(blockX, blockY, blockZ);
+								destroyBlock(worldServer, pos, getDriver(), false);
 							}
 						}
 					}
@@ -1005,21 +922,21 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 				
 				part.update(this);
 				// Client side particles
-				if(world.isRemote)
+				if(world.isClientSide())
 				{
 					if(part.onFire)
 					{
 						// Pick a random position within the bounding box and spawn a flame there
 						Vector3f pos = getRandPosInBoundingBox(part);
-						world.spawnParticle(EnumParticleTypes.FLAME, posX + pos.x, posY + pos.y, posZ + pos.z, 0, 0, 0);
+						world.addParticle(ParticleTypes.FLAME, getX() + pos.x, getY() + pos.y, getZ() + pos.z, 0, 0, 0);
 					}
 					if(part.health > 0 && part.health < part.maxHealth / 2)
 					{
 						Vector3f pos = getRandPosInBoundingBox(part);
-						world.spawnParticle(
+						world.addParticle(
 							part.health < part.maxHealth / 4 ?
-								EnumParticleTypes.SMOKE_LARGE :
-								EnumParticleTypes.SMOKE_NORMAL, posX + pos.x, posY + pos.y, posZ + pos.z, 0, 0,
+								ParticleTypes.LARGE_SMOKE :
+								ParticleTypes.SMOKE, getX() + pos.x, getY() + pos.y, getZ() + pos.z, 0, 0,
 							0);
 					}
 				}
@@ -1027,15 +944,15 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 				if(part.onFire)
 				{
 					// Rain can put out fire
-					if(world.isRaining() && rand.nextInt(40) == 0)
+					if(world.isRaining() && random.nextInt(40) == 0)
 						part.onFire = false;
 					// Also water blocks
 					// Get the centre point of the part
 					Vector3f pos = axes.findLocalVectorGlobally(
 						new Vector3f(part.box.x + part.box.w / 2F, part.box.y + part.box.h / 2F,
 							part.box.z + part.box.d / 2F));
-					if(world.getBlockState(new BlockPos(MathHelper.floor(posX + pos.x), MathHelper.floor(posY + pos.y),
-						MathHelper.floor(posZ + pos.z))).getMaterial() == Material.WATER)
+					if(world.getFluidState(new BlockPos(Mth.floor(getX() + pos.x), Mth.floor(getY() + pos.y),
+						Mth.floor(getZ() + pos.z))).is(FluidTags.WATER))
 					{
 						part.onFire = false;
 					}
@@ -1043,8 +960,8 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 				else
 				{
 					Vector3f pos = getPartLocalVectorGlobally(part);
-					if(world.getBlockState(new BlockPos(MathHelper.floor(posX + pos.x), MathHelper.floor(posY + pos.y),
-						MathHelper.floor(posZ + pos.z))).getMaterial() == Material.LAVA)
+					if(world.getFluidState(new BlockPos(Mth.floor(getX() + pos.x), Mth.floor(getY() + pos.y),
+						Mth.floor(getZ() + pos.z))).is(FluidTags.LAVA))
 					{
 						part.onFire = true;
 					}
@@ -1078,9 +995,9 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 							emitter.part) != EnumDriveablePart.head)
 						{
 							Vector3f localPosition = new Vector3f(
-								emitter.origin.x + rand.nextFloat() * emitter.extents.x - emitter.extents.x * 0.5f,
-								emitter.origin.y + rand.nextFloat() * emitter.extents.y - emitter.extents.y * 0.5f,
-								emitter.origin.z + rand.nextFloat() * emitter.extents.z - emitter.extents.z * 0.5f);
+								emitter.origin.x + random.nextFloat() * emitter.extents.x - emitter.extents.x * 0.5f,
+								emitter.origin.y + random.nextFloat() * emitter.extents.y - emitter.extents.y * 0.5f,
+								emitter.origin.z + random.nextFloat() * emitter.extents.z - emitter.extents.z * 0.5f);
 							
 							pos = axes.findLocalVectorGlobally(localPosition);
 							velocity = axes.findLocalVectorGlobally(emitter.velocity);
@@ -1091,9 +1008,9 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 						{
 							
 							Vector3f localPosition2 = new Vector3f(
-								emitter.origin.x + rand.nextFloat() * emitter.extents.x - emitter.extents.x * 0.5f,
-								emitter.origin.y + rand.nextFloat() * emitter.extents.y - emitter.extents.y * 0.5f,
-								emitter.origin.z + rand.nextFloat() * emitter.extents.z - emitter.extents.z * 0.5f);
+								emitter.origin.x + random.nextFloat() * emitter.extents.x - emitter.extents.x * 0.5f,
+								emitter.origin.y + random.nextFloat() * emitter.extents.y - emitter.extents.y * 0.5f,
+								emitter.origin.z + random.nextFloat() * emitter.extents.z - emitter.extents.z * 0.5f);
 							
 							RotatedAxes yawOnlyLooking = new RotatedAxes(seats[0].looking.getYaw() + axes.getYaw(),
 								axes.getPitch(), axes.getRoll());
@@ -1101,8 +1018,8 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 							pos = yawOnlyLooking.findLocalVectorGlobally(localPosition2);
 							velocity = yawOnlyLooking.findLocalVectorGlobally(emitter.velocity);
 						}
-						world.spawnParticle(emitter.effectType,
-							posX + pos.x, posY + pos.y, posZ + pos.z, velocity.x, velocity.y, velocity.z);
+						world.addParticle(emitter.effectType,
+							getX() + pos.x, getY() + pos.y, getZ() + pos.z, velocity.x, velocity.y, velocity.z);
 					}
 				}
 				emitterTimers[i] = emitter.emitRate;
@@ -1111,8 +1028,8 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 		
 		checkParts();
 		
-		prevRotationYaw = axes.getYaw();
-		prevRotationPitch = axes.getPitch();
+		yRotO = axes.getYaw();
+		xRotO = axes.getPitch();
 		prevRotationRoll = axes.getRoll();
 		prevAxes = axes.clone();
 		
@@ -1130,7 +1047,7 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 			reportVehicleError();
 		}
 		
-		if(seats[0] != null && seats[0].getRidingEntity() == null)
+		if(seats[0] != null && seats[0].getVehicle() == null)
 		{
 			rightMouseHeld = leftMouseHeld = false;
 		}
@@ -1140,7 +1057,7 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 			shootDelayPrimary--;
 		if(shootDelaySecondary > 0)
 			shootDelaySecondary--;
-		if(!world.isRemote)
+		if(!world.isClientSide())
 		{
 			if(primaryShootHeld && getDriveableType().modePrimary == EnumFireMode.FULLAUTO)
 				shoot(false);
@@ -1171,9 +1088,9 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 			return;
 		
 		// Look through the entire inventory for fuel cans, buildcraft fuel buckets and RedstoneFlux power sources
-		for(int i = 0; i < getDriveableData().getSizeInventory(); i++)
+		for(int i = 0; i < getDriveableData().getContainerSize(); i++)
 		{
-			ItemStack stack = getDriveableData().getStackInSlot(i);
+			ItemStack stack = getDriveableData().getItem(i);
 			if(stack == null || stack.isEmpty())
 				continue;
 			Item item = stack.getItem();
@@ -1188,19 +1105,19 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 					getDriveableData().fuelInTank += fuelMultiplier;
 					
 					// Damage the fuel item to indicate being used up
-					int damage = stack.getItemDamage();
-					stack.setItemDamage(damage + 1);
+					int damage = stack.getDamageValue();
+					stack.setDamageValue(damage + 1);
 					
 					// If we have finished this fuel item
 					if(damage >= stack.getMaxDamage())
 					{
 						// Reset the damage to 0
-						stack.setItemDamage(0);
+						stack.setDamageValue(0);
 						// Consume one item
 						stack.setCount(stack.getCount() - 1);
 						// If we consumed the last one, destroy the stack
 						if(stack.getCount() <= 0)
-							getDriveableData().setInventorySlotContents(i, ItemStack.EMPTY.copy());
+							getDriveableData().setItem(i, ItemStack.EMPTY.copy());
 					}
 					
 					// We found a fuel item and consumed some, so we are done
@@ -1208,19 +1125,19 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 				}
 				
 				// Check for Buildcraft oil and fuel buckets
-				else if(FlansMod.hooks.BuildCraftLoaded && stack.isItemEqual(
+				else if(FlansMod.hooks.BuildCraftLoaded && ItemStack.isSameItem(stack,
 					FlansMod.hooks.BuildCraftOilBucket) &&
 					getDriveableData().fuelInTank + 1000 * fuelMultiplier <= type.fuelTankSize)
 				{
 					getDriveableData().fuelInTank += 1000 * fuelMultiplier;
-					getDriveableData().setInventorySlotContents(i, new ItemStack(Items.BUCKET));
+					getDriveableData().setItem(i, new ItemStack(Items.BUCKET));
 				}
-				else if(FlansMod.hooks.BuildCraftLoaded && stack.isItemEqual(
+				else if(FlansMod.hooks.BuildCraftLoaded && ItemStack.isSameItem(stack,
 					FlansMod.hooks.BuildCraftFuelBucket) &&
 					getDriveableData().fuelInTank + 2000 * fuelMultiplier <= type.fuelTankSize)
 				{
 					getDriveableData().fuelInTank += 2000 * fuelMultiplier;
-					getDriveableData().setInventorySlotContents(i, new ItemStack(Items.BUCKET));
+					getDriveableData().setItem(i, new ItemStack(Items.BUCKET));
 				}
 			}
 		}
@@ -1228,21 +1145,60 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 	
 	public void PostUpdate()
 	{
-		if(Double.isNaN(posX) 
-		|| Double.isNaN(posY)
-		|| Double.isNaN(posZ)
-		|| Float.isNaN(rotationYaw)
-		|| Float.isNaN(rotationPitch)
+		if(Double.isNaN(getX()) 
+		|| Double.isNaN(getY())
+		|| Double.isNaN(getZ())
+		|| Float.isNaN(getYRot())
+		|| Float.isNaN(getXRot())
 		|| !axes.isValid())
 		{
 			FlansMod.log.error("Driveable went to NaNsville. Reverting one frame");
-			posX = prevPosX;
-			posY = prevPosY;
-			posZ = prevPosZ;
+			setPos(xo, yo, zo);
 			
 			// Just reset the axes
 			axes = new RotatedAxes();
 			prevAxes = new RotatedAxes();
+		}
+	}
+	
+	private void loadClientData()
+	{
+		driveableType = entityData.get(TYPE);
+		if(driveableType == null || driveableType.isEmpty())
+			return;
+		driveableData = new DriveableData();
+		driveableData.type = driveableType;
+		driveableData.engine = PartType.getPart(entityData.get(ENGINE));
+		driveableData.fuelInTank = entityData.get(FUEL);
+		driveableData.paintjobID = entityData.get(PAINT);
+		DriveableType type = getDriveableType();
+		if(type == null)
+			return;
+		driveableData.numBombs = type.numBombSlots;
+		driveableData.numCargo = type.numCargoSlots;
+		driveableData.numMissiles = type.numMissileSlots;
+		driveableData.numGuns = type.ammoSlots();
+		driveableData.ammo = new ItemStack[driveableData.numGuns];
+		driveableData.bombs = new ItemStack[driveableData.numBombs];
+		driveableData.missiles = new ItemStack[driveableData.numMissiles];
+		driveableData.cargo = new ItemStack[driveableData.numCargo];
+		for(int i = 0; i < driveableData.ammo.length; i++)
+			driveableData.ammo[i] = ItemStack.EMPTY.copy();
+		for(int i = 0; i < driveableData.bombs.length; i++)
+			driveableData.bombs[i] = ItemStack.EMPTY.copy();
+		for(int i = 0; i < driveableData.missiles.length; i++)
+			driveableData.missiles[i] = ItemStack.EMPTY.copy();
+		for(int i = 0; i < driveableData.cargo.length; i++)
+			driveableData.cargo[i] = ItemStack.EMPTY.copy();
+		for(EnumDriveablePart part : EnumDriveablePart.values())
+		{
+			driveableData.parts.put(part, new DriveablePart(part, type.health.get(part)));
+		}
+		initType(type, false, true);
+		if(world.isClientSide() && camera == null)
+		{
+			camera = new EntityCamera(world, this);
+			world.addFreshEntity(camera);
 		}
 	}
 	
@@ -1253,7 +1209,7 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 		for(int i = driveableData.getMissileInventoryStart();
 			i < driveableData.getMissileInventoryStart() + type.numMissileSlots; i++)
 		{
-			ItemStack shell = driveableData.getStackInSlot(i);
+			ItemStack shell = driveableData.getItem(i);
 			if(shell != null && shell.getItem() instanceof ItemBullet &&
 				type.isValidAmmo(((ItemBullet)shell.getItem()).type, EnumWeaponType.SHELL))
 			{
@@ -1272,7 +1228,7 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 		for(int i = driveableData.getMissileInventoryStart();
 			i < driveableData.getMissileInventoryStart() + type.numMissileSlots; i++)
 		{
-			ItemStack shell = driveableData.getStackInSlot(i);
+			ItemStack shell = driveableData.getItem(i);
 			if(shell != null && shell.getItem() instanceof ItemBullet &&
 				type.isValidAmmo(((ItemBullet)shell.getItem()).type, EnumWeaponType.SHELL))
 			{
@@ -1288,24 +1244,24 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 	{
 		// Pick a random position within the bounding box and spawn a flame there
 		return axes.findLocalVectorGlobally(
-			new Vector3f(part.box.x + rand.nextFloat() * part.box.w,
-				part.box.y + rand.nextFloat() * part.box.h,
-				part.box.z + rand.nextFloat() * part.box.d));
+			new Vector3f(part.box.x + random.nextFloat() * part.box.w,
+				part.box.y + random.nextFloat() * part.box.h,
+				part.box.z + random.nextFloat() * part.box.d));
 	}
 	
 	protected void moveTowardServerPosition()
 	{
-		double x = posX + (serverPosX - posX) / serverPositionTransitionTicker;
-		double y = posY + (serverPosY - posY) / serverPositionTransitionTicker;
-		double z = posZ + (serverPosZ - posZ) / serverPositionTransitionTicker;
-		double dYaw = MathHelper.wrapDegrees(serverYaw - axes.getYaw());
-		double dPitch = MathHelper.wrapDegrees(serverPitch - axes.getPitch());
-		double dRoll = MathHelper.wrapDegrees(serverRoll - axes.getRoll());
-		rotationYaw = (float)(axes.getYaw() + dYaw / serverPositionTransitionTicker);
-		rotationPitch = (float)(axes.getPitch() + dPitch / serverPositionTransitionTicker);
+		double x = getX() + (serverPosX - getX()) / serverPositionTransitionTicker;
+		double y = getY() + (serverPosY - getY()) / serverPositionTransitionTicker;
+		double z = getZ() + (serverPosZ - getZ()) / serverPositionTransitionTicker;
+		double dYaw = Mth.wrapDegrees(serverYaw - axes.getYaw());
+		double dPitch = Mth.wrapDegrees(serverPitch - axes.getPitch());
+		double dRoll = Mth.wrapDegrees(serverRoll - axes.getRoll());
+		float rotationYaw = (float)(axes.getYaw() + dYaw / serverPositionTransitionTicker);
+		float rotationPitch = (float)(axes.getPitch() + dPitch / serverPositionTransitionTicker);
 		float rotationRoll = (float)(axes.getRoll() + dRoll / serverPositionTransitionTicker);
 		--serverPositionTransitionTicker;
-		setPosition(x, y, z);
+		setPos(x, y, z);
 		setRotation(rotationYaw, rotationPitch, rotationRoll);
 	}
 	
@@ -1318,24 +1274,25 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 			if(driveableData.parts.get(p.part).dead)
 				continue;
 			Vector3f lastRelPos = prevAxes.findLocalVectorGlobally(p.position);
-			Vec3d lastPos = new Vec3d(prevPosX + lastRelPos.x, prevPosY + lastRelPos.y, prevPosZ + lastRelPos.z);
+			Vec3 lastPos = new Vec3(xo + lastRelPos.x, yo + lastRelPos.y, zo + lastRelPos.z);
 			
 			Vector3f currentRelPos = axes.findLocalVectorGlobally(p.position);
-			Vec3d currentPos = new Vec3d(posX + currentRelPos.x, posY + currentRelPos.y, posZ + currentRelPos.z);
+			Vec3 currentPos = new Vec3(getX() + currentRelPos.x, getY() + currentRelPos.y, getZ() + currentRelPos.z);
 			
-			if(FlansMod.DEBUG && world.isRemote)
+			if(FlansMod.DEBUG && world.isClientSide())
 			{
-				world.spawnEntity(new EntityDebugVector(world, new Vector3f(lastPos),
+				world.addFreshEntity(new EntityDebugVector(world, new Vector3f(lastPos),
 					Vector3f.sub(currentRelPos, lastRelPos, null), 10, 1F, 0F, 0F));
 			}
 			
-			RayTraceResult hit = world.rayTraceBlocks(lastPos, currentPos, crashInWater);
-			if(hit != null && hit.typeOfHit == Type.BLOCK)
+			HitResult hit = world.clip(new ClipContext(lastPos, currentPos, ClipContext.Block.COLLIDER,
+				crashInWater ? ClipContext.Fluid.ANY : ClipContext.Fluid.NONE, this));
+			if(hit != null && hit.getType() == Type.BLOCK)
 			{
-				BlockPos pos = hit.getBlockPos();
-				IBlockState state = world.getBlockState(pos);
+				BlockPos pos = ((net.minecraft.world.phys.BlockHitResult)hit).getBlockPos();
+				BlockState state = world.getBlockState(pos);
 				
-				float blockHardness = state.getBlockHardness(world, pos);
+				float blockHardness = state.getDestroySpeed(world, pos);
 				float damage = (float)speed;
 
 				// unbreakable block
@@ -1349,23 +1306,20 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 				}
 
 				// Attack the part
-				if(!attackPart(p.part, DamageSource.IN_WALL, damage) 
+				if(!attackPart(p.part, level().damageSources().inWall(), damage) 
 					&& TeamsManager.driveablesBreakBlocks)
 				{
 					// And if it didn't die from the attack, break the block
-					// TODO: [1.12] Heck
-					// playAuxSFXAtEntity(null, 2001, pos, Block.getStateId(state));
-					
-					if(!world.isRemote && blockHardness <= collisionForce)
+					if(!world.isClientSide() && blockHardness <= collisionForce)
 					{
-						WorldServer worldServer = (WorldServer)world;
+						ServerLevel worldServer = (ServerLevel)world;
 						destroyBlock(worldServer, pos, getDriver(), true);
 					}
 				}
 				else
 				{
 					// The part died!
-					world.createExplosion(this, currentPos.x, currentPos.y, currentPos.z, 1F, false);
+					world.explode(this, currentPos.x, currentPos.y, currentPos.z, 1F, false, Level.ExplosionInteraction.BLOCK);
 				}
 			}
 			
@@ -1373,14 +1327,15 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 	}
 	
 	@Override
-	public void fall(float distance, float damageMultiplier)
+	public boolean causeFallDamage(double distance, float damageMultiplier, DamageSource source)
 	{
 		if(distance <= 0)
-			return;
-		int i = MathHelper.ceil(distance - 10F);
+			return false;
+		int i = Mth.ceil(distance - 10F);
 		
 		if(i > 0)
-			attackPart(EnumDriveablePart.core, DamageSource.FALL, damageMultiplier * i / 5);
+			attackPart(EnumDriveablePart.core, level().damageSources().fall(), damageMultiplier * i / 5);
+		return true;
 	}
 	
 	/**
@@ -1389,7 +1344,7 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 	public boolean attackPart(EnumDriveablePart ep, DamageSource source, float damage)
 	{
 		DriveablePart part = driveableData.parts.get(ep);
-		return part.attack(damage, source.isFireDamage());
+		return part.attack(damage, source.is(DamageTypeTags.IS_FIRE));
 	}
 	
 	/**
@@ -1405,7 +1360,7 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 	 * Takes a vector (such as the origin of a seat / gun) and translates it from local coordinates to global
 	 * coordinates
 	 */
-	public Vector3f rotate(Vec3d inVec)
+	public Vector3f rotate(Vec3 inVec)
 	{
 		return rotate(inVec.x, inVec.y, inVec.z);
 	}
@@ -1455,17 +1410,17 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 	public void updatePrevAngles()
 	{
 		// Correct angles that crossed the +/- 180 line, so that rendering doesnt make them swing 360 degrees in one tick.
-		double dYaw = axes.getYaw() - prevRotationYaw;
+		double dYaw = axes.getYaw() - yRotO;
 		if(dYaw > 180)
-			prevRotationYaw += 360F;
+			yRotO += 360F;
 		if(dYaw < -180)
-			prevRotationYaw -= 360F;
+			yRotO -= 360F;
 		
-		double dPitch = axes.getPitch() - prevRotationPitch;
+		double dPitch = axes.getPitch() - xRotO;
 		if(dPitch > 180)
-			prevRotationPitch += 360F;
+			xRotO += 360F;
 		if(dPitch < -180)
-			prevRotationPitch -= 360F;
+			xRotO -= 360F;
 		
 		double dRoll = axes.getRoll() - prevRotationRoll;
 		if(dRoll > 180)
@@ -1482,19 +1437,25 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 	// Used to stop self collision
 	public boolean isPartOfThis(Entity entity)
 	{
-		for(EntitySeat seat : seats)
+		if(seats != null)
 		{
-			if(seat == null)
-				continue;
-			if(entity == seat)
-				return true;
-			if(seat.getControllingPassenger() == entity)
-				return true;
+			for(EntitySeat seat : seats)
+			{
+				if(seat == null)
+					continue;
+				if(entity == seat)
+					return true;
+				if(seat.getControllingPassenger() == entity)
+					return true;
+			}
 		}
-		for(EntityWheel wheel : wheels)
+		if(wheels != null)
 		{
-			if(entity == wheel)
-				return true;
+			for(EntityWheel wheel : wheels)
+			{
+				if(entity == wheel)
+					return true;
+			}
 		}
 		return entity == this;
 	}
@@ -1509,25 +1470,25 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 		return driveableData;
 	}
 	
-	@Override
 	public boolean isDead()
 	{
-		return isDead;
+		return isRemoved();
 	}
 	
 	@Override
 	public Entity getControllingEntity()
 	{
-		return seats[0].getControllingEntity();
+		if(seats != null && seats[0] != null)
+			return seats[0].getControllingEntity();
+		return null;
 	}
 	
-	@Override
-	public ItemStack getPickedResult(RayTraceResult target)
+	public ItemStack getPickedResult(HitResult target)
 	{
-		ItemStack stack = new ItemStack(getDriveableType().item, 1, 0);
-		NBTTagCompound tags = new NBTTagCompound();
-		stack.setTagCompound(tags);
+		ItemStack stack = new ItemStack(getDriveableType().item);
+		CompoundTag tags = new CompoundTag();
 		driveableData.writeToNBT(tags);
+		stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tags));
 		return stack;
 	}
 	
@@ -1549,12 +1510,12 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 	
 	public double getSpeedXYZ()
 	{
-		return Math.sqrt(motionX * motionX + motionY * motionY + motionZ * motionZ);
+		return Math.sqrt(getDeltaMovement().x * getDeltaMovement().x + getDeltaMovement().y * getDeltaMovement().y + getDeltaMovement().z * getDeltaMovement().z);
 	}
 	
 	public double getSpeedXZ()
 	{
-		return Math.sqrt(motionX * motionX + motionZ * motionZ);
+		return Math.sqrt(getDeltaMovement().x * getDeltaMovement().x + getDeltaMovement().z * getDeltaMovement().z);
 	}
 	
 	/**
@@ -1579,7 +1540,7 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 	public boolean onGround()
 	{
 		// TODO: Replace with proper check based on wheels
-		return onGround;
+		return super.onGround();
 	}
 	
 	/**
@@ -1591,7 +1552,7 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 		// Make an array to contain the hits
 		ArrayList<BulletHit> hits = new ArrayList<>();
 		// Get the position of the bullet origin, relative to the centre of the plane, and then rotate the vectors onto local co-ordinates
-		Vector3f relativePosVector = Vector3f.sub(origin, new Vector3f((float)posX, (float)posY, (float)posZ), null);
+		Vector3f relativePosVector = Vector3f.sub(origin, new Vector3f((float)getX(), (float)getY(), (float)getZ()), null);
 		Vector3f rotatedPosVector = axes.findGlobalVectorLocally(relativePosVector);
 		Vector3f rotatedMotVector = axes.findGlobalVectorLocally(motion);
 		// Check each part
@@ -1616,12 +1577,12 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 		part.hitByBullet(bulletType, damage);
 		
 		// This is server side bsns
-		if(!world.isRemote)
+		if(!world.isClientSide())
 		{
 			checkParts();
 			// If it hit, send a damage update packet
-			FlansMod.getPacketHandler().sendToAllAround(new PacketDriveableDamage(this), posX, posY, posZ, 100,
-				dimension);
+			FlansMod.getPacketHandler().sendToAllAround(new PacketDriveableDamage(this), getX(), getY(), getZ(), 100,
+				0);
 		}
 		
 		return penetratingPower - 5F;
@@ -1633,7 +1594,7 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 	public DriveablePart raytraceParts(Vector3f origin, Vector3f motion)
 	{
 		// Get the position of the bullet origin, relative to the centre of the plane, and then rotate the vectors onto local co-ordinates
-		Vector3f relativePosVector = Vector3f.sub(origin, new Vector3f((float)posX, (float)posY, (float)posZ), null);
+		Vector3f relativePosVector = Vector3f.sub(origin, new Vector3f((float)getX(), (float)getY(), (float)getZ()), null);
 		Vector3f rotatedPosVector = axes.findGlobalVectorLocally(relativePosVector);
 		Vector3f rotatedMotVector = axes.findGlobalVectorLocally(motion);
 		// Check each part
@@ -1673,7 +1634,7 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 		// If the core was destroyed, kill the driveable
 		if(getDriveableData().parts.get(EnumDriveablePart.core).dead)
 		{
-			if(!world.isRemote)
+			if(!world.isClientSide())
 			{
 				for(DriveablePart part : driveableData.parts.values())
 				{
@@ -1698,7 +1659,7 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 		
 		// Drop items
 		DriveableType type = getDriveableType();
-		if(!world.isRemote)
+		if(!world.isClientSide())
 		{
 			Vector3f pos = new Vector3f(0, 0, 0);
 			
@@ -1712,7 +1673,7 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 				// Drop each item stack
 				for(ItemStack stack : drops)
 				{
-					world.spawnEntity(new EntityItem(world, posX + pos.x, posY + pos.y, posZ + pos.z, stack.copy()));
+					world.addFreshEntity(new ItemEntity(world, getX() + pos.x, getY() + pos.y, getZ() + pos.z, stack.copy()));
 				}
 			}
 			dropItemsOnPartDeath(pos, part);
@@ -1720,33 +1681,33 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 			// Inventory is in the core, so drop it if the core is broken
 			if(part.type == EnumDriveablePart.core)
 			{
-				for(EntityPlayer player : world.playerEntities)
+				for(Player player : world.players())
 				{
-					if(player.openContainer instanceof ContainerDriveableInventory)
+					if(player.containerMenu instanceof ContainerDriveableInventory)
 					{
-						if(((ContainerDriveableInventory)player.openContainer).plane.getEntityId() == getEntityId())
+						if(((ContainerDriveableInventory)player.containerMenu).plane.getId() == getId())
 						{
-							player.closeScreen();
-							//player.openGui(null, 0, world, (int)posX, (int)posY, (int)posZ);
+							if(player instanceof ServerPlayer)
+								((ServerPlayer)player).closeContainer();
 						}
 					}
-					else if(player.openContainer instanceof ContainerMechaInventory)
+					else if(player.containerMenu instanceof ContainerMechaInventory)
 					{
-						if(((ContainerMechaInventory)player.openContainer).mecha.getEntityId() == getEntityId())
+						if(((ContainerMechaInventory)player.containerMenu).mecha.getId() == getId())
 						{
-							player.closeScreen();
-							//player.openGui(null, 0, world, (int)posX, (int)posY, (int)posZ);
+							if(player instanceof ServerPlayer)
+								((ServerPlayer)player).closeContainer();
 						}
 					}
 				}
 				
-				for(int i = 0; i < getDriveableData().getSizeInventory(); i++)
+				for(int i = 0; i < getDriveableData().getContainerSize(); i++)
 				{
-					ItemStack stack = getDriveableData().getStackInSlot(i);
+					ItemStack stack = getDriveableData().getItem(i);
 					if(stack != null && !stack.isEmpty())
 					{
-						world.spawnEntity(new EntityItem(world, posX + rand.nextGaussian(), posY + rand.nextGaussian(),
-							posZ + rand.nextGaussian(), stack));
+						world.addFreshEntity(new ItemEntity(world, getX() + random.nextGaussian(), getY() + random.nextGaussian(),
+							getZ() + random.nextGaussian(), stack));
 					}
 				}
 			}
@@ -1814,12 +1775,12 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 	}
 	
 	@Override
-	public String getName()
+	public Component getName()
 	{
-		return getDriveableType().name;
+		DriveableType type = getDriveableType();
+		return type == null ? Component.literal("") : Component.literal(type.name);
 	}
 	
-	@SideOnly(Side.CLIENT)
 	public boolean showInventory(int seat)
 	{
 		return seat != 0 || !FlansModClient.controlModeMouse;
@@ -1863,7 +1824,7 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 	
 	
 	@Override
-	protected boolean canFitPassenger(Entity passenger)
+	protected boolean canAddPassenger(Entity passenger)
 	{
 		if(passenger instanceof EntitySeat || passenger instanceof EntityWheel)
 		{
@@ -1874,37 +1835,34 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 	}
 	
 	@Override
-	public void updatePassenger(Entity passenger)
+	protected void addPassenger(Entity passenger)
 	{
-		// They can handle themselves, but maybe the code should be moved to here
+		super.addPassenger(passenger);
+		if(world.isClientSide())
+		{
+			// We need to do some handling to work out which seat to get into. Or not?
+		}
 	}
 	
 	@Override
-	public void removePassenger(Entity passenger)
+	protected void removePassenger(Entity passenger)
 	{
 		super.removePassenger(passenger);
 	}
 	
-	public EntitySeat getSeat(EntityLivingBase passenger)
+	public EntitySeat getSeat(LivingEntity passenger)
 	{
-		for(EntitySeat seat : seats)
+		if(seats != null)
 		{
-			if(seat.getControllingEntity() == passenger)
+			for(EntitySeat seat : seats)
 			{
-				return seat;
+				if(seat.getControllingEntity() == passenger)
+				{
+					return seat;
+				}
 			}
 		}
 		return null;
-	}
-	
-	@Override
-	protected void addPassenger(Entity passenger)
-	{
-		super.addPassenger(passenger);
-		if(world.isRemote)
-		{
-			// We need to do some handling to work out which seat to get into. Or not?
-		}
 	}
 	
 	public void registerSeat(EntitySeat seat)
@@ -1924,6 +1882,10 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 	
 	public EntitySeat getSeat(int id)
 	{
+		if(seats == null)
+			return null;
+		if(id < 0 || id >= seats.length)
+			return null;
 		if(seats[id] == null)
 		{
 			for(Entity passenger : getPassengers())
@@ -1946,6 +1908,8 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 	
 	public EntityWheel getWheel(int id)
 	{
+		if(wheels == null)
+			return null;
 		if(wheels[id] == null)
 		{
 			for(Entity passenger : getPassengers())
@@ -1965,12 +1929,11 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 		return wheels[id];
 	}
 	
-	@SideOnly(Side.CLIENT)
 	public void togglePerspective()
 	{
-		Minecraft mc = Minecraft.getMinecraft();
-		if(mc.gameSettings.thirdPersonView == 0)
-			mc.setRenderViewEntity((getCamera() == null ? mc.player : getCamera()));
-		else mc.setRenderViewEntity(mc.player);
+		Minecraft mc = Minecraft.getInstance();
+		if(mc.options.getCameraType() == net.minecraft.client.CameraType.FIRST_PERSON)
+			mc.setCameraEntity((getCamera() == null ? mc.player : getCamera()));
+		else mc.setCameraEntity(mc.player);
 	}
 }

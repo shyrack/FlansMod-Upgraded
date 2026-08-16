@@ -3,8 +3,8 @@ package com.flansmod.client.tmt;
 import java.util.ArrayList;
 import java.util.Collections;
 
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.Mth;
+import net.minecraft.world.phys.Vec3;
 
 public class Shape2D
 {
@@ -37,7 +37,7 @@ public class Shape2D
 		PositionTransformVertex[] vertsBottom = new PositionTransformVertex[coords.size()];
 		TexturedPolygon[] poly = new TexturedPolygon[coords.size() + 2];
 		
-		Vec3d extrudeVector = new Vec3d(0, 0, depth);
+		Vec3 extrudeVector = new Vec3(0, 0, depth);
 		
 		extrudeVector = setVectorRotations(extrudeVector, rotX, rotY, rotZ);
 		
@@ -54,7 +54,7 @@ public class Shape2D
 			float texU2 = ((shapeTextureWidth * 2 - curCoord.uCoord + u) / textureWidth);
 			float texV = ((curCoord.vCoord + v) / textureHeight);
 			
-			Vec3d vecCoord = new Vec3d(curCoord.xCoord, curCoord.yCoord, 0);
+			Vec3 vecCoord = new Vec3(curCoord.xCoord, curCoord.yCoord, 0);
 			
 			vecCoord = setVectorRotations(vecCoord, rotX, rotY, rotZ);
 			
@@ -116,14 +116,14 @@ public class Shape2D
 		return shape3D;
 	}
 	
-	protected Vec3d setVectorRotations(Vec3d vector, float xRot, float yRot, float zRot)
+	protected Vec3 setVectorRotations(Vec3 vector, float xRot, float yRot, float zRot)
 	{
-		float xC = MathHelper.cos(xRot);
-		float xS = MathHelper.sin(xRot);
-		float yC = MathHelper.cos(yRot);
-		float yS = MathHelper.sin(yRot);
-		float zC = MathHelper.cos(zRot);
-		float zS = MathHelper.sin(zRot);
+		float xC = Mth.cos(xRot);
+		float xS = Mth.sin(xRot);
+		float yC = Mth.cos(yRot);
+		float yS = Mth.sin(yRot);
+		float zC = Mth.cos(zRot);
+		float zS = Mth.sin(zRot);
 		
 		double xVec = vector.x;
 		double yVec = vector.y;
@@ -143,7 +143,7 @@ public class Shape2D
 		yVec = zy;
 		zVec = yz;
 		
-		return new Vec3d(xVec, yVec, zVec);
+		return new Vec3(xVec, yVec, zVec);
 	}
 	
 	public ArrayList<Coord2D> coords;

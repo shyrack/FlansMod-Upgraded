@@ -3,11 +3,8 @@ package com.flansmod.common.network;
 import java.util.ArrayList;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
 
 import com.flansmod.client.FlansModClient;
 import com.flansmod.common.FlansMod;
@@ -76,7 +73,7 @@ public class PacketTeamInfo extends PacketBase
 	}
 	
 	@Override
-	public void encodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void encodeInto(ByteBuf data)
 	{
 		data.writeBoolean(TeamsManager.canBreakGlass);
 		data.writeBoolean(TeamsManager.vehiclesNeedFuel);
@@ -122,7 +119,7 @@ public class PacketTeamInfo extends PacketBase
 						for(int j = 0; j < team.members.size(); j++)
 						{
 							String username = team.members.get(j);
-							PlayerData playerData = PlayerHandler.getPlayerData(username, Side.SERVER);
+							PlayerData playerData = PlayerHandler.getPlayerData(username, false);
 							writeUTF(data, username);
 							PlayerRankData rankData = TeamsManagerRanked.GetRankData(TeamsManager.getPlayer(username));
 							if(rankData == null)
@@ -171,7 +168,7 @@ public class PacketTeamInfo extends PacketBase
 				data.writeInt(playerNames.size());
 				for(String username : playerNames)
 				{
-					PlayerData playerData = PlayerHandler.getPlayerData(username, Side.SERVER);
+					PlayerData playerData = PlayerHandler.getPlayerData(username, false);
 					writeUTF(data, username);
 					PlayerRankData rankData = TeamsManagerRanked.GetRankData(TeamsManager.getPlayer(username));
 					if(rankData == null)
@@ -205,7 +202,7 @@ public class PacketTeamInfo extends PacketBase
 	}
 	
 	@Override
-	public void decodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void decodeInto(ByteBuf data)
 	{
 		try
 		{
@@ -286,24 +283,22 @@ public class PacketTeamInfo extends PacketBase
 		catch(Exception e)
 		{
 			FlansMod.Assert(false, "Messed up in teams packet");
-			FlansMod.log.throwing(e);
+			FlansMod.log.error("Messed up in teams packet", e);
 			teamData = new TeamData[]{new TeamData()};
 		}
 		finally
 		{
-			data.release();
 		}
 	}
 	
 	@Override
-	public void handleServerSide(EntityPlayerMP playerEntity)
+	public void handleServerSide(ServerPlayer playerEntity)
 	{
 		
 	}
 	
 	@Override
-	@SideOnly(Side.CLIENT)
-	public void handleClientSide(EntityPlayer clientPlayer)
+	public void handleClientSide(Player clientPlayer)
 	{
 		FlansModClient.teamInfo = this;
 	}
@@ -318,13 +313,13 @@ public class PacketTeamInfo extends PacketBase
 		}
 	}
 	
-	public Team getTeam(EntityPlayer player)
+	public Team getTeam(Player player)
 	{
 		for(TeamData aTeamData : teamData)
 		{
 			for(int j = 0; j < aTeamData.playerData.length; j++)
 			{
-				if(aTeamData.playerData[j].username.equals(player.getDisplayNameString()))
+				if(aTeamData.playerData[j].username.equals(player.getName().getString()))
 				{
 					return aTeamData.team;
 				}

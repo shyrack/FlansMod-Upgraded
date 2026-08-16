@@ -1,11 +1,8 @@
 package com.flansmod.common.network;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
 
 import com.flansmod.client.gui.teams.EnumLoadoutSlot;
 import com.flansmod.client.gui.teams.GuiTeamSelect;
@@ -29,7 +26,7 @@ public class PacketLoadoutData extends PacketBase
 	}
 	
 	@Override
-	public void encodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void encodeInto(ByteBuf data)
 	{
 		writeUTF(data, motd);
 		data.writeInt(teamsAvailable.length);
@@ -44,7 +41,7 @@ public class PacketLoadoutData extends PacketBase
 	}
 	
 	@Override
-	public void decodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void decodeInto(ByteBuf data)
 	{
 		motd = readUTF(data);
 		int numTeams = data.readInt();
@@ -60,13 +57,13 @@ public class PacketLoadoutData extends PacketBase
 	}
 	
 	@Override
-	public void handleServerSide(EntityPlayerMP playerEntity)
+	public void handleServerSide(ServerPlayer playerEntity)
 	{
-		PlayerRankData rankData = TeamsManagerRanked.rankData.get(playerEntity.getUniqueID());
+		PlayerRankData rankData = TeamsManagerRanked.rankData.get(playerEntity.getUUID());
 		if(rankData == null)
 		{
 			rankData = new PlayerRankData();
-			TeamsManagerRanked.rankData.put(playerEntity.getUniqueID(), rankData);
+			TeamsManagerRanked.rankData.put(playerEntity.getUUID(), rankData);
 		}
 		
 		// Client to server. The only bit they are authoritative on is their loadouts. But they still need to be checked for cheating.
@@ -78,7 +75,7 @@ public class PacketLoadoutData extends PacketBase
 		}
 		else
 		{
-			FlansMod.Assert(false, "PLAYER " + playerEntity.getDisplayNameString() + " GAVE INCORRECT LOADOUT.");
+			FlansMod.Assert(false, "PLAYER " + playerEntity.getName().getString() + " GAVE INCORRECT LOADOUT.");
 			LoadoutPool pool = TeamsManagerRanked.GetInstance().currentPool;
 			if(pool != null)
 			{
@@ -99,8 +96,7 @@ public class PacketLoadoutData extends PacketBase
 	}
 	
 	@Override
-	@SideOnly(Side.CLIENT)
-	public void handleClientSide(EntityPlayer clientPlayer)
+	public void handleClientSide(Player clientPlayer)
 	{
 		ClientTeamsData.motd = motd;
 		ClientTeamsData.theRankData = myRankData;

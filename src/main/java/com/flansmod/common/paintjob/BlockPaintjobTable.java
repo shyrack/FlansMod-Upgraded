@@ -1,73 +1,93 @@
 package com.flansmod.common.paintjob;
 
-import net.minecraft.block.BlockContainer;
-import net.minecraft.block.material.Material;
-import net.minecraft.block.state.IBlockState;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.inventory.IInventory;
-import net.minecraft.inventory.InventoryHelper;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.EnumHand;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
-import net.minecraftforge.fml.relauncher.Side;
-
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.Container;
+import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import com.mojang.serialization.MapCodec;
+import net.minecraft.world.level.block.BaseEntityBlock;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.level.material.MapColor;
+import net.minecraft.world.level.material.PushReaction;
 import com.flansmod.common.FlansMod;
+import com.flansmod.common.ModBlockEntities;
+import com.flansmod.common.PlayerData;
+import com.flansmod.common.util.ItemStackUtil;
 
-public class BlockPaintjobTable extends BlockContainer
+public class BlockPaintjobTable extends BaseEntityBlock
 {
+	public static final MapCodec<BlockPaintjobTable> CODEC = simpleCodec(BlockPaintjobTable::new);
+	
+	public BlockPaintjobTable(BlockBehaviour.Properties properties)
+	{
+		super(properties);
+	}
+	
 	public BlockPaintjobTable()
 	{
-		super(Material.ROCK);
-		setHardness(2F);
-		setResistance(4F);
-		setTranslationKey("paintjobTable");
-		setRegistryName("paintjobTable");
-		setCreativeTab(FlansMod.tabFlanGuns);
+		this(Block.Properties.of().mapColor(MapColor.WOOD).strength(2F, 4F).pushReaction(PushReaction.BLOCK));
 	}
 	
 	@Override
-	public boolean canPlaceBlockAt(World world, BlockPos pos)
+	protected MapCodec<? extends BaseEntityBlock> codec()
 	{
-		return world.getBlockState(pos.add(0, -1, 0)).isSideSolid(world, pos.add(0, -1, 0), EnumFacing.UP);
+		return CODEC;
 	}
 	
 	@Override
-	public TileEntity createNewTileEntity(World world, int i)
+	public BlockEntity newBlockEntity(BlockPos pos, BlockState state)
 	{
-		return new TileEntityPaintjobTable();
+		return new TileEntityPaintjobTable(pos, state);
 	}
 	
 	@Override
-	public boolean onBlockActivated(World world, BlockPos pos, IBlockState state, EntityPlayer player, EnumHand hand, EnumFacing side, float par7, float par8, float par9)
+	public InteractionResult useWithoutItem(BlockState state, Level world, BlockPos pos, Player player, BlockHitResult hit)
 	{
-		if(world.isRemote)
+		if(world.isClientSide())
 		{
-			FlansMod.playerHandler.getPlayerData(player, Side.CLIENT).shootTimeLeft = FlansMod.playerHandler.getPlayerData(player, Side.CLIENT).shootTimeRight = 10;
-			return true;
+			PlayerData data = FlansMod.playerHandler.getPlayerData(player);
+			if(data != null)
+				data.shootTimeLeft = data.shootTimeRight = 10;
+			return InteractionResult.SUCCESS;
 		}
 		
-		TileEntityPaintjobTable table = (TileEntityPaintjobTable)world.getTileEntity(pos);
+		TileEntityPaintjobTable table = (TileEntityPaintjobTable)world.getBlockEntity(pos);
 		
-		if(!world.isRemote)
+		if(!world.isClientSide() && table != null)
 		{
-			player.openGui(FlansMod.INSTANCE, 13, world, pos.getX(), pos.getY(), pos.getZ());
+			player.openMenu(new SimpleMenuProvider((id, inv, p) -> new ContainerPaintjobTable(id, inv, table), Component.literal("Paintjob Table")));
 		}
-		return true;
+		return InteractionResult.SUCCESS;
 	}
 	
 	@Override
-	public void breakBlock(World worldIn, BlockPos pos, IBlockState state)
+	public BlockState playerWillDestroy(Level worldIn, BlockPos pos, BlockState state, net.minecraft.world.entity.player.Player player)
 	{
-		TileEntity tileentity = worldIn.getTileEntity(pos);
-		
-		if(tileentity instanceof IInventory)
+		if(!state.isAir())
 		{
-			InventoryHelper.dropInventoryItems(worldIn, pos, (IInventory)tileentity);
-			worldIn.updateComparatorOutputLevel(pos, this);
+			BlockEntity tileentity = worldIn.getBlockEntity(pos);
+			if(tileentity instanceof Container)
+			{
+				for(int i = 0; i < ((Container)tileentity).getContainerSize(); i++)
+				{
+					ItemStack stack = ((Container)tileentity).getItem(i);
+					if(!stack.isEmpty())
+						popResource(worldIn, pos, stack);
+				}
+				worldIn.updateNeighbourForOutputSignal(pos, this);
+			}
 		}
-		
-		super.breakBlock(worldIn, pos, state);
+		return super.playerWillDestroy(worldIn, pos, state, player);
 	}
 }

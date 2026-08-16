@@ -1,33 +1,42 @@
 package com.flansmod.common;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.item.EntityItem;
-import net.minecraft.item.ItemStack;
-import net.minecraft.world.World;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.level.Level;
 
-public class EntityItemCustomRender extends EntityItem
+public class EntityItemCustomRender extends ItemEntity
 {
+	protected Level world;
 	public EntityItemCustomRender(Entity entity, ItemStack itemStack)
 	{
-		super(entity.world, entity.posX, entity.posY, entity.posZ, itemStack);
-		this.motionX = entity.motionX;
-		this.motionY = entity.motionY;
-		this.motionZ = entity.motionZ;
-		this.setPickupDelay(40);
+		super(entity.level(), entity.getX(), entity.getY(), entity.getZ(), itemStack);
+		this.world = entity.level();
+		this.setDeltaMovement(entity.getDeltaMovement());
+		this.setPickUpDelay(40);
 	}
 	
-	public EntityItemCustomRender(World world, double posX, double posY, double posZ, ItemStack stack)
+	public EntityItemCustomRender(Level world, double posX, double posY, double posZ, ItemStack stack)
 	{
 		super(world, posX, posY, posZ, stack);
+		this.world = world;
 	}
 	
-	public EntityItemCustomRender(World world)
+		public EntityItemCustomRender(EntityType<? extends ItemEntity> type, Level world)
 	{
-		super(world);
+		super(type, world);
+		this.world = level();
+	}
+
+public EntityItemCustomRender(Level world)
+	{
+		this(ModEntities.CUSTOM_ITEM, world);
 	}
 	
-	public EntityItemCustomRender(World w, double x, double y, double z)
+	public EntityItemCustomRender(Level w, double x, double y, double z)
 	{
-		super(w, x, y, z);
+		super(w, x, y, z, ItemStack.EMPTY);
+		this.world = w;
 	}
 }

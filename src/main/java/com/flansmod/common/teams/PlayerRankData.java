@@ -3,8 +3,8 @@ package com.flansmod.common.teams;
 import java.util.ArrayList;
 
 import io.netty.buffer.ByteBuf;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.nbt.NBTTagList;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
 
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.paintjob.PaintableType;
@@ -79,55 +79,55 @@ public class PlayerRankData
 		}
 	}
 	
-	public void readFromNBT(NBTTagCompound tags)
+	public void readFromNBT(CompoundTag tags)
 	{
-		currentLevel = tags.getInteger("level");
-		currentXP = tags.getInteger("XP");
+		currentLevel = tags.getIntOr("level", 0);
+		currentXP = tags.getIntOr("XP", 0);
 		
 		for(int i = 0; i < 5; i++)
 		{
-			loadouts[i].readFromNBT(tags.getCompoundTag("Slot_" + i));
+			loadouts[i].readFromNBT(tags.getCompoundOrEmpty("Slot_" + i));
 		}
 		
-		NBTTagList rewardTags = tags.getTagList("rewardBoxes", 10); // 10 = CompoundTag
+		ListTag rewardTags = tags.getListOrEmpty("rewardBoxes");
 		if(rewardTags != null)
 		{
-			for(int i = 0; i < rewardTags.tagCount(); i++)
+			for(int i = 0; i < rewardTags.size(); i++)
 			{
-				NBTTagCompound rewardInstanceTags = rewardTags.getCompoundTagAt(i);
+				CompoundTag rewardInstanceTags = rewardTags.getCompoundOrEmpty(i);
 				
-				int type = rewardInstanceTags.getInteger("type");
-				int boxHash = rewardInstanceTags.getInteger("boxHash");
-				int unlockHash = rewardInstanceTags.getInteger("unlockHash");
+				int type = rewardInstanceTags.getIntOr("type", 0);
+				int boxHash = rewardInstanceTags.getIntOr("boxHash", 0);
+				int unlockHash = rewardInstanceTags.getIntOr("unlockHash", 0);
 				
 				rewardBoxData.add(RewardBoxInstance.CreateRewardBoxInstanceFromNBT(boxHash, unlockHash, type));
 			}
 		}
 	}
 	
-	public void writeToNBT(NBTTagCompound tags)
+	public void writeToNBT(CompoundTag tags)
 	{
-		tags.setInteger("level", currentLevel);
-		tags.setInteger("XP", currentXP);
+		tags.putInt("level", currentLevel);
+		tags.putInt("XP", currentXP);
 		
 		for(int i = 0; i < 5; i++)
 		{
-			NBTTagCompound slotTags = new NBTTagCompound();
+			CompoundTag slotTags = new CompoundTag();
 			loadouts[i].writeToNBT(slotTags);
-			tags.setTag("Slot_" + i, slotTags);
+			tags.put("Slot_" + i, slotTags);
 		}
 		
-		NBTTagList rewardTags = new NBTTagList();
+		ListTag rewardTags = new ListTag();
 		for(RewardBoxInstance instance : rewardBoxData)
 		{
-			NBTTagCompound rewardInstanceTags = new NBTTagCompound();
-			rewardInstanceTags.setInteger("type", instance.origin.ordinal());
-			rewardInstanceTags.setInteger("boxHash", instance.boxHash);
-			rewardInstanceTags.setInteger("unlockHash", instance.unlockHash);
-			rewardTags.appendTag(rewardInstanceTags);
+			CompoundTag rewardInstanceTags = new CompoundTag();
+			rewardInstanceTags.putInt("type", instance.origin.ordinal());
+			rewardInstanceTags.putInt("boxHash", instance.boxHash);
+			rewardInstanceTags.putInt("unlockHash", instance.unlockHash);
+			rewardTags.add(rewardInstanceTags);
 		}
 		
-		tags.setTag("rewardBoxes", rewardTags);
+		tags.put("rewardBoxes", rewardTags);
 	}
 	
 	public void AddXP(int amount)

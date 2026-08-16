@@ -1,136 +1,115 @@
 package com.flansmod.common.teams;
 
-import net.minecraft.block.BlockContainer;
-import net.minecraft.block.material.Material;
-import net.minecraft.block.properties.PropertyInteger;
-import net.minecraft.block.state.BlockStateContainer;
-import net.minecraft.block.state.IBlockState;
-import net.minecraft.creativetab.CreativeTabs;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.EnumHand;
-import net.minecraft.util.NonNullList;
-import net.minecraft.util.math.AxisAlignedBB;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.text.TextComponentString;
-import net.minecraft.world.IBlockAccess;
-import net.minecraft.world.World;
-import net.minecraftforge.fml.common.FMLCommonHandler;
+import com.mojang.serialization.MapCodec;
+import net.minecraft.world.level.block.BaseEntityBlock;
+import net.minecraft.world.level.block.state.properties.IntegerProperty;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.core.Direction;
+import net.minecraft.world.phys.shapes.VoxelShape;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.material.MapColor;
+import net.minecraft.world.level.material.PushReaction;
+import net.minecraft.world.phys.BlockHitResult;
 
 import com.flansmod.common.FlansMod;
+import com.flansmod.common.ModBlockEntities;
 
-public class BlockSpawner extends BlockContainer
+public class BlockSpawner extends BaseEntityBlock
 {
-	protected static final AxisAlignedBB CARPET_AABB = new AxisAlignedBB(0.0D, 0.0D, 0.0D, 1.0D, 0.0625D, 1.0D);
-	public static final PropertyInteger TYPE = PropertyInteger.create("type", 0, 2);
+	public static final MapCodec<BlockSpawner> CODEC = simpleCodec(BlockSpawner::new);
+	public static final IntegerProperty TYPE = IntegerProperty.create("type", 0, 2);
+	protected static final VoxelShape CARPET_AABB = Block.box(0.0D, 0.0D, 0.0D, 16.0D, 1.0D, 16.0D);
 	public static boolean colouredPass = false;
 	
-	public BlockSpawner(Material material)
+	public BlockSpawner(BlockBehaviour.Properties properties)
 	{
-		super(material);
-		setCreativeTab(FlansMod.tabFlanTeams);
-		setRegistryName("teamsSpawner");
-		setDefaultState(blockState.getBaseState().withProperty(TYPE, 0));
+		super(properties);
+		registerDefaultState(stateDefinition.any().setValue(TYPE, 0));
+	}
+	
+	public BlockSpawner()
+	{
+		this(Block.Properties.of().mapColor(MapColor.COLOR_GRAY).strength(1F).pushReaction(PushReaction.BLOCK));
 	}
 	
 	@Override
-	public void getSubBlocks(CreativeTabs tab, NonNullList<ItemStack> list)
+	protected MapCodec<? extends BaseEntityBlock> codec()
 	{
-		if(tab == FlansMod.tabFlanTeams)
-		{
-			list.add(new ItemStack(this, 1, 0));
-			list.add(new ItemStack(this, 1, 1));
-			list.add(new ItemStack(this, 1, 2));
-		}
+		return CODEC;
 	}
 	
 	@Override
-	public AxisAlignedBB getBoundingBox(IBlockState state, IBlockAccess source, BlockPos pos)
+	public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context)
 	{
 		return CARPET_AABB;
 	}
 	
 	@Override
-	public boolean isOpaqueCube(IBlockState state)
+	public boolean canSurvive(BlockState state, LevelReader level, BlockPos pos)
 	{
-		return false;
+		return level.getBlockState(pos.below()).isSolid();
 	}
 	
 	@Override
-	public boolean isFullCube(IBlockState state)
+	public BlockEntity newBlockEntity(BlockPos pos, BlockState state)
 	{
-		return false;
+		return new TileEntitySpawner(pos, state);
 	}
 	
 	@Override
-	public boolean canPlaceBlockAt(World world, BlockPos pos)
+	public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type)
 	{
-		return world.getBlockState(pos.add(0, -1, 0)).isSideSolid(world, pos.add(0, -1, 0), EnumFacing.UP);
+		return type == ModBlockEntities.SPAWNER ? (level1, pos1, state1, be) -> TileEntitySpawner.tick(level1, pos1, state1, (TileEntitySpawner)be) : null;
 	}
 	
 	@Override
-	public TileEntity createNewTileEntity(World var1, int i)
+	public InteractionResult useWithoutItem(BlockState state, Level world, BlockPos pos, Player player, BlockHitResult hit)
 	{
-		return new TileEntitySpawner();
-	}
-	
-	@Override
-	public boolean onBlockActivated(World world, BlockPos pos, IBlockState state, EntityPlayer player, EnumHand hand, EnumFacing side, float par7, float par8, float par9)
-	{
-		if(world.isRemote)
-			return true;
-    	/* TODO : Check the generalised code in TeamsManager works
-    	if(TeamsManager.getInstance().currentGametype != null)
-    		TeamsManager.getInstance().currentGametype.objectClickedByPlayer((TileEntitySpawner)world.getTileEntity(x, y, z), (EntityPlayerMP)player);
-    	*/
-		if(FMLCommonHandler.instance().getMinecraftServerInstance().getPlayerList().canSendCommands(player.getGameProfile()))
+		if(world.isClientSide())
+			return InteractionResult.SUCCESS;
+		if(player instanceof ServerPlayer)
+			TeamsManager.getInstance().playerInteracted((ServerPlayer)player, pos);
+		TileEntitySpawner spawner = (TileEntitySpawner)world.getBlockEntity(pos);
+		if(spawner != null && FlansMod.serverInstance.getPlayerList().isOp(new net.minecraft.server.players.NameAndId(player.getGameProfile())))
 		{
-			TileEntitySpawner spawner = (TileEntitySpawner)world.getTileEntity(pos);
-			ItemStack item = player.getHeldItemMainhand();
-			if(item == null || item.getItem() == null)
+			ItemStack item = player.getMainHandItem();
+			if(item.isEmpty())
 			{
 				spawner.spawnDelay = (spawner.spawnDelay + 200) % 6000;
-				player.sendMessage(new TextComponentString("Set spawn delay to " + spawner.spawnDelay / 20));
+				player.sendSystemMessage(Component.literal("Set spawn delay to " + spawner.spawnDelay / 20));
 			}
 			else if(!(item.getItem() instanceof ItemOpStick))
 			{
 				spawner.stacksToSpawn.add(item.copy());
 				for(Entity entity : spawner.itemEntities)
 				{
-					entity.setDead();
+					entity.discard();
 				}
 				spawner.currentDelay = 10;
 			}
 		}
-		return true;
+		return InteractionResult.SUCCESS;
 	}
 	
 	@Override
-	protected BlockStateContainer createBlockState()
+	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder)
 	{
-		return new BlockStateContainer(this, TYPE);
+		builder.add(TYPE);
 	}
-	
-	@Override
-	public IBlockState getStateFromMeta(int meta)
-	{
-		return this.getDefaultState().withProperty(TYPE, meta);
-	}
-	
-	@Override
-	public int getMetaFromState(IBlockState state)
-	{
-		return state.getValue(TYPE);
-	}
-	
-	@Override
-	public int damageDropped(IBlockState state)
-	{
-		return state.getValue(TYPE);
-	}
-	
-	
 }

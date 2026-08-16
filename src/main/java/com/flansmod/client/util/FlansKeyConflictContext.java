@@ -1,46 +1,15 @@
 package com.flansmod.client.util;
 
-import net.minecraft.client.Minecraft;
-import net.minecraftforge.client.settings.IKeyConflictContext;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
-
-import com.flansmod.api.IControllable;
-import com.flansmod.common.guns.ItemGun;
-
-@SideOnly(Side.CLIENT)
-public enum FlansKeyConflictContext implements IKeyConflictContext
+/**
+ * Formerly a Forge key conflict context. Conflict contexts do not exist in
+ * the Fabric port; all Flan's Mod keys use the same category instead.
+ */
+public final class FlansKeyConflictContext
 {
-	GUN
-			{
-				@Override
-				public boolean isActive()
-				{
-					Minecraft mc = Minecraft.getMinecraft();
-					return mc.player != null && (mc.player.getHeldItemMainhand().getItem() instanceof ItemGun ||
-							mc.player.getHeldItemOffhand().getItem() instanceof ItemGun);
-				}
-				
-				@Override
-				public boolean conflicts(IKeyConflictContext other)
-				{
-					return this == other;
-				}
-			},
-	
-	VEHICLE
-			{
-				@Override
-				public boolean isActive()
-				{
-					Minecraft mc = Minecraft.getMinecraft();
-					return mc.player != null && mc.player.getRidingEntity() instanceof IControllable;
-				}
-				
-				@Override
-				public boolean conflicts(IKeyConflictContext other)
-				{
-					return this == other;
-				}
-			}
+	public static final FlansKeyConflictContext GUN = new FlansKeyConflictContext();
+	public static final FlansKeyConflictContext VEHICLE = new FlansKeyConflictContext();
+
+	private FlansKeyConflictContext()
+	{
+	}
 }

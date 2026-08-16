@@ -1,82 +1,58 @@
 package com.flansmod.common;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.material.Material;
-import net.minecraft.block.properties.PropertyInteger;
-import net.minecraft.block.state.BlockStateContainer;
-import net.minecraft.block.state.IBlockState;
-import net.minecraft.creativetab.CreativeTabs;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.EnumHand;
-import net.minecraft.util.NonNullList;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.IntegerProperty;
+import net.minecraft.world.level.material.MapColor;
+import net.minecraft.world.phys.BlockHitResult;
+
+import com.flansmod.client.gui.GuiDriveableCrafting;
+import com.flansmod.common.guns.ContainerGunModTable;
 
 public class BlockFlansWorkbench extends Block
 {
-	public static final PropertyInteger TYPE = PropertyInteger.create("type", 0, 2);
+	public static final IntegerProperty TYPE = IntegerProperty.create("type", 0, 2);
 	
-	public BlockFlansWorkbench(int j, int k)
+	public BlockFlansWorkbench()
 	{
-		super(Material.IRON);
-		setHardness(3F);
-		setResistance(6F);
-		setRegistryName("flansWorkbench");
-		setCreativeTab(FlansMod.tabFlanDriveables);
-		setDefaultState(blockState.getBaseState().withProperty(TYPE, 0));
+		this(BlockBehaviour.Properties.of().mapColor(MapColor.METAL).strength(3F, 6F));
+	}
+	
+	public BlockFlansWorkbench(BlockBehaviour.Properties properties)
+	{
+		super(properties);
+		registerDefaultState(stateDefinition.any().setValue(TYPE, 0));
 	}
 	
 	@Override
-	public void getSubBlocks(CreativeTabs tab, NonNullList<ItemStack> items)
+	public InteractionResult useWithoutItem(BlockState state, Level world, BlockPos pos, Player player, BlockHitResult hit)
 	{
-		if(tab == FlansMod.tabFlanDriveables)
-			items.add(new ItemStack(this, 1, 0));
-		else if(tab == FlansMod.tabFlanGuns)
-			items.add(new ItemStack(this, 1, 1));
-		else if(tab == FlansMod.tabFlanParts)
-			items.add(new ItemStack(this, 1, 2));
-	}
-	
-	@Override
-	public boolean onBlockActivated(World world, BlockPos pos, IBlockState state, EntityPlayer entityplayer, EnumHand hand, EnumFacing side, float hitX, float hitY, float hitZ)
-	{
-		switch(world.getBlockState(pos).getValue(TYPE))
+		switch(state.getValue(TYPE))
 		{
-			case 0: if(world.isRemote)
-				entityplayer.openGui(FlansMod.INSTANCE, 0, world, pos.getX(), pos.getY(), pos.getZ());
+			case 0:
+				if(world.isClientSide())
+					Minecraft.getInstance().setScreen(new GuiDriveableCrafting(player.getInventory()));
 				break;
-			case 1: if(!world.isRemote)
-				entityplayer.openGui(FlansMod.INSTANCE, 2, world, pos.getX(), pos.getY(), pos.getZ());
+			case 1:
+				if(!world.isClientSide())
+					player.openMenu(new SimpleMenuProvider((id, inv, p) -> new ContainerGunModTable(inv, world), Component.literal("Flan's Workbench")));
 				break;
 		}
-		return true;
-	}
-	
-	
-	@Override
-	protected BlockStateContainer createBlockState()
-	{
-		return new BlockStateContainer(this, TYPE);
+		return InteractionResult.SUCCESS;
 	}
 	
 	@Override
-	public IBlockState getStateFromMeta(int meta)
+	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder)
 	{
-		return this.getDefaultState().withProperty(TYPE, meta);
+		builder.add(TYPE);
 	}
-	
-	@Override
-	public int getMetaFromState(IBlockState state)
-	{
-		return state.getValue(TYPE);
-	}
-	
-	@Override
-	public int damageDropped(IBlockState state)
-	{
-		return state.getValue(TYPE);
-	}
-	
 }

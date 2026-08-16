@@ -4,14 +4,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.EnumHand;
-import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.resources.Identifier;
 
 import com.flansmod.common.guns.EntityGrenade;
 import com.flansmod.common.guns.EntityMG;
@@ -88,25 +86,25 @@ public class PlayerData
 	public int burstRoundsRemainingLeft = 0, burstRoundsRemainingRight = 0;
 	
 	// Handed getters and setters
-	public float GetShootTime(EnumHand hand)
+	public float GetShootTime(InteractionHand hand)
 	{
-		return hand == EnumHand.OFF_HAND ? shootTimeLeft : shootTimeRight;
+		return hand == InteractionHand.OFF_HAND ? shootTimeLeft : shootTimeRight;
 	}
 	
-	public void SetShootTime(EnumHand hand, float set)
+	public void SetShootTime(InteractionHand hand, float set)
 	{
-		if(hand == EnumHand.OFF_HAND) shootTimeLeft = set;
+		if(hand == InteractionHand.OFF_HAND) shootTimeLeft = set;
 		else shootTimeRight = set;
 	}
 	
-	public int GetBurstRoundsRemaining(EnumHand hand)
+	public int GetBurstRoundsRemaining(InteractionHand hand)
 	{
-		return hand == EnumHand.OFF_HAND ? burstRoundsRemainingLeft : burstRoundsRemainingRight;
+		return hand == InteractionHand.OFF_HAND ? burstRoundsRemainingLeft : burstRoundsRemainingRight;
 	}
 	
-	public void SetBurstRoundsRemaining(EnumHand hand, int set)
+	public void SetBurstRoundsRemaining(InteractionHand hand, int set)
 	{
-		if(hand == EnumHand.OFF_HAND) burstRoundsRemainingLeft = set;
+		if(hand == InteractionHand.OFF_HAND) burstRoundsRemainingLeft = set;
 		else burstRoundsRemainingRight = set;
 	}
 	
@@ -152,8 +150,7 @@ public class PlayerData
 	/**
 	 * Save the player's skin here, to replace after having done a swap for a certain class override
 	 */
-	@SideOnly(Side.CLIENT)
-	public ResourceLocation skin;
+	public Identifier skin;
 	
 	public PlayerData(String name)
 	{
@@ -161,9 +158,9 @@ public class PlayerData
 		snapshots = new PlayerSnapshot[FlansMod.numPlayerSnapshots];
 	}
 	
-	public void tick(EntityPlayer player)
+	public void tick(Player player)
 	{
-		if(player.world.isRemote)
+		if(player.level().isClientSide())
 			clientTick(player);
 		if(shootTimeRight > 0)
 			shootTimeRight--;
@@ -191,7 +188,7 @@ public class PlayerData
 		snapshots[0] = new PlayerSnapshot(player);
 	}
 	
-	public void clientTick(EntityPlayer player)
+	public void clientTick(Player player)
 	{
 	}
 	
@@ -216,14 +213,14 @@ public class PlayerData
 		snapshots = new PlayerSnapshot[FlansMod.numPlayerSnapshots];
 	}
 	
-	public boolean isValidOffHandWeapon(EntityPlayer player, int slot)
+	public boolean isValidOffHandWeapon(Player player, int slot)
 	{
 		if(slot == 0)
 			return true;
-		if(slot - 1 == player.inventory.currentItem)
+		if(slot - 1 == player.getInventory().getSelectedSlot())
 			return false;
-		ItemStack stackInSlot = player.inventory.getStackInSlot(slot - 1);
-		if(stackInSlot == null)
+		ItemStack stackInSlot = player.getInventory().getItem(slot - 1);
+		if(stackInSlot == null || stackInSlot.isEmpty())
 			return false;
 		if(stackInSlot.getItem() instanceof ItemGun)
 		{
@@ -234,7 +231,7 @@ public class PlayerData
 		return false;
 	}
 	
-	public void doMelee(EntityPlayer player, int meleeTime, GunType type)
+	public void doMelee(Player player, int meleeTime, GunType type)
 	{
 		meleeLength = meleeTime;
 		lastMeleePositions = new Vector3f[type.meleePath.size()];
@@ -247,13 +244,13 @@ public class PlayerData
 			Vector3f nextAngles = type.meleePathAngles.get(0);
 			RotatedAxes nextAxes = new RotatedAxes(-nextAngles.y, -nextAngles.z, nextAngles.x);
 			
-			Vector3f nextPosInPlayerCoords = new RotatedAxes(player.rotationYaw + 90F, player.rotationPitch, 0F).findLocalVectorGlobally(nextAxes.findLocalVectorGlobally(meleeDamagePoint));
+			Vector3f nextPosInPlayerCoords = new RotatedAxes(player.getYRot() + 90F, player.getXRot(), 0F).findLocalVectorGlobally(nextAxes.findLocalVectorGlobally(meleeDamagePoint));
 			Vector3f.add(nextPos, nextPosInPlayerCoords, nextPosInPlayerCoords);
 			
 			if(!FlansMod.proxy.isThePlayer(player))
 				nextPosInPlayerCoords.y += 1.6F;
 			
-			lastMeleePositions[k] = new Vector3f(player.posX + nextPosInPlayerCoords.x, player.posY + nextPosInPlayerCoords.y, player.posZ + nextPosInPlayerCoords.z);
+			lastMeleePositions[k] = new Vector3f(player.getX() + nextPosInPlayerCoords.x, player.getY() + nextPosInPlayerCoords.y, player.getZ() + nextPosInPlayerCoords.z);
 		}
 	}
 	

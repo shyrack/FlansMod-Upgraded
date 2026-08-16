@@ -2,8 +2,13 @@ package com.flansmod.common.guns;
 
 import java.util.ArrayList;
 
-import net.minecraft.client.model.ModelBase;
-import net.minecraft.potion.PotionEffect;
+import com.flansmod.client.model.ModelBase;
+
+import net.minecraft.core.Holder;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.types.TypeFile;
@@ -113,7 +118,7 @@ public class GrenadeType extends ShootableType
 	/**
 	 * The effects to be given to people coming too close
 	 */
-	public ArrayList<PotionEffect> smokeEffects = new ArrayList<>();
+	public ArrayList<MobEffectInstance> smokeEffects = new ArrayList<>();
 	/**
 	 * The radius for smoke effects to take place in
 	 */
@@ -135,7 +140,7 @@ public class GrenadeType extends ShootableType
 	/**
 	 * The potion effects to apply to users of this bag
 	 */
-	public ArrayList<PotionEffect> potionEffects = new ArrayList<>();
+	public ArrayList<MobEffectInstance> potionEffects = new ArrayList<>();
 	/**
 	 * The number of clips to give to the player when using this bag
 	 * When they right click with a gun, they will get this number of clips for that gun.
@@ -223,7 +228,7 @@ public class GrenadeType extends ShootableType
 			else if(split[0].equals("SmokeParticles"))
 				smokeParticleType = split[1];
 			else if(split[0].equals("SmokeEffect"))
-				smokeEffects.add(getPotionEffect(split));
+				smokeEffects.add(parsePotionEffect(split));
 			else if(split[0].equals("SmokeRadius"))
 				smokeRadius = Float.parseFloat(split[1]);
 			else if(split[0].equals("SpinWhenThrown"))
@@ -239,15 +244,24 @@ public class GrenadeType extends ShootableType
 			else if(split[0].equals("HealAmount"))
 				healAmount = Float.parseFloat(split[1]);
 			else if(split[0].equals("AddPotionEffect") || split[0].equals("PotionEffect"))
-				potionEffects.add(getPotionEffect(split));
+				potionEffects.add(parsePotionEffect(split));
 			else if(split[0].equals("NumClips"))
 				numClips = Integer.parseInt(split[1]);
 		}
 		catch(Exception e)
 		{
-			FlansMod.log.error("Reading grenade file failed.");
-			FlansMod.log.throwing(e);
+			FlansMod.log.error("Reading grenade file failed.", e);
 		}
+	}
+	
+	private static MobEffectInstance parsePotionEffect(String[] split)
+	{
+		int potionID = Integer.parseInt(split[1]);
+		int duration = Integer.parseInt(split[2]);
+		int amplifier = Integer.parseInt(split[3]);
+		java.util.Optional<net.minecraft.core.Holder.Reference<MobEffect>> effect = BuiltInRegistries.MOB_EFFECT.get(potionID);
+		Holder<MobEffect> holder = effect.isPresent() ? effect.get() : MobEffects.INSTANT_HEALTH;
+		return new MobEffectInstance(holder, duration, amplifier, false, false);
 	}
 	
 	public static GrenadeType getGrenade(String s)

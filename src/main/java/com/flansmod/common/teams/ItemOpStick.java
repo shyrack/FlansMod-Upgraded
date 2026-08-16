@@ -1,11 +1,13 @@
 package com.flansmod.common.teams;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.world.World;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.network.PacketBaseEdit;
@@ -17,35 +19,30 @@ public class ItemOpStick extends Item
 	
 	public ItemOpStick()
 	{
-		super();
-		setTranslationKey("opStick");
-		setRegistryName("opStick");
-		setHasSubtypes(true);
+		super(new Item.Properties().stacksTo(1));
 	}
 	
-	@Override
-	public boolean shouldRotateAroundWhenRendering()
+	public ItemOpStick(Item.Properties properties)
 	{
-		return true;
+		super(properties);
 	}
 	
-	@Override
-	public boolean isFull3D()
+	public Item setTranslationKey(String key)
 	{
-		return true;
+		return this;
 	}
 	
-	public void clickedEntity(World world, EntityPlayer player, Entity clicked)
+	public void clickedEntity(Level world, Player player, Entity clicked)
 	{
-		if(!(player instanceof EntityPlayerMP))
+		if(!(player instanceof ServerPlayer))
 			return;
 		if(clicked instanceof ITeamBase)
-			clickedBase(world, (EntityPlayerMP)player, (ITeamBase)clicked);
+			clickedBase(world, (ServerPlayer)player, (ITeamBase)clicked);
 		if(clicked instanceof ITeamObject)
-			clickedObject(world, (EntityPlayerMP)player, (ITeamObject)clicked);
+			clickedObject(world, (ServerPlayer)player, (ITeamObject)clicked);
 	}
 	
-	public static void openBaseEditGUI(ITeamBase base, EntityPlayerMP player)
+	public static void openBaseEditGUI(ITeamBase base, ServerPlayer player)
 	{
 		String[] maps = new String[TeamsManager.getInstance().maps.values().size()];
 		if(maps.length == 0)
@@ -67,11 +64,11 @@ public class ItemOpStick extends Item
 		
 	}
 	
-	public void clickedBase(World world, EntityPlayerMP player, ITeamBase base)
+	public void clickedBase(Level world, ServerPlayer player, ITeamBase base)
 	{
-		if(!world.isRemote)
+		if(!world.isClientSide())
 		{
-			int damage = player.inventory.getCurrentItem().getItemDamage();
+			int damage = player.getMainHandItem().getDamageValue();
 			TeamsManager teamsManager = TeamsManager.getInstance();
 			switch(damage)
 			{
@@ -93,23 +90,24 @@ public class ItemOpStick extends Item
 				}
 				case 1: //Stick of Connecting
 				{
-					if(player.fishEntity == null)
+					if(player.fishing == null)
 					{
 						EntityConnectingLine hook = new EntityConnectingLine(world, player, base);
-						world.spawnEntity(hook);
+						if(world instanceof ServerLevel)
+					((ServerLevel)world).addFreshEntity(hook);
 					}
 					else
 					{
-						if(player.fishEntity instanceof EntityConnectingLine)
+						if(player.fishing instanceof EntityConnectingLine)
 						{
-							EntityConnectingLine line = (EntityConnectingLine)player.fishEntity;
+							EntityConnectingLine line = (EntityConnectingLine)player.fishing;
 							if(line.connectedTo instanceof ITeamObject)
 							{
 								ITeamObject object = (ITeamObject)line.connectedTo;
 								object.setBase(base);
 								base.addObject(object);
-								line.setDead();
-								player.fishEntity = null;
+								line.discard();
+								player.fishing = null;
 								TeamsManager.messagePlayer(player, "Successfully connected.");
 							}
 							else
@@ -134,9 +132,9 @@ public class ItemOpStick extends Item
 		}
 	}
 	
-	public void clickedObject(World world, EntityPlayerMP player, ITeamObject object)
+	public void clickedObject(Level world, ServerPlayer player, ITeamObject object)
 	{
-		int damage = player.inventory.getCurrentItem().getItemDamage();
+		int damage = player.getMainHandItem().getDamageValue();
 		TeamsManager teamsManager = TeamsManager.getInstance();
 		switch(damage)
 		{
@@ -147,23 +145,24 @@ public class ItemOpStick extends Item
 			}
 			case 1: //Stick of Connecting
 			{
-				if(player.fishEntity == null)
+				if(player.fishing == null)
 				{
 					EntityConnectingLine hook = new EntityConnectingLine(world, player, object);
-					world.spawnEntity(hook);
+					if(world instanceof ServerLevel)
+					((ServerLevel)world).addFreshEntity(hook);
 				}
 				else
 				{
-					if(player.fishEntity instanceof EntityConnectingLine)
+					if(player.fishing instanceof EntityConnectingLine)
 					{
-						EntityConnectingLine line = (EntityConnectingLine)player.fishEntity;
+						EntityConnectingLine line = (EntityConnectingLine)player.fishing;
 						if(line.connectedTo instanceof ITeamBase)
 						{
 							ITeamBase base = (ITeamBase)line.connectedTo;
 							object.setBase(base);
 							base.addObject(object);
-							//line.setDead();
-							//player.fishEntity = null;
+							//line.discard();
+							//player.fishing = null;
 							TeamsManager.messagePlayer(player, "Successfully connected.");
 						}
 						else
@@ -188,8 +187,8 @@ public class ItemOpStick extends Item
 	}
 	
 	@Override
-	public String getTranslationKey(ItemStack stack)
+	public Component getName(ItemStack stack)
 	{
-		return super.getTranslationKey() + "." + stack.getItemDamage();
+		return Component.translatable(getDescriptionId() + "." + stack.getDamageValue());
 	}
 }

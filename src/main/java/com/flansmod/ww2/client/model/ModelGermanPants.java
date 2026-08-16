@@ -20,14 +20,14 @@ public class ModelGermanPants extends ModelCustomArmour //Same as Filename
 	public ModelGermanPants() //Same as Filename
 	{
 		leftLegModel = new ModelRendererTurbo[1];
-		leftLegModel[0] = new ModelRendererTurbo(this, 73, 17, textureX, textureY); // Box 4
+		leftLegModel[0] = new ModelRendererTurbo(null, 73, 17, textureX, textureY); // Box 4
 		
 		leftLegModel[0].addShapeBox(-2F, 0F, -2F, 4, 6, 4, 0F, 0.2F, 0.15F, 0.2F, 0.2F, 0.15F, 0.2F, 0.2F, 0.15F, 0.2F, 0.2F, 0.15F, 0.2F, 0F, 0.15F, 0.2F, 0F, 0.15F, 0.2F, 0F, 0.15F, 0.2F, 0F, 0.15F, 0.2F); // Box 4
 		leftLegModel[0].setRotationPoint(0F, 0F, 0F);
 		
 		
 		rightLegModel = new ModelRendererTurbo[1];
-		rightLegModel[0] = new ModelRendererTurbo(this, 105, 1, textureX, textureY); // Box 3
+		rightLegModel[0] = new ModelRendererTurbo(null, 105, 1, textureX, textureY); // Box 3
 		
 		rightLegModel[0].addShapeBox(-2F, 0F, -2F, 4, 6, 4, 0F, 0.2F, 0.15F, 0.2F, 0.2F, 0.15F, 0.2F, 0.2F, 0.15F, 0.2F, 0.2F, 0.15F, 0.2F, 0F, 0.15F, 0.2F, 0F, 0.15F, 0.2F, 0F, 0.15F, 0.2F, 0F, 0.15F, 0.2F); // Box 3
 		rightLegModel[0].setRotationPoint(0F, 0F, 0F);

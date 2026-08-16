@@ -1,14 +1,18 @@
 package com.flansmod.common.teams;
 
+import java.io.IOException;
 import java.util.ArrayList;
 
 import io.netty.buffer.ByteBuf;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraftforge.fml.common.network.ByteBufUtils;
+import io.netty.buffer.ByteBufInputStream;
+import io.netty.buffer.ByteBufOutputStream;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtIo;
 
 import com.flansmod.client.gui.teams.EnumLoadoutSlot;
 import com.flansmod.common.FlansMod;
+import com.flansmod.common.util.ItemStackUtil;
 import com.flansmod.common.guns.GunType;
 import com.flansmod.common.guns.Paintjob;
 import com.flansmod.common.teams.LoadoutPool.LoadoutEntryInfoType;
@@ -42,7 +46,16 @@ public class PlayerLoadout
 	{
 		for(int i = 0; i < EnumLoadoutSlot.values().length; i++)
 		{
-			ByteBufUtils.writeItemStack(data, slots[i]);
+			CompoundTag stackTags = new CompoundTag();
+			ItemStackUtil.writeItemStack(stackTags, "stack", slots[i]);
+			try
+			{
+				NbtIo.write(stackTags, new ByteBufOutputStream(data));
+			}
+			catch(IOException e)
+			{
+				FlansMod.log.error("Failed to write loadout stack to buffer.", e);
+			}
 		}
 	}
 	
@@ -50,29 +63,36 @@ public class PlayerLoadout
 	{
 		for(int i = 0; i < EnumLoadoutSlot.values().length; i++)
 		{
-			slots[i] = ByteBufUtils.readItemStack(data);
+			try
+			{
+				CompoundTag stackTags = NbtIo.read(new ByteBufInputStream(data));
+				slots[i] = ItemStackUtil.readItemStack(stackTags, "stack");
+			}
+			catch(IOException e)
+			{
+				FlansMod.log.error("Failed to read loadout stack from buffer.", e);
+				slots[i] = ItemStack.EMPTY.copy();
+			}
 		}
 	}
 	
-	public void readFromNBT(NBTTagCompound tags)
+	public void readFromNBT(CompoundTag tags)
 	{
 		for(int i = 0; i < EnumLoadoutSlot.values().length; i++)
 		{
-			slots[i] = new ItemStack(tags.getCompoundTag("slot_" + i));
+			slots[i] = ItemStackUtil.readItemStack(tags, "slot_" + i);
 			if(slots[i] == null)
 				slots[i] = ItemStack.EMPTY.copy();
 		}
 	}
 	
-	public void writeToNBT(NBTTagCompound tags)
+	public void writeToNBT(CompoundTag tags)
 	{
 		for(int i = 0; i < EnumLoadoutSlot.values().length; i++)
 		{
 			if(slots[i] != null)
 			{
-				NBTTagCompound stackTags = new NBTTagCompound();
-				slots[i].writeToNBT(stackTags);
-				tags.setTag("slot_" + i, stackTags);
+				ItemStackUtil.writeItemStack(tags, "slot_" + i, slots[i]);
 			}
 		}
 	}
@@ -107,7 +127,7 @@ public class PlayerLoadout
 						if(!VerifyType(gun.getGrip(stack), pool.unlocks[i], currentLevel)) return false;
 						if(!VerifyType(gun.getGeneric(stack, 0), pool.unlocks[i], currentLevel)) return false;
 						
-						Paintjob paint = gun.getPaintjob(stack.getItemDamage());
+						Paintjob paint = gun.getPaintjob(stack.getDamageValue());
 						if(!VerifyPaint(paint, rewardBoxData)) return false;
 					}
 					break;

@@ -4,30 +4,31 @@ import java.util.List;
 import java.util.UUID;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.audio.PositionedSoundRecord;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.particle.Particle;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.nbt.NBTUtil;
-import net.minecraft.network.datasync.DataParameter;
-import net.minecraft.network.datasync.DataSerializers;
-import net.minecraft.network.datasync.EntityDataManager;
-import net.minecraft.util.EnumParticleTypes;
-import net.minecraft.util.SoundCategory;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
-import net.minecraftforge.fml.client.FMLClientHandler;
-import net.minecraftforge.fml.common.registry.IEntityAdditionalSpawnData;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.phys.Vec3;
+
 import com.flansmod.client.FlansModClient;
 import com.flansmod.client.debug.EntityDebugVector;
 import com.flansmod.client.handlers.FlansModResourceHandler;
 import com.flansmod.common.FlansMod;
+import com.flansmod.common.ModEntities;
 import com.flansmod.common.driveables.EntityPlane;
 import com.flansmod.common.driveables.EntityVehicle;
 import com.flansmod.common.driveables.mechas.EntityMecha;
@@ -36,11 +37,12 @@ import com.flansmod.common.guns.raytracing.FlansModRaytracer.BulletHit;
 import com.flansmod.common.types.InfoType;
 import com.flansmod.common.vector.Vector3f;
 
-import io.netty.buffer.ByteBuf;
-
-public class EntityBullet extends EntityShootable implements IEntityAdditionalSpawnData
+public class EntityBullet extends EntityShootable
 {
-	private static final DataParameter<String> BULLET_TYPE = EntityDataManager.createKey(EntityBullet.class, DataSerializers.STRING);
+	private static final EntityDataAccessor<String> BULLET_TYPE = SynchedEntityData.defineId(EntityBullet.class, EntityDataSerializers.STRING);
+	private static final EntityDataAccessor<Float> MOTION_X = SynchedEntityData.defineId(EntityBullet.class, EntityDataSerializers.FLOAT);
+	private static final EntityDataAccessor<Float> MOTION_Y = SynchedEntityData.defineId(EntityBullet.class, EntityDataSerializers.FLOAT);
+	private static final EntityDataAccessor<Float> MOTION_Z = SynchedEntityData.defineId(EntityBullet.class, EntityDataSerializers.FLOAT);
 	
 	private static int bulletLife = 600; // Kill bullets after 30 seconds
 	public int ticksInAir;
@@ -53,7 +55,8 @@ public class EntityBullet extends EntityShootable implements IEntityAdditionalSp
 	
 	private float currentPenetratingPower;
 
-	@SideOnly(Side.CLIENT)
+	private double motionX, motionY, motionZ;
+
 	private boolean playedFlybySound;
 	
 	/**
@@ -63,20 +66,30 @@ public class EntityBullet extends EntityShootable implements IEntityAdditionalSp
 	private UUID shooteruuid;
 	private boolean checkforuuids;
 
-	public EntityBullet(World world)
+		public EntityBullet(EntityType<?> type, Level world)
 	{
-		super(world);
-		setSize(0.5F, 0.5F);
+		super(type, world);
+		this.world = level();
+	}
+
+public EntityBullet(Level world)
+	{
+		this(ModEntities.BULLET, world);
+		this.world = level();
+
 	}
 	
-	public EntityBullet(World world, FiredShot shot, Vec3d origin, Vec3d direction)
+	public EntityBullet(Level world, FiredShot shot, Vec3 origin, Vec3 direction)
 	{
 		this(world);
 		ticksInAir = 0;
 		this.shot = shot;
-		this.dataManager.set(BULLET_TYPE, shot.getBulletType().shortName);
+		this.entityData.set(BULLET_TYPE, shot.getBulletType().shortName);
+		this.entityData.set(MOTION_X, (float)direction.x);
+		this.entityData.set(MOTION_Y, (float)direction.y);
+		this.entityData.set(MOTION_Z, (float)direction.z);
 		
-		setPosition(origin.x, origin.y, origin.z);
+		setPos(origin.x, origin.y, origin.z);
 		motionX = direction.x;
 		motionY = direction.y;
 		motionZ = direction.z;
@@ -86,30 +99,46 @@ public class EntityBullet extends EntityShootable implements IEntityAdditionalSp
 	}
 
 	@Override
-	protected void entityInit()
+	protected void defineSynchedData(SynchedEntityData.Builder builder)
 	{
-		this.dataManager.register(BULLET_TYPE, null);
+		builder.define(BULLET_TYPE, "");
+		builder.define(MOTION_X, 0F);
+		builder.define(MOTION_Y, 0F);
+		builder.define(MOTION_Z, 0F);
+	}
+	
+	@Override
+	public void onSyncedDataUpdated(EntityDataAccessor<?> key)
+	{
+		if(key == MOTION_X)
+			motionX = entityData.get(MOTION_X);
+		else if(key == MOTION_Y)
+			motionY = entityData.get(MOTION_Y);
+		else if(key == MOTION_Z)
+			motionZ = entityData.get(MOTION_Z);
 	}
 	
 	public void setArrowHeading(double d, double d1, double d2, float spread, float speed)
 	{
 		spread /= 5F;
-		float f2 = MathHelper.sqrt(d * d + d1 * d1 + d2 * d2);
+		float f2 = Mth.sqrt((float)(d * d + d1 * d1 + d2 * d2));
 		d /= f2;
 		d1 /= f2;
 		d2 /= f2;
 		d *= speed;
 		d1 *= speed;
 		d2 *= speed;
-		d += rand.nextGaussian() * 0.005D * spread * speed;
-		d1 += rand.nextGaussian() * 0.005D * spread * speed;
-		d2 += rand.nextGaussian() * 0.005D * spread * speed;
+		d += random.nextGaussian() * 0.005D * spread * speed;
+		d1 += random.nextGaussian() * 0.005D * spread * speed;
+		d2 += random.nextGaussian() * 0.005D * spread * speed;
 		motionX = d;
 		motionY = d1;
 		motionZ = d2;
-		float f3 = MathHelper.sqrt(d * d + d2 * d2);
-		prevRotationYaw = rotationYaw = (float)((Math.atan2(d, d2) * 180D) / 3.1415927410125732D);
-		prevRotationPitch = rotationPitch = (float)((Math.atan2(d1, f3) * 180D) / 3.1415927410125732D);
+		float f3 = Mth.sqrt((float)(d * d + d2 * d2));
+		setYRot((float)((Math.atan2(d, d2) * 180D) / 3.1415927410125732D));
+		setXRot((float)((Math.atan2(d1, f3) * 180D) / 3.1415927410125732D));
+		yRotO = getYRot();
+		xRotO = getXRot();
 		
 		getLockOnTarget();
 	}
@@ -127,16 +156,16 @@ public class EntityBullet extends EntityShootable implements IEntityAdditionalSp
 			Entity closestEntity = null;
 			float closestAngle = type.maxLockOnAngle * 3.14159265F / 180F;
 			
-			for(Object obj : world.loadedEntityList)
+			Iterable<Entity> entities = world instanceof ServerLevel ? ((ServerLevel)world).getAllEntities() : world.getEntities(this, getBoundingBox().inflate(64D, 64D, 64D), entity -> true);
+			for(Entity entity : entities)
 			{
-				Entity entity = (Entity)obj;
 				if((type.lockOnToMechas && entity instanceof EntityMecha)
 						|| (type.lockOnToVehicles && entity instanceof EntityVehicle)
 						|| (type.lockOnToPlanes && entity instanceof EntityPlane)
-						|| (type.lockOnToPlayers && entity instanceof EntityPlayer)
-						|| (type.lockOnToLivings && entity instanceof EntityLivingBase))
+						|| (type.lockOnToPlayers && entity instanceof Player)
+						|| (type.lockOnToLivings && entity instanceof LivingEntity))
 				{
-					Vector3f relPosVec = new Vector3f(entity.posX - posX, entity.posY - posY, entity.posZ - posZ);
+					Vector3f relPosVec = new Vector3f(entity.getX() - getX(), entity.getY() - getY(), entity.getZ() - getZ());
 					float angle = Math.abs(Vector3f.angle(motionVec, relPosVec));
 					if(angle < closestAngle)
 					{
@@ -152,40 +181,25 @@ public class EntityBullet extends EntityShootable implements IEntityAdditionalSp
 	}
 	
 	@Override
-	public void setVelocity(double d, double d1, double d2)
+	public void tick()
 	{
-		motionX = d;
-		motionY = d1;
-		motionZ = d2;
-		if(prevRotationPitch == 0.0F && prevRotationYaw == 0.0F)
-		{
-			float f = MathHelper.sqrt(d * d + d2 * d2);
-			prevRotationYaw = rotationYaw = (float)((Math.atan2(d, d2) * 180D) / 3.1415927410125732D);
-			prevRotationPitch = rotationPitch = (float)((Math.atan2(d1, f) * 180D) / 3.1415927410125732D);
-			setLocationAndAngles(posX, posY, posZ, rotationYaw, rotationPitch);
-		}
-	}
-	
-	@Override
-	public void onUpdate()
-	{
-		super.onUpdate();
+		super.tick();
 		
 		try
 		{
 			//This checks if the shooter and/or player can be found. If they are loaded/online they will be included in the FiredShot data, if not this data will be deleted/ignored
 			if (checkforuuids)
 			{
-				EntityPlayerMP player = null;
+				ServerPlayer player = null;
 				Entity shooter = null;
 				
 				if (playeruuid != null)
 				{
-				for (Entity entity : world.loadedEntityList)
+				for (Entity entity : ((ServerLevel)world).getAllEntities())
 				{
-					if (entity.getUniqueID().equals(playeruuid) && entity instanceof EntityPlayerMP)
+					if (entity.getUUID().equals(playeruuid) && entity instanceof ServerPlayer)
 					{
-						player = (EntityPlayerMP)entity;
+						player = (ServerPlayer)entity;
 						break;
 					}
 				}
@@ -194,15 +208,15 @@ public class EntityBullet extends EntityShootable implements IEntityAdditionalSp
 			
 			if (shooteruuid != null)
 			{
-				if (player != null && shooteruuid.equals(player.getUniqueID()))
+				if (player != null && shooteruuid.equals(player.getUUID()))
 				{
 					shooter = player;
 				}
 				else
 				{
-					for (Entity entity : world.loadedEntityList)
+					for (Entity entity : ((ServerLevel)world).getAllEntities())
 					{
-						if (entity.getUniqueID().equals(shooteruuid))
+						if (entity.getUUID().equals(shooteruuid))
 						{
 							shooter = entity;
 							break;
@@ -222,18 +236,22 @@ public class EntityBullet extends EntityShootable implements IEntityAdditionalSp
 			
 			BulletType type = this.getFiredShot().getBulletType();
 			
+			double posX = getX();
+			double posY = getY();
+			double posZ = getZ();
+			
 			// Movement dampening variables
 			float drag = 0.99F;
 			float gravity = 0.02F;
 			// If the bullet is in water, spawn particles and increase the drag
 			if(isInWater())
 			{
-				if (world.isRemote)
+				if (world.isClientSide())
 				{
 					for(int i = 0; i < 4; i++)
 					{
 						float bubbleMotion = 0.25F;
-						world.spawnParticle(EnumParticleTypes.WATER_BUBBLE, posX - motionX * bubbleMotion,
+						world.addParticle(ParticleTypes.BUBBLE, posX - motionX * bubbleMotion,
 							posY - motionY * bubbleMotion, posZ - motionZ * bubbleMotion, motionX, motionY, motionZ);
 					}
 				}
@@ -246,30 +264,30 @@ public class EntityBullet extends EntityShootable implements IEntityAdditionalSp
 			motionY -= gravity * type.fallSpeed;
 			
 			// Apply motion
-			this.setPosition(posX + motionX, posY + motionY, posZ + motionZ);
+			this.setPos(posX + motionX, posY + motionY, posZ + motionZ);
 			
 			// Recalculate the angles from the new motion
-			float motionXZ = MathHelper.sqrt(motionX * motionX + motionZ * motionZ);
-			rotationYaw = (float)((Math.atan2(motionX, motionZ) * 180D) / 3.1415927410125732D);
-			rotationPitch = (float)((Math.atan2(motionY, motionXZ) * 180D) / 3.1415927410125732D);
+			float motionXZ = Mth.sqrt((float)(motionX * motionX + motionZ * motionZ));
+			setYRot((float)((Math.atan2(motionX, motionZ) * 180D) / 3.1415927410125732D));
+			setXRot((float)((Math.atan2(motionY, motionXZ) * 180D) / 3.1415927410125732D));
 			// Reset the range of the angles
-			for(; rotationPitch - prevRotationPitch < -180F; prevRotationPitch -= 360F)
+			for(; getXRot() - xRotO < -180F; xRotO -= 360F)
 			{
 			}
-			for(; rotationPitch - prevRotationPitch >= 180F; prevRotationPitch += 360F)
+			for(; getXRot() - xRotO >= 180F; xRotO += 360F)
 			{
 			}
-			for(; rotationYaw - prevRotationYaw < -180F; prevRotationYaw -= 360F)
+			for(; getYRot() - yRotO < -180F; yRotO -= 360F)
 			{
 			}
-			for(; rotationYaw - prevRotationYaw >= 180F; prevRotationYaw += 360F)
+			for(; getYRot() - yRotO >= 180F; yRotO += 360F)
 			{
 			}
-			rotationPitch = prevRotationPitch + (rotationPitch - prevRotationPitch) * 0.2F;
-			rotationYaw = prevRotationYaw + (rotationYaw - prevRotationYaw) * 0.2F;
+			setXRot(xRotO + (getXRot() - xRotO) * 0.2F);
+			setYRot(yRotO + (getYRot() - yRotO) * 0.2F);
 			
 			
-			if(world.isRemote)
+			if(world.isClientSide())
 			{
 				onUpdateClient();
 				return;
@@ -277,33 +295,31 @@ public class EntityBullet extends EntityShootable implements IEntityAdditionalSp
 			
 			
 			if(FlansMod.DEBUG)
-				world.spawnEntity(new EntityDebugVector(world, new Vector3f(posX, posY, posZ),
+				((ServerLevel)world).addFreshEntity(new EntityDebugVector(world, new Vector3f(posX, posY, posZ),
 						new Vector3f(motionX, motionY, motionZ), 20));
 			
 			// Check the fuse to see if the bullet should explode
 			ticksInAir++;
-			if(ticksInAir > type.fuse && type.fuse > 0 && !isDead)
+			if(ticksInAir > type.fuse && type.fuse > 0 && !isRemoved())
 			{
-				setDead();
+				discard();
 			}
 			
-			if(ticksExisted > bulletLife)
+			if(tickCount > bulletLife)
 			{
-				setDead();
+				discard();
 			}
 			
-			if(isDead)
+			if(isRemoved())
 				return;
 			
 			Vector3f origin = new Vector3f(posX, posY, posZ);
 			Vector3f motion = new Vector3f(motionX, motionY, motionZ);
 			
-			if(!world.isRemote)
+			if(!world.isClientSide())
 			{
 				Entity ignore = shot.getPlayerOptional().isPresent() ? shot.getPlayerOptional().get() : shot.getShooterOptional().orElse(null);
 				Integer ping = 0;
-				if (shot.getPlayerOptional().isPresent())
-					ping = shot.getPlayerOptional().get().ping;
 				
 				List<BulletHit> hits = FlansModRaytracer.Raytrace(world, ignore, ticksInAir > 20, this, origin, motion, ping, 0f);
 				
@@ -320,7 +336,7 @@ public class EntityBullet extends EntityShootable implements IEntityAdditionalSp
 						if (currentPenetratingPower <= 0f)
 						{
 							ShotHandler.onDetonate(world, shot, hitPos);
-							setDead();
+							discard();
 							break;
 						}
 					}
@@ -330,9 +346,9 @@ public class EntityBullet extends EntityShootable implements IEntityAdditionalSp
 			// Apply homing action
 			if(lockedOnTo != null)
 			{
-				double dX = lockedOnTo.posX - posX;
-				double dY = lockedOnTo.posY - posY;
-				double dZ = lockedOnTo.posZ - posZ;
+				double dX = lockedOnTo.getX() - posX;
+				double dY = lockedOnTo.getY() - posY;
+				double dZ = lockedOnTo.getZ() - posZ;
 				double dXYZ = dX * dX + dY * dY + dZ * dZ;
 				
 				Vector3f relPosVec = new Vector3f(dX, dY, dZ);
@@ -355,11 +371,10 @@ public class EntityBullet extends EntityShootable implements IEntityAdditionalSp
 		catch (Exception ex)
 		{
 			ex.printStackTrace();
-			super.setDead();
+			super.discard();
 		}
 	}
 	
-	@SideOnly(Side.CLIENT)
 	private void onUpdateClient()
 	{
 		// Particles
@@ -368,138 +383,121 @@ public class EntityBullet extends EntityShootable implements IEntityAdditionalSp
 			spawnParticles();
 		}
 		
-		if(getDistanceSq(Minecraft.getMinecraft().player) < 5 && !playedFlybySound)
+		if(distanceToSqr(Minecraft.getInstance().player) < 5 && !playedFlybySound)
 		{
 			playedFlybySound = true;
-			FMLClientHandler.instance().getClient().getSoundHandler()
-					.playSound(new PositionedSoundRecord(FlansModResourceHandler.getSoundEvent("bulletFlyby"), SoundCategory.HOSTILE, 10F,
-							1.0F / (rand.nextFloat() * 0.4F + 0.8F), (float)posX, (float)posY, (float)posZ));
+			Minecraft.getInstance().getSoundManager()
+					.play(new SimpleSoundInstance(FlansModResourceHandler.getSoundEvent("bulletFlyby"), SoundSource.HOSTILE, 10F,
+							1.0F / (random.nextFloat() * 0.4F + 0.8F), random, getX(), getY(), getZ()));
 		}
 	}
 	
-	@SideOnly(Side.CLIENT)
 	private void spawnParticles()
 	{
-		double dX = (posX - prevPosX) / 10;
-		double dY = (posY - prevPosY) / 10;
-		double dZ = (posZ - prevPosZ) / 10;
+		double dX = (getX() - xo) / 10;
+		double dY = (getY() - yo) / 10;
+		double dZ = (getZ() - zo) / 10;
 		
 		float spread = 0.1F;
 		for(int i = 0; i < 10; i++)
 		{
 			Particle particle = FlansModClient.getParticle(shot.getBulletType().trailParticleType, world,
-					prevPosX + dX * i + rand.nextGaussian() * spread, prevPosY + dY * i + rand.nextGaussian() * spread,
-					prevPosZ + dZ * i + rand.nextGaussian() * spread);
+					xo + dX * i + random.nextGaussian() * spread, yo + dY * i + random.nextGaussian() * spread,
+					zo + dZ * i + random.nextGaussian() * spread);
 			// TODO: [1.12] once again, render distance
 			
-			//if (particle != null && Minecraft.getMinecraft().gameSettings.fancyGraphics)
+			//if (particle != null && Minecraft.getInstance().options.fancyGraphics)
 			//	particle.renderDistanceWeight = 100D;
-			// world.spawnEntity(particle);
+			// world.addFreshEntity(particle);
 		}
 	}
 	
 	@Override
-	public void setDead()
+	public void addAdditionalSaveData(ValueOutput output)
 	{
-		if(isDead)
+		if(shot == null)
 			return;
-		super.setDead();
-	}
-	
-	@Override
-	public void writeEntityToNBT(NBTTagCompound tag)
-	{
-		tag.setString("type", shot.getBulletType().shortName);
+		output.putString("type", shot.getBulletType().shortName);
 		FireableGun gun = shot.getFireableGun();
 		//this data will only be present and saved on the server side
 		if (gun != null)
 		{
-			NBTTagCompound fireablegun = new NBTTagCompound();
-			fireablegun.setInteger("infotype", gun.getInfoType().shortName.hashCode());
-			fireablegun.setFloat("spread", gun.getGunSpread());
-			fireablegun.setFloat("speed", gun.getBulletSpeed());
-			fireablegun.setFloat("damage", gun.getDamage());
-			fireablegun.setFloat("vehicledamage", gun.getDamageAgainstVehicles());
-			tag.setTag("fireablegun",fireablegun);
+			ValueOutput fireablegun = output.child("fireablegun");
+			fireablegun.putInt("infotype", gun.getInfoType().shortName.hashCode());
+			fireablegun.putFloat("spread", gun.getGunSpread());
+			fireablegun.putFloat("speed", gun.getBulletSpeed());
+			fireablegun.putFloat("damage", gun.getDamage());
+			fireablegun.putFloat("vehicledamage", gun.getDamageAgainstVehicles());
 		
-			shot.getPlayerOptional().ifPresent((EntityPlayerMP player) -> 
+			shot.getPlayerOptional().ifPresent((ServerPlayer player) -> 
 			{
-				
-				NBTTagCompound compound = NBTUtil.createUUIDTag(player.getUniqueID());
-				tag.setTag("player", compound);
+				output.putString("player", player.getUUID().toString());
 			});
 			
 			shot.getShooterOptional().ifPresent((Entity shooter) -> 
 			{
-				NBTTagCompound compound = NBTUtil.createUUIDTag(shooter.getUniqueID());
-				tag.setTag("shooter", compound);
+				output.putString("shooter", shooter.getUUID().toString());
 			});
 			
 		}
 	}
 	
 	@Override
-	public void readEntityFromNBT(NBTTagCompound tag)
+	public void readAdditionalSaveData(ValueInput input)
 	{
 		FireableGun fireablegun = null;
-		String shortName = tag.getString("type");
+		String shortName = input.getStringOr("type", "");
 		BulletType type = BulletType.getBullet(shortName);
-		this.dataManager.set(BULLET_TYPE, shortName);
+		this.entityData.set(BULLET_TYPE, shortName);
 		
-		if (tag.hasKey("fireablegun"))
+		java.util.Optional<ValueInput> gunOpt = input.child("fireablegun");
+		if(gunOpt.isPresent())
 		{
-			NBTTagCompound gun = tag.getCompoundTag("fireablegun");
-			fireablegun = new FireableGun(InfoType.getType(gun.getInteger("infotype")), gun.getFloat("damage"), gun.getFloat("vehicledamage"), gun.getFloat("spread"), gun.getFloat("speed"), EnumSpreadPattern.circle);
+			ValueInput gun = gunOpt.get();
+			fireablegun = new FireableGun(InfoType.getType(gun.getIntOr("infotype", 0)), gun.getFloatOr("damage", 0F), gun.getFloatOr("vehicledamage", 0F), gun.getFloatOr("spread", 0F), gun.getFloatOr("speed", 0F), EnumSpreadPattern.circle);
 		}
 		
-		if (tag.hasKey("player"))
+		if(input.getString("player").isPresent())
 		{
-			playeruuid = NBTUtil.getUUIDFromTag(tag.getCompoundTag("player"));
-			checkforuuids = true;
+			try
+			{
+				playeruuid = UUID.fromString(input.getStringOr("player", ""));
+				checkforuuids = true;
+			}
+			catch(IllegalArgumentException ignored)
+			{
+			}
 		}
 
-		if (tag.hasKey("shooter"))
+		if(input.getString("shooter").isPresent())
 		{
-			shooteruuid = NBTUtil.getUUIDFromTag(tag.getCompoundTag("shooter"));
-			checkforuuids = true;
+			try
+			{
+				shooteruuid = UUID.fromString(input.getStringOr("shooter", ""));
+				checkforuuids = true;
+			}
+			catch(IllegalArgumentException ignored)
+			{
+			}
 		}
 		
 		shot = new FiredShot(fireablegun, type);
 	}
-	
-	@Override
-	public void writeSpawnData(ByteBuf data)
-	{
-		data.writeDouble(motionX);
-		data.writeDouble(motionY);
-		data.writeDouble(motionZ);
-	}
-	
-	@Override
-	public void readSpawnData(ByteBuf data)
-	{
-		try
-		{
-			motionX = data.readDouble();
-			motionY = data.readDouble();
-			motionZ = data.readDouble();
-		}
-		catch(Exception e)
-		{
-			FlansMod.log.error("Failed to read bullet owner from server.");
-			super.setDead();
-			FlansMod.log.throwing(e);
-		}
-	}
 
 	@Override
-	public boolean isBurning()
+	public boolean hurtServer(ServerLevel level, DamageSource damageSource, float amount)
 	{
 		return false;
 	}
 	
 	@Override
-	public boolean canBePushed()
+	public boolean isOnFire()
+	{
+		return false;
+	}
+	
+	@Override
+	public boolean isPushable()
 	{
 		return false;
 	}
@@ -509,7 +507,7 @@ public class EntityBullet extends EntityShootable implements IEntityAdditionalSp
 		if (shot == null)
 		{
 			//we dont have this object, therefore we are on the client side and need to construct it
-			shot = new FiredShot(null, BulletType.getBullet(this.dataManager.get(BULLET_TYPE)));
+			shot = new FiredShot(null, BulletType.getBullet(this.entityData.get(BULLET_TYPE)));
 		}
 		return shot;
 	}

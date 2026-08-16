@@ -1,11 +1,11 @@
 package com.flansmod.common.network;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
 
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.driveables.EntityDriveable;
 import com.flansmod.common.driveables.EntityPlane;
+import com.flansmod.common.guns.GunUtil;
 
 public class PacketPlaneControl extends PacketDriveableControl
 {
@@ -25,23 +25,22 @@ public class PacketPlaneControl extends PacketDriveableControl
 	}
 	
 	@Override
-	public void encodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void encodeInto(ByteBuf data)
 	{
-		super.encodeInto(ctx, data);
+		super.encodeInto(data);
 		data.writeBoolean(gear);
 		data.writeBoolean(doors);
 		data.writeBoolean(wings);
 	}
 	
 	@Override
-	public void decodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void decodeInto(ByteBuf data)
 	{
-		super.decodeInto(ctx, data);
+		super.decodeInto(data);
 		gear = data.readBoolean();
 		doors = data.readBoolean();
 		wings = data.readBoolean();
 		
-		data.release();
 	}
 	
 	@Override
@@ -61,7 +60,7 @@ public class PacketPlaneControl extends PacketDriveableControl
 					posY,
 					posZ,
 					FlansMod.driveableUpdateRange,
-					plane.dimension);
+					GunUtil.getDimensionId(plane.level()));
 		}
 	}
 }

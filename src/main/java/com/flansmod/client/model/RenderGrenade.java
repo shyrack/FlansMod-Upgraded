@@ -1,50 +1,84 @@
 package com.flansmod.client.model;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.model.ModelBase;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.entity.Render;
-import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.EnumHand;
-import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.fml.client.registry.IRenderFactory;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.entity.EntityRenderer;
+import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.item.ItemStack;
 
 import com.flansmod.client.handlers.FlansModResourceHandler;
 import com.flansmod.common.guns.EntityGrenade;
-import com.flansmod.common.guns.GrenadeType;
 import com.flansmod.common.guns.ItemGrenade;
 
-public class RenderGrenade extends Render<EntityGrenade> implements CustomItemRenderer
+public class RenderGrenade extends EntityRenderer<EntityGrenade, RenderGrenade.State> implements CustomItemRenderer
 {
-	public RenderGrenade(RenderManager renderManager)
+	public static class State extends EntityRenderState
 	{
-		super(renderManager);
-		shadowSize = 0.5F;
+		public EntityGrenade grenade;
+		public ModelBase model;
+		public Identifier texture;
+		public float partialTick;
 	}
-	
-	@Override
-	public void doRender(EntityGrenade grenade, double d, double d1, double d2, float f, float f1)
+
+	private final PoseStack poseStack = new PoseStack();
+
+	public RenderGrenade(EntityRendererProvider.Context context)
 	{
-		bindEntityTexture(grenade);
-		GlStateManager.pushMatrix();
-		GlStateManager.translate((float)d, (float)d1, (float)d2);
+		super(context);
+		shadowRadius = 0.5F;
+	}
+
+	@Override
+	public State createRenderState()
+	{
+		return new State();
+	}
+
+	@Override
+	public void extractRenderState(EntityGrenade grenade, State state, float partialTick)
+	{
+		super.extractRenderState(grenade, state, partialTick);
+		state.grenade = grenade;
+		state.model = grenade.type.model;
+		Identifier texture = FlansModResourceHandler.getTexture(grenade.type);
+		if(texture == null)
+			texture = FlansModResourceHandler.getIcon(grenade.type);
+		state.texture = texture;
+		state.partialTick = partialTick;
+	}
+
+	@Override
+	public void submit(State state, PoseStack pose, SubmitNodeCollector collector, CameraRenderState camera)
+	{
+		ModelBase model = state.model;
+		if(model == null)
+			return;
+		EntityGrenade grenade = state.grenade;
+
+		pose.pushPose();
 		if(grenade.stuck)
 		{
-			GlStateManager.rotate(180F - grenade.axes.getYaw(), 0.0F, 1.0F, 0.0F);
-			GlStateManager.rotate(grenade.axes.getPitch(), 0.0F, 0.0F, 1.0F);
-			GlStateManager.rotate(grenade.axes.getRoll(), 1.0F, 0.0F, 0.0F);
+			pose.mulPose(Axis.YP.rotationDegrees(180F - grenade.axes.getYaw()));
+			pose.mulPose(Axis.ZP.rotationDegrees(grenade.axes.getPitch()));
+			pose.mulPose(Axis.XP.rotationDegrees(grenade.axes.getRoll()));
 		}
 		else
 		{
-			float dYaw = (grenade.axes.getYaw() - grenade.prevRotationYaw);
+			float dYaw = (grenade.axes.getYaw() - grenade.yRotO);
 			for(; dYaw > 180F; dYaw -= 360F)
 			{
 			}
 			for(; dYaw <= -180F; dYaw += 360F)
 			{
 			}
-			float dPitch = (grenade.axes.getPitch() - grenade.prevRotationPitch);
+			float dPitch = (grenade.axes.getPitch() - grenade.xRotO);
 			for(; dPitch > 180F; dPitch -= 360F)
 			{
 			}
@@ -58,25 +92,22 @@ public class RenderGrenade extends Render<EntityGrenade> implements CustomItemRe
 			for(; dRoll <= -180F; dRoll += 360F)
 			{
 			}
-			GlStateManager.rotate(180F - grenade.prevRotationYaw - dYaw * f1, 0.0F, 1.0F, 0.0F);
-			GlStateManager.rotate(grenade.prevRotationPitch + dPitch * f1, 0.0F, 0.0F, 1.0F);
-			GlStateManager.rotate(grenade.prevRotationRoll + dRoll * f1, 1.0F, 0.0F, 0.0F);
+			pose.mulPose(Axis.YP.rotationDegrees(180F - grenade.yRotO - dYaw * state.partialTick));
+			pose.mulPose(Axis.ZP.rotationDegrees(grenade.xRotO + dPitch * state.partialTick));
+			pose.mulPose(Axis.XP.rotationDegrees(grenade.prevRotationRoll + dRoll * state.partialTick));
 		}
-		ModelBase model = grenade.type.model;
-		if(model != null)
+		collector.submitCustomGeometry(pose, RenderTypes.entityCutout(state.texture), (p, consumer) ->
+		{
+			poseStack.pushPose();
+			poseStack.last().set(p);
+			ModelRenderer.beginRender(poseStack, consumer, state.lightCoords, OverlayTexture.NO_OVERLAY);
 			model.render(grenade, 0.0F, 0.0F, -0.1F, 0.0F, 0.0F, 0.0625F);
-		GlStateManager.popMatrix();
+			ModelRenderer.endRender();
+			poseStack.popPose();
+		});
+		pose.popPose();
 	}
-	
-	@Override
-	protected ResourceLocation getEntityTexture(EntityGrenade entity)
-	{
-		ResourceLocation texture = FlansModResourceHandler.getTexture(entity.type);
-		if(texture == null)
-			return FlansModResourceHandler.getIcon(entity.type);
-		return texture;
-	}
-	
+
 	public boolean handleRenderType(ItemStack item, CustomItemRenderType type)
 	{
 		switch(type)
@@ -87,58 +118,10 @@ public class RenderGrenade extends Render<EntityGrenade> implements CustomItemRe
 		}
 		return false;
 	}
-	
+
 	@Override
-	public void renderItem(CustomItemRenderType type, EnumHand hand, ItemStack item, Object... data)
+	public void renderItem(CustomItemRenderType type, InteractionHand hand, ItemStack item, Object... data)
 	{
-		GlStateManager.pushMatrix();
-		if(item != null && item.getItem() instanceof ItemGrenade)
-		{
-			GrenadeType grenadeType = ((ItemGrenade)item.getItem()).type;
-			if(grenadeType.model != null)
-			{
-				switch(type)
-				{
-					case EQUIPPED:
-					{
-						//GlStateManager.rotate(35F, 0F, 0F, 1F);
-						//GlStateManager.rotate(-5F, 0F, 1F, 0F);
-						//GlStateManager.translate(0.75F, -0.22F, -0.08F);
-						//GlStateManager.translate(0F, 0.25F, 0F);
-						break;
-					}
-					case EQUIPPED_FIRST_PERSON:
-					{
-						if(hand == EnumHand.MAIN_HAND)
-						{
-							GlStateManager.translate(-1.25F, 0.8F, 0.1F);
-						}
-						else
-						{
-							GlStateManager.rotate(45F, 0F, 1F, 0F);
-							GlStateManager.translate(-1F, 0.8F, -2F);
-							GlStateManager.rotate(-135F, 0F, 1F, 0F);
-						}
-						break;
-					}
-					default: break;
-				}
-				
-				Minecraft.getMinecraft().renderEngine.bindTexture(FlansModResourceHandler.getTexture(grenadeType));
-				ModelBase model = grenadeType.model;
-				model.render(null, 0F, 0F, 0F, 0F, 0F, 1F / 16F);
-			}
-		}
-		GlStateManager.popMatrix();
+		// TODO: [26.1.2] item in hand rendering is done through the modern item model system and will be redone later
 	}
-	
-	public static class Factory implements IRenderFactory<EntityGrenade>
-	{
-		@Override
-		public Render<EntityGrenade> createRenderFor(RenderManager manager)
-		{
-			return new RenderGrenade(manager);
-		}
-	}
-	
 }

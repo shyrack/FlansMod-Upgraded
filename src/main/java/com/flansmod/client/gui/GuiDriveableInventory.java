@@ -1,17 +1,15 @@
 package com.flansmod.client.gui;
 
-import java.io.IOException;
-
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL12;
-
-import net.minecraft.client.gui.inventory.GuiContainer;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.RenderHelper;
-import net.minecraft.entity.player.InventoryPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.world.World;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.driveables.ContainerDriveableInventory;
@@ -19,44 +17,41 @@ import com.flansmod.common.driveables.EntityDriveable;
 import com.flansmod.common.driveables.mechas.EntityMecha;
 import com.flansmod.common.network.PacketDriveableGUI;
 
-public class GuiDriveableInventory extends GuiContainer
+public class GuiDriveableInventory extends AbstractContainerScreen<ContainerDriveableInventory>
 {
-	private static final ResourceLocation texture = new ResourceLocation("flansmod", "gui/planeInventory.png");
+	private static final Identifier texture = Identifier.fromNamespaceAndPath("flansmod", "gui/planeinventory.png");
 
 	public ContainerDriveableInventory container;
-	public InventoryPlayer inventory;
-	public World world;
+	public Inventory inventory;
+	public Level world;
 	public int scroll;
 	public int numItems;
 	public int maxScroll;
 	public EntityDriveable driveable;
 	public int screen; //0 = Guns, 1 = Bombs, 2 = Cargo
 	
-	public GuiDriveableInventory(InventoryPlayer inventoryplayer, World world1, EntityDriveable entPlane, int i)
+	public GuiDriveableInventory(Inventory inventoryplayer, Level world1, EntityDriveable entPlane, int i)
 	{
-		super(new ContainerDriveableInventory(inventoryplayer, world1, entPlane, i));
+		super(new ContainerDriveableInventory(inventoryplayer, world1, entPlane, i), inventoryplayer, Component.literal(""), 176, 180);
 		driveable = entPlane;
 		inventory = inventoryplayer;
 		world = world1;
-		container = (ContainerDriveableInventory)inventorySlots;
-		ySize = 180;
+		container = menu;
 		screen = i;
 		maxScroll = container.maxScroll;
 		numItems = container.numItems;
 	}
 	
 	@Override
-	protected void drawGuiContainerForegroundLayer(int x, int y)
+	protected void extractLabels(GuiGraphicsExtractor extractor, int mouseX, int mouseY)
 	{
 		String title = " - Guns";
 		if(screen == 1) title = " - " + driveable.getBombInventoryName();
 		if(screen == 2) title = " - Cargo";
 		if(screen == 3) title = " - " + driveable.getMissileInventoryName();
-		fontRenderer.drawString(driveable.getDriveableType().name + title, 6, 6, 0x404040);
-		fontRenderer.drawString("Inventory", 8, (ySize - 96) + 2, 0x404040);
+		extractor.text(font, driveable.getDriveableType().name + title, 6, 6, 0x404040);
+		extractor.text(font, "Inventory", 8, (imageHeight - 96) + 2, 0x404040);
 
-		RenderHelper.enableGUIStandardItemLighting();
-		GlStateManager.color(1.0F, 1.0F, 1.0F);
 		if(screen == 0)
 		{
 			int slotsDone = 0;
@@ -68,8 +63,8 @@ public class GuiDriveableInventory extends GuiContainer
 				{
 					if(slotsDone >= scroll)
 					{
-						fontRenderer.drawString(driveable.getDriveableType().seats[i].gunName, 53, 29 + 19 * (slotsDone - scroll), 0x000000);
-						drawStack(new ItemStack(driveable.getDriveableType().seats[i].gunType.getItem()), 10, 25 + 19 * (slotsDone - scroll));
+						extractor.text(font, driveable.getDriveableType().seats[i].gunName, 53, 29 + 19 * (slotsDone - scroll), 0x000000);
+						drawStack(extractor, new ItemStack(driveable.getDriveableType().seats[i].gunType.getItem()), 10, 25 + 19 * (slotsDone - scroll));
 					}
 					slotsDone++;
 				}
@@ -82,30 +77,19 @@ public class GuiDriveableInventory extends GuiContainer
 				{
 					if(slotsDone >= scroll)
 					{
-						fontRenderer.drawString("Driver's gun " + (i + 1), 53, 29 + 19 * (slotsDone - scroll), 0x000000);
-						drawStack(new ItemStack(driveable.getDriveableType().pilotGuns.get(i).type.getItem()), 10, 25 + 19 * (slotsDone - scroll));
+						extractor.text(font, "Driver's gun " + (i + 1), 53, 29 + 19 * (slotsDone - scroll), 0x000000);
+						drawStack(extractor, new ItemStack(driveable.getDriveableType().pilotGuns.get(i).type.getItem()), 10, 25 + 19 * (slotsDone - scroll));
 					}
 					slotsDone++;
 				}
 			}
 		}
-		GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
-		GlStateManager.disableRescaleNormal();
-		RenderHelper.disableStandardItemLighting();
-		GlStateManager.disableDepth();
 	}
 	
-	@Override
-	public void drawScreen(int mouseX, int mouseY, float partialTicks)
+	private void drawStack(GuiGraphicsExtractor extractor, ItemStack itemstack, int x, int y)
 	{
-		super.drawScreen(mouseX, mouseY, partialTicks);
-		renderHoveredToolTip(mouseX, mouseY);
-	}
-	
-	private void drawStack(ItemStack itemstack, int x, int y)
-	{
-		itemRender.renderItemIntoGUI(itemstack, x, y);
-		itemRender.renderItemOverlayIntoGUI(fontRenderer, itemstack, x, y, null);
+		extractor.item(itemstack, x, y);
+		extractor.itemDecorations(font, itemstack, x, y);
 	}
 
 	
@@ -126,22 +110,17 @@ public class GuiDriveableInventory extends GuiContainer
 	}
 
 	@Override
-	protected void drawGuiContainerBackgroundLayer(float f, int i1, int j1)
+	public void extractBackground(GuiGraphicsExtractor extractor, int mouseX, int mouseY, float partialTick)
 	{
-		GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
-
-		mc.renderEngine.bindTexture(texture);
-
-		int j = (width - xSize) / 2;
-		int k = (height - ySize) / 2;
-		drawTexturedModalRect(j, k, 0, 0, xSize, ySize);
+		super.extractBackground(extractor, mouseX, mouseY, partialTick);
+		extractor.blit(RenderPipelines.GUI_TEXTURED, texture, leftPos, topPos, 0F, 0F, imageWidth, imageHeight, 256, 256);
 		switch(screen)
 		{
 			case 0:
 			{
 				for(int n = 0; n < (numItems > 3 ? 3 : numItems); n++)
 				{
-					drawTexturedModalRect(j + 9, k + 24 + 19 * n, 176, 0, 37, 18);
+					extractor.blit(RenderPipelines.GUI_TEXTURED, texture, leftPos + 9, topPos + 24 + 19 * n, 176, 0, 37, 18, 256, 256);
 				}
 				break;
 			}
@@ -152,23 +131,23 @@ public class GuiDriveableInventory extends GuiContainer
 				int m = ((numItems + 7) / 8);
 				for(int row = 0; row < (m > 3 ? 3 : m); row++)
 				{
-					drawTexturedModalRect(j + 9, k + 24 + 19 * row, 7, 97, 18 * ((row + scroll + 1) * 8 <= numItems ? 8 : numItems % 8), 18);
+					extractor.blit(RenderPipelines.GUI_TEXTURED, texture, leftPos + 9, topPos + 24 + 19 * row, 7, 97, 18 * ((row + scroll + 1) * 8 <= numItems ? 8 : numItems % 8), 18, 256, 256);
 				}
 				break;
 			}
 		}
 		if(scroll == 0)
-			drawTexturedModalRect(j + 161, k + 41, 176, 18, 10, 10);
+			extractor.blit(RenderPipelines.GUI_TEXTURED, texture, leftPos + 161, topPos + 41, 176, 18, 10, 10, 256, 256);
 		if(scroll == maxScroll)
-			drawTexturedModalRect(j + 161, k + 53, 176, 28, 10, 10);
+			extractor.blit(RenderPipelines.GUI_TEXTURED, texture, leftPos + 161, topPos + 53, 176, 28, 10, 10, 256, 256);
 	}
 	
 	@Override
-	protected void mouseClicked(int i, int j, int k) throws IOException
+	public boolean mouseClicked(MouseButtonEvent event, boolean bl)
 	{
-		super.mouseClicked(i, j, k);
-		int m = i - (width - xSize) / 2;
-		int n = j - (height - ySize) / 2;
+		super.mouseClicked(event, bl);
+		int m = (int)event.x() - leftPos;
+		int n = (int)event.y() - topPos;
 		if(scroll > 0 && m > 161 && m < 171 && n > 41 && n < 51)
 		{
 			scroll--;
@@ -184,15 +163,16 @@ public class GuiDriveableInventory extends GuiContainer
 			if(driveable instanceof EntityMecha)
 			{
 				FlansMod.getPacketHandler().sendToServer(new PacketDriveableGUI(4));
-				(inventory.player).openGui(FlansMod.INSTANCE, 10, world, driveable.chunkCoordX, driveable.chunkCoordY, driveable.chunkCoordZ);
+				Minecraft.getInstance().setScreen(new GuiMechaInventory(inventory, world, (EntityMecha)driveable));
 			}
 			else
-				mc.displayGuiScreen(new GuiDriveableMenu(inventory, world, driveable));
+				Minecraft.getInstance().setScreen(new GuiDriveableMenu(inventory, world, driveable));
 		}
+		return true;
 	}
 	
 	@Override
-	public boolean doesGuiPauseGame()
+	public boolean isPauseScreen()
 	{
 		return false;
 	}

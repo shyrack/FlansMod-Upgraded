@@ -1,20 +1,16 @@
 package com.flansmod.common.network;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import net.minecraft.block.Block;
-import net.minecraft.block.state.IBlockState;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.particle.ParticleDigging;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.EnumParticleTypes;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3i;
-import net.minecraft.world.World;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.core.Direction;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Vec3i;
+import net.minecraft.core.particles.BlockParticleOption;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.world.level.Level;
 
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.vector.Vector3f;
@@ -33,18 +29,18 @@ public class PacketBlockHitEffect extends PacketBase
 	private Integer blockY;
 	private Integer blockZ;
 	
-	private EnumFacing facing;
+	private Direction facing;
 	
 	public PacketBlockHitEffect() {
 		//default constructor
 	}
 	
-	public PacketBlockHitEffect(Vector3f hit, Vector3f direction, BlockPos position, EnumFacing facing)
+	public PacketBlockHitEffect(Vector3f hit, Vector3f direction, BlockPos position, Direction facing)
 	{
 		this(hit.x, hit.y, hit.z, direction.x, direction.y, direction.z, position.getX(), position.getY(), position.getZ(), facing);
 	}
 	
-	public PacketBlockHitEffect(Float x, Float y, Float z, Float directionX, Float directionY, Float directionZ, Integer blockX, Integer blockY, Integer blockZ, EnumFacing facing)
+	public PacketBlockHitEffect(Float x, Float y, Float z, Float directionX, Float directionY, Float directionZ, Integer blockX, Integer blockY, Integer blockZ, Direction facing)
 	{
 		this.x = x;
 		this.y = y;
@@ -62,7 +58,7 @@ public class PacketBlockHitEffect extends PacketBase
 	}
 	
 	@Override
-	public void encodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void encodeInto(ByteBuf data)
 	{
 		data.writeFloat(x);
 		data.writeFloat(y);
@@ -76,11 +72,11 @@ public class PacketBlockHitEffect extends PacketBase
 		data.writeInt(blockY);
 		data.writeInt(blockZ);
 		
-		data.writeInt(facing.getIndex());
+		data.writeInt(facing.get3DDataValue());
 	}
 	
 	@Override
-	public void decodeInto(ChannelHandlerContext ctx, ByteBuf data)
+	public void decodeInto(ByteBuf data)
 	{
 		x = data.readFloat();
 		y = data.readFloat();
@@ -94,55 +90,45 @@ public class PacketBlockHitEffect extends PacketBase
 		blockY = data.readInt();
 		blockZ = data.readInt();
 		
-		facing = EnumFacing.byIndex(data.readInt());
+		facing = Direction.from3DDataValue(data.readInt());
 	}
 	
 	@Override
-	public void handleServerSide(EntityPlayerMP playerEntity)
+	public void handleServerSide(ServerPlayer playerEntity)
 	{
 		FlansMod.log.warn("Received Packet packet on client. Skipping.");
 	}
 	
 	@Override
-	@SideOnly(Side.CLIENT)
-	public void handleClientSide(EntityPlayer clientPlayer)
+	public void handleClientSide(Player clientPlayer)
 	{
-		World world = clientPlayer.getEntityWorld();
+		Level world = clientPlayer.level();
 		BlockPos pos = new BlockPos(blockX, blockY, blockZ);
-		IBlockState state = world.getBlockState(pos).getActualState(world, pos);
-		Vec3i facingDir = facing.getDirectionVec();
+		BlockState state = world.getBlockState(pos);
+		Vec3i facingDir = facing.getUnitVec3i();
 		
 		for(int i = 0; i < 2; i++)
 		{
 			// TODO: [1.12] Check why this isn't moving right
-			float scale = (float)world.rand.nextGaussian() * 0.1f + 0.5f;
+			float scale = (float)world.getRandom().nextGaussian() * 0.1f + 0.5f;
 			
-			double motionX = (double)facingDir.getX() * scale + world.rand.nextGaussian() * 0.025d;
-			double motionY = (double)facingDir.getY() * scale + world.rand.nextGaussian() * 0.025d;
-			double motionZ = (double)facingDir.getZ() * scale + world.rand.nextGaussian() * 0.025d;
+			double motionX = (double)facingDir.getX() * scale + world.getRandom().nextGaussian() * 0.025d;
+			double motionY = (double)facingDir.getY() * scale + world.getRandom().nextGaussian() * 0.025d;
+			double motionZ = (double)facingDir.getZ() * scale + world.getRandom().nextGaussian() * 0.025d;
 			
 			motionX += directionX;
 			motionY += directionY;
 			motionZ += directionZ;
 			
-			ParticleDigging fx = (ParticleDigging)Minecraft.getMinecraft().effectRenderer.spawnEffectParticle(
-					EnumParticleTypes.BLOCK_CRACK.getParticleID(),
-					x, y, z, motionX, motionY, motionZ,
-					Block.getIdFromBlock(state.getBlock()));
-			
-			if(fx != null)
-			{
-				fx.setParticleTexture(Minecraft.getMinecraft().getBlockRendererDispatcher()
-						.getModelForState(state).getParticleTexture());
-			}
+			world.addParticle(new BlockParticleOption(ParticleTypes.BLOCK, state),
+					x, y, z, motionX, motionY, motionZ);
 		}
 		
-		double scale = world.rand.nextGaussian() * 0.05d + 0.05d;
-		double motionX = (double)facingDir.getX() * scale + world.rand.nextGaussian() * 0.025d;
-		double motionY = (double)facingDir.getY() * scale + world.rand.nextGaussian() * 0.025d;
-		double motionZ = (double)facingDir.getZ() * scale + world.rand.nextGaussian() * 0.025d;
+		double scale = world.getRandom().nextGaussian() * 0.05d + 0.05d;
+		double motionX = (double)facingDir.getX() * scale + world.getRandom().nextGaussian() * 0.025d;
+		double motionY = (double)facingDir.getY() * scale + world.getRandom().nextGaussian() * 0.025d;
+		double motionZ = (double)facingDir.getZ() * scale + world.getRandom().nextGaussian() * 0.025d;
 
-		Minecraft.getMinecraft().effectRenderer.spawnEffectParticle(EnumParticleTypes.CLOUD.getParticleID(), x, y, z, motionX, motionY, motionZ);
-		
+		world.addParticle(ParticleTypes.CLOUD, x, y, z, motionX, motionY, motionZ);
 	}
 }
