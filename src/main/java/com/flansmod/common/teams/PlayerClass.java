@@ -160,11 +160,9 @@ public class PlayerClass extends InfoType implements IPlayerClass
 				int amount = 1;
 				int damage = 0;
 				String[] itemNames = split[1].split("\\+");
-				for(Item item : net.minecraft.core.registries.BuiltInRegistries.ITEM)
-				{
-					if(item != null && (item.getDescriptionId().equals(itemNames[0]) || item.getDescriptionId().split("\\.").length > 1 && item.getDescriptionId().split("\\.")[1].equals(itemNames[0])))
-						matchingItem = item;
-				}
+				ItemStack recipeStack = InfoType.getRecipeElement(itemNames[0], 1, 0);
+				if(!recipeStack.isEmpty())
+					matchingItem = recipeStack.getItem();
 				for(InfoType type : InfoType.infoTypes.values())
 				{
 					if(type.shortName.equals(itemNames[0]) && type.item != null)
@@ -255,11 +253,9 @@ public class PlayerClass extends InfoType implements IPlayerClass
 				int amount = 1;
 				int damage = 0;
 				String[] itemNames = split[1].split("\\+");
-				for(Item item : net.minecraft.core.registries.BuiltInRegistries.ITEM)
-				{
-					if(item != null && (item.getDescriptionId().equals(itemNames[0]) || item.getDescriptionId().split("\\.").length > 1 && item.getDescriptionId().split("\\.")[1].equals(itemNames[0])))
-						matchingItem = item;
-				}
+				ItemStack recipeStack = InfoType.getRecipeElement(itemNames[0], 1, 0);
+				if(!recipeStack.isEmpty())
+					matchingItem = recipeStack.getItem();
 				for(InfoType type : InfoType.infoTypes.values())
 				{
 					if(type.shortName.equals(itemNames[0]) && type.item != null)

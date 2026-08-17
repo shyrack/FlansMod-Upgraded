@@ -44,7 +44,7 @@ public class BlockFlansWorkbench extends Block
 				break;
 			case 1:
 				if(!world.isClientSide())
-					player.openMenu(new SimpleMenuProvider((id, inv, p) -> new ContainerGunModTable(inv, world), Component.literal("Flan's Workbench")));
+					net.minecraft.client.Minecraft.getInstance().setScreen(new com.flansmod.client.gui.GuiGunModTable(player.getInventory(), world));
 				break;
 		}
 		return InteractionResult.SUCCESS;

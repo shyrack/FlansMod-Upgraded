@@ -458,6 +458,22 @@ public class InfoType
 			case "ingotIron":
 			case "iron": return new ItemStack(Items.IRON_INGOT, amount);
 			case "boat": return new ItemStack(Items.OAK_BOAT, amount);
+			//Legacy 1.12.2 item names
+			case "apple": return new ItemStack(Items.APPLE, amount);
+			case "bow": return new ItemStack(Items.BOW, amount);
+			case "cookie": return new ItemStack(Items.COOKIE, amount);
+			case "beefCooked": return new ItemStack(Items.COOKED_BEEF, amount);
+			case "porkchopCooked": return new ItemStack(Items.COOKED_PORKCHOP, amount);
+			case "mushroomStew": return new ItemStack(Items.MUSHROOM_STEW, amount);
+			case "swordGold": return new ItemStack(Items.GOLDEN_SWORD, amount);
+			case "swordIron": return new ItemStack(Items.IRON_SWORD, amount);
+			case "swordWood": return new ItemStack(Items.WOODEN_SWORD, amount);
+			case "swordDiamond": return new ItemStack(Items.DIAMOND_SWORD, amount);
+			case "fishCooked": return new ItemStack(Items.COOKED_COD, amount);
+			case "porkchopRaw": return new ItemStack(Items.PORKCHOP, amount);
+			case "beefRaw": return new ItemStack(Items.BEEF, amount);
+			case "chickenCooked": return new ItemStack(Items.COOKED_CHICKEN, amount);
+			case "chickenRaw": return new ItemStack(Items.CHICKEN, amount);
 		}
 		
 		// Now try a modern "modid:itemid" style lookup

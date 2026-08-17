@@ -133,7 +133,7 @@ public EntityMecha(Level world)
 	
 	public EntityMecha(Level world, double x, double y, double z, MechaType type, DriveableData data, CompoundTag tags)
 	{
-		super(world, type, data);
+		super(ModEntities.MECHA, world, type, data);
 		this.world = level();
 		legAxes = new RotatedAxes();
 
@@ -1325,7 +1325,7 @@ public EntityMecha(Level world)
 	}
 	
 	@Override
-	public LivingEntity getCamera()
+	public net.minecraft.world.entity.Entity getCamera()
 	{
 		return null;
 	}

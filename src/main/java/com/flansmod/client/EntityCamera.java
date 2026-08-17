@@ -1,23 +1,20 @@
 package com.flansmod.client;
 
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.EquipmentSlot;
-import net.minecraft.world.entity.HumanoidArm;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
 import com.flansmod.common.ModEntities;
 import com.flansmod.common.driveables.EntityDriveable;
 import com.flansmod.common.vector.Vector3f;
 
-public class EntityCamera extends LivingEntity
+public class EntityCamera extends Entity
 {
 	protected Level world;
 
 	public EntityDriveable driveable;
 
-	public EntityCamera(EntityType<? extends LivingEntity> type, Level world)
+	public EntityCamera(EntityType<?> type, Level world)
 	{
 		super(type, world);
 		this.world = level();
@@ -70,21 +67,23 @@ public class EntityCamera extends LivingEntity
 	}
 
 	@Override
-	public ItemStack getItemBySlot(EquipmentSlot slotIn)
+	protected void addAdditionalSaveData(net.minecraft.world.level.storage.ValueOutput output)
 	{
-		return ItemStack.EMPTY.copy();
 	}
 
 	@Override
-	public void setItemSlot(EquipmentSlot slotIn, ItemStack stack)
+	protected void readAdditionalSaveData(net.minecraft.world.level.storage.ValueInput input)
 	{
-
 	}
 
 	@Override
-	public HumanoidArm getMainArm()
+	public boolean hurtServer(net.minecraft.server.level.ServerLevel level, net.minecraft.world.damagesource.DamageSource source, float amount)
 	{
-		return HumanoidArm.RIGHT;
+		return false;
 	}
 
+	@Override
+	protected void defineSynchedData(net.minecraft.network.syncher.SynchedEntityData.Builder builder)
+	{
+	}
 }

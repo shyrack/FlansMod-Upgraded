@@ -129,7 +129,7 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 	
 	private float yOffset;
 	
-	public LivingEntity camera;
+	public com.flansmod.client.EntityCamera camera;
 	
 	private int[] emitterTimers;
 	
@@ -178,9 +178,9 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 		this(ModEntities.PLANE, world);
 	}
 	
-	public EntityDriveable(Level world, DriveableType t, DriveableData d)
+	public EntityDriveable(EntityType<?> type, Level world, DriveableType t, DriveableData d)
 	{
-		this(world);
+		this(type, world);
 		driveableType = t.shortName;
 		driveableData = d;
 		entityData.set(TYPE, driveableType);
@@ -283,7 +283,7 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 	@Override
 	public abstract void onMouseMoved(int deltaX, int deltaY);
 	
-	public LivingEntity getCamera()
+	public net.minecraft.world.entity.Entity getCamera()
 	{
 		return camera;
 	}
@@ -1867,11 +1867,19 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 	
 	public void registerSeat(EntitySeat seat)
 	{
+		if(seats == null)
+			seats = new EntitySeat[seat.getExpectedSeatID() + 1];
+		else if(seat.getExpectedSeatID() >= seats.length)
+			seats = java.util.Arrays.copyOf(seats, seat.getExpectedSeatID() + 1);
 		seats[seat.getExpectedSeatID()] = seat;
 	}
 	
 	public void registerWheel(EntityWheel wheel)
 	{
+		if(wheels == null)
+			wheels = new EntityWheel[wheel.getExpectedWheelID() + 1];
+		else if(wheel.getExpectedWheelID() >= wheels.length)
+			wheels = java.util.Arrays.copyOf(wheels, wheel.getExpectedWheelID() + 1);
 		wheels[wheel.getExpectedWheelID()] = wheel;
 	}
 	

@@ -75,7 +75,7 @@ public EntityPlane(Level world)
 	
 	public EntityPlane(Level world, double x, double y, double z, PlaneType type, DriveableData data)
 	{
-		super(world, type, data);
+		super(ModEntities.PLANE, world, type, data);
 		this.world = level();
 		setPos(x, y, z);
 		xo = x;

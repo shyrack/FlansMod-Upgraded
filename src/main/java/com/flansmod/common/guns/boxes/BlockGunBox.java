@@ -111,8 +111,8 @@ public class BlockGunBox extends Block
 	{
 		if(player.isCrouching())
 			return InteractionResult.PASS;
-		if(!world.isClientSide())
-			player.openMenu(new SimpleMenuProvider((id, inv, p) -> new ContainerGunBox(id, inv, type), Component.literal(type.name)));
+		if(world.isClientSide())
+			net.minecraft.client.Minecraft.getInstance().setScreen(new com.flansmod.client.gui.GuiGunBox(player.getInventory(), type));
 		return InteractionResult.SUCCESS;
 	}
 }

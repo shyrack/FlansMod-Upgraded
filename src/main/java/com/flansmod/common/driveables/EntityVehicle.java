@@ -81,7 +81,7 @@ public EntityVehicle(Level world)
 	//This one deals with spawning from a vehicle spawner
 	public EntityVehicle(Level world, double x, double y, double z, VehicleType type, DriveableData data)
 	{
-		super(world, type, data);
+		super(ModEntities.VEHICLE, world, type, data);
 		this.world = level();
 		setPos(x, y, z);
 		initType(type, true, false);
@@ -91,7 +91,7 @@ public EntityVehicle(Level world)
 	public EntityVehicle(Level world, double x, double y, double z, Player placer, VehicleType type,
 						 DriveableData data)
 	{
-		super(world, type, data);
+		super(ModEntities.VEHICLE, world, type, data);
 		this.world = level();
 		setPos(x, y, z);
 		rotateYaw(placer.getYRot() + 90F);
@@ -776,7 +776,7 @@ public EntityVehicle(Level world)
 	}
 	
 	@Override
-	public LivingEntity getCamera()
+	public net.minecraft.world.entity.Entity getCamera()
 	{
 		return null;
 	}

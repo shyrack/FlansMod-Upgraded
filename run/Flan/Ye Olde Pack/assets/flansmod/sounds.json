@@ -11,7 +11,7 @@
       "flansmod:bow"
     ]
   },
-  "propSound": {
+  "propsound": {
     "category": "player",
     "sounds": [
       "flansmod:propsound"

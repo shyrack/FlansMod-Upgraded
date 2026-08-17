@@ -45,7 +45,7 @@ public interface IControllable
 	 */
 	float getCameraDistance();
 	
-	LivingEntity getCamera();
+	net.minecraft.world.entity.Entity getCamera();
 	
 	EntitySeat getSeat(LivingEntity living);
 }

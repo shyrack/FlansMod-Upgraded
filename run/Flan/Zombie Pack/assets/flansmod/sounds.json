@@ -1,83 +1,83 @@
 {
-  "BearTrap": {
+  "beartrap": {
     "category": "player",
     "sounds": [
       "flansmod:beartrap"
     ]
   },
-  "CreeperExplode": {
+  "creeperexplode": {
     "category": "player",
     "sounds": [
       "flansmod:creeperexplode"
     ]
   },
-  "MP5KShoot": {
+  "mp5kshoot": {
     "category": "player",
     "sounds": [
       "flansmod:mp5kshoot"
     ]
   },
-  "MP5KReload": {
+  "mp5kreload": {
     "category": "player",
     "sounds": [
       "flansmod:mp5kreload"
     ]
   },
-  "ColtPythonShoot": {
+  "coltpythonshoot": {
     "category": "player",
     "sounds": [
       "flansmod:coltpythonshoot"
     ]
   },
-  "ColtPythonReload": {
+  "coltpythonreload": {
     "category": "player",
     "sounds": [
       "flansmod:coltpythonreload"
     ]
   },
-  "M4CarbineShoot": {
+  "m4carbineshoot": {
     "category": "player",
     "sounds": [
       "flansmod:m4carbineshoot"
     ]
   },
-  "M4CarbineReload": {
+  "m4carbinereload": {
     "category": "player",
     "sounds": [
       "flansmod:m4carbinereload"
     ]
   },
-  "ShotgunShoot": {
+  "shotgunshoot": {
     "category": "player",
     "sounds": [
       "flansmod:shotgunshoot"
     ]
   },
-  "ShotgunReload": {
+  "shotgunreload": {
     "category": "player",
     "sounds": [
       "flansmod:shotgunreload"
     ]
   },
-  "WinchesterModel70Shoot": {
+  "winchestermodel70shoot": {
     "category": "player",
     "sounds": [
       "flansmod:winchestermodel70shoot"
     ]
   },
-  "WinchesterModel70Reload": {
+  "winchestermodel70reload": {
     "category": "player",
     "sounds": [
       "flansmod:winchestermodel70reload"
     ]
   },
-  "FlareGunShoot": {
+  "flaregunshoot": {
     "category": "player",
     "sounds": [
       "flansmod:flaregunshoot"
     ]
   },
-  "FlareGunReload": {
+  "flaregunreload": {
     "category": "player",
     "sounds": [
       "flansmod:flaregunreload"

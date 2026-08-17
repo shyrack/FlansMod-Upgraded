@@ -1,5 +1,5 @@
 {
-  "AAfire": {
+  "aafire": {
     "category": "player",
     "sounds": [
       "flansmod:aafire"
@@ -11,31 +11,31 @@
       "flansmod:bomb"
     ]
   },
-  "Engine": {
+  "engine": {
     "category": "player",
     "sounds": [
       "flansmod:engine"
     ]
   },
-  "Flak": {
+  "flak": {
     "category": "player",
     "sounds": [
       "flansmod:flak"
     ]
   },
-  "propSound": {
+  "propsound": {
     "category": "player",
     "sounds": [
       "flansmod:propsound"
     ]
   },
-  "propStart": {
+  "propstart": {
     "category": "player",
     "sounds": [
       "flansmod:propstart"
     ]
   },
-  "TankShell": {
+  "tankshell": {
     "category": "player",
     "sounds": [
       "flansmod:tankshell"
@@ -50,7 +50,7 @@
       "flansmod:bullet4"
     ]
   },
-  "bulletFlyby": {
+  "bulletflyby": {
     "category": "player",
     "sounds": [
       "flansmod:bulletair1",

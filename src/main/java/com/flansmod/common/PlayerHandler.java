@@ -23,12 +23,6 @@ public class PlayerHandler
 	public static Map<String, PlayerData> clientSideData = new HashMap<>();
 	public static ArrayList<String> clientsToRemoveAfterThisRound = new ArrayList<>();
 	
-	/**
-	 * Kept for compatibility with existing code. The flight kick counter no longer
-	 * needs to be reset as modern Minecraft does not kick players for flying in vehicles.
-	 */
-	public static java.lang.reflect.Field floatingTickCount = null;
-	
 	public PlayerHandler()
 	{
 		ServerLivingEntityEvents.ALLOW_DAMAGE.register(this::onEntityHurt);

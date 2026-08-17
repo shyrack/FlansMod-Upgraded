@@ -46,7 +46,6 @@ import com.flansmod.common.teams.TeamsManager;
 import com.flansmod.common.tools.ItemTool;
 import com.flansmod.common.vector.Vector3f;
 
-import static com.flansmod.common.PlayerHandler.floatingTickCount;
 
 public class EntitySeat extends Entity implements IControllable
 {
@@ -115,6 +114,8 @@ public class EntitySeat extends Entity implements IControllable
 	{
 		super(type, world);
 		this.world = level();
+		prevLooking = new RotatedAxes();
+		looking = new RotatedAxes();
 	}
 
 public EntitySeat(Level world)
@@ -238,18 +239,7 @@ public EntitySeat(Level world)
 		}
 		else
 		{
-			if(entityInThisSeat instanceof ServerPlayer)
-			{
-				// Reset the floating tick count value for a player to avoid kicking them for flight detection
-				try
-				{
-					floatingTickCount.setInt(((ServerPlayer)entityInThisSeat).connection, 0);
-				}
-				catch(IllegalAccessException e)
-				{
-					FlansMod.log.error("Failed to reset player's floating state.", e);
-				}
-			}
+
 		}
 		
 		minigunSpeed *= 0.95F;
@@ -553,7 +543,7 @@ public EntitySeat(Level world)
 		}
 	}
 	
-	public LivingEntity getCamera()
+	public net.minecraft.world.entity.Entity getCamera()
 	{
 		return driveable.getCamera();
 	}

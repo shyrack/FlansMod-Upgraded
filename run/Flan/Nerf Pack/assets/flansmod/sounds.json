@@ -1,149 +1,149 @@
 {
-  "LongstrikeReload": {
+  "longstrikereload": {
     "category": "player",
     "sounds": [
       "flansmod:longstrikereload"
     ]
   },
-  "LongstrikeShoot": {
+  "longstrikeshoot": {
     "category": "player",
     "sounds": [
       "flansmod:longstrikeshoot"
     ]
   },
-  "MaverickReload": {
+  "maverickreload": {
     "category": "player",
     "sounds": [
       "flansmod:maverickreload"
     ]
   },
-  "MaverickShoot": {
+  "maverickshoot": {
     "category": "player",
     "sounds": [
       "flansmod:maverickshoot"
     ]
   },
-  "NitronReload": {
+  "nitronreload": {
     "category": "player",
     "sounds": [
       "flansmod:nitronreload"
     ]
   },
-  "NitronShoot": {
+  "nitronshoot": {
     "category": "player",
     "sounds": [
       "flansmod:nitronshoot"
     ]
   },
-  "PraxisReload": {
+  "praxisreload": {
     "category": "player",
     "sounds": [
       "flansmod:praxisreload"
     ]
   },
-  "PraxisShoot": {
+  "praxisshoot": {
     "category": "player",
     "sounds": [
       "flansmod:praxisshoot"
     ]
   },
-  "PyragonReload": {
+  "pyragonreload": {
     "category": "player",
     "sounds": [
       "flansmod:pyragonreload"
     ]
   },
-  "PyragonShoot": {
+  "pyragonshoot": {
     "category": "player",
     "sounds": [
       "flansmod:pyragonshoot"
     ]
   },
-  "RaiderReload": {
+  "raiderreload": {
     "category": "player",
     "sounds": [
       "flansmod:raiderreload"
     ]
   },
-  "RaiderShoot": {
+  "raidershoot": {
     "category": "player",
     "sounds": [
       "flansmod:raidershoot"
     ]
   },
-  "RampageReload": {
+  "rampagereload": {
     "category": "player",
     "sounds": [
       "flansmod:rampagereload"
     ]
   },
-  "RampageShoot": {
+  "rampageshoot": {
     "category": "player",
     "sounds": [
       "flansmod:rampageshoot"
     ]
   },
-  "ReconReload": {
+  "reconreload": {
     "category": "player",
     "sounds": [
       "flansmod:reconreload"
     ]
   },
-  "ReconShoot": {
+  "reconshoot": {
     "category": "player",
     "sounds": [
       "flansmod:reconshoot"
     ]
   },
-  "RetaliatorReload": {
+  "retaliatorreload": {
     "category": "player",
     "sounds": [
       "flansmod:retaliatorreload"
     ]
   },
-  "RetaliatorShoot": {
+  "retaliatorshoot": {
     "category": "player",
     "sounds": [
       "flansmod:retaliatorshoot"
     ]
   },
-  "StampedeReload": {
+  "stampedereload": {
     "category": "player",
     "sounds": [
       "flansmod:stampedereload"
     ]
   },
-  "StampedeShoot": {
+  "stampedeshoot": {
     "category": "player",
     "sounds": [
       "flansmod:stampedeshoot"
     ]
   },
-  "StrongarmShoot": {
+  "strongarmshoot": {
     "category": "player",
     "sounds": [
       "flansmod:strongarmshoot"
     ]
   },
-  "StryfeReload": {
+  "stryfereload": {
     "category": "player",
     "sounds": [
       "flansmod:stryfereload"
     ]
   },
-  "StryfeShoot": {
+  "stryfeshoot": {
     "category": "player",
     "sounds": [
       "flansmod:stryfeshoot"
     ]
   },
-  "VulcanReload": {
+  "vulcanreload": {
     "category": "player",
     "sounds": [
       "flansmod:vulcanreload"
     ]
   },
-  "VulcanShoot": {
+  "vulcanshoot": {
     "category": "player",
     "sounds": [
       "flansmod:vulcanshoot"
