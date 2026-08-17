@@ -557,25 +557,12 @@ public EntitySeat(Level world)
 	protected void readAdditionalSaveData(net.minecraft.world.level.storage.ValueInput input)
 	{
 		CompoundTag tags = input.read("FlanData", CompoundTag.CODEC).orElse(new CompoundTag());
-		DriveableType type = DriveableType.getDriveable(tags.getStringOr("DriveableType", ""));
 		seatID = tags.getIntOr("Index", 0);
 		entityData.set(SEAT, seatID);
 		
-		if(type == null)
-		{
-			FlansMod.log.warn("Killing seat due to invalid type tag");
-			reallySetDead();
-			return;
-		}
-		
-		seatInfo = type.seats[seatID];
-		
-		if(getVehicle() instanceof EntityDriveable)
-		{
-			driveable = (EntityDriveable)getVehicle();
-			driveable.registerSeat(this);
-			entityData.set(DRIVEABLE, driveable.getId());
-		}
+		//The driveable may not be attached yet when the seat loads (the
+		//passenger chain is restored after load), so resolve it lazily in
+		//tick() rather than killing the seat here.
 	}
 	
 	@Override

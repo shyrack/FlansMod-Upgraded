@@ -660,10 +660,13 @@ public class ClientProxy extends CommonProxy
 					}
 					else if(typeToCheckFor != EnumType.team && typeToCheckFor != EnumType.playerClass)
 					{
-						createJSONFile(new File(itemModelsDir, lowerName + ".json"),
+						//The item registry name is pack-prefixed, so the model and
+						//dispatch files must use the registry name
+						String registryName = (type.contentPack + "_" + type.shortName).toLowerCase().replaceAll("[^a-z0-9/._-]", "_");
+						createJSONFile(new File(itemModelsDir, registryName + ".json"),
 								"{ \"parent\": \"minecraft:item/generated\", \"textures\": { \"layer0\": \"flansmod:item/" + iconPath + "\" } }");
-						createJSONFile(new File(itemsDir, lowerName + ".json"),
-								"{ \"model\": { \"type\": \"minecraft:model\", \"model\": \"flansmod:item/" + lowerName + "\" } }");
+						createJSONFile(new File(itemsDir, registryName + ".json"),
+								"{ \"model\": { \"type\": \"minecraft:model\", \"model\": \"flansmod:item/" + registryName + "\" } }");
 					}
 				}
 			}

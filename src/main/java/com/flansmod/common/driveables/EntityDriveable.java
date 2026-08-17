@@ -757,12 +757,6 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 				EntitySeat seat = (EntitySeat)passenger;
 				if(seat.getExpectedSeatID() >= 0 && seats[seat.getExpectedSeatID()] != seat)
 				{
-					if(seats[seat.getExpectedSeatID()] != null)
-					{
-						FlansMod.log.error("Driveable already had a seat in place");
-						seats[seat.getExpectedSeatID()].discard();
-					}
-					
 					seats[seat.getExpectedSeatID()] = seat;
 				}
 			}
@@ -771,11 +765,6 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 				EntityWheel wheel = (EntityWheel)passenger;
 				if(wheel.getExpectedWheelID() >= 0 && wheels[wheel.getExpectedWheelID()] != wheel)
 				{
-					if(wheels[wheel.getExpectedWheelID()] != null)
-					{
-						FlansMod.log.error("Driveable already had a wheel in place");
-						wheels[wheel.getExpectedWheelID()].discard();
-					}
 					wheels[wheel.getExpectedWheelID()] = wheel;
 				}
 			}
@@ -803,10 +792,28 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 		
 		if(!readyForUpdates)
 		{
-			if(!world.isClientSide())
+			if(!world.isClientSide() && tickCount > 40)
 			{
-				// Well heck, if it's bork, let's make new ones
-				initType(type, true, false);
+				// Re-create only the missing seats and wheels (a full re-init
+				// would spawn duplicates of the ones that are already attached)
+				for(int i = 0; i < type.numPassengers + 1; i++)
+				{
+					if(seats[i] == null)
+					{
+						seats[i] = new EntitySeat(world, this, i);
+						world.addFreshEntity(seats[i]);
+						seats[i].startRiding(this);
+					}
+				}
+				for(int i = 0; i < wheels.length; i++)
+				{
+					if(wheels[i] == null)
+					{
+						wheels[i] = new EntityWheel(world, this, i);
+						world.addFreshEntity(wheels[i]);
+						wheels[i].startRiding(this);
+					}
+				}
 			}
 			// If we end up stuck like this on a client, handle updates from server
 			if(world.isClientSide())

@@ -102,32 +102,24 @@ public class EntityWheel extends Entity
 	protected void readAdditionalSaveData(net.minecraft.world.level.storage.ValueInput input)
 	{
 		CompoundTag tags = input.read("FlanData", net.minecraft.nbt.CompoundTag.CODEC).orElse(new CompoundTag());
-		DriveableType type = DriveableType.getDriveable(tags.getStringOr("DriveableType", ""));
 		ID = tags.getIntOr("Index", 0);
 		entityData.set(WHEEL, ID);
 		
-		if(type == null)
-		{
-			FlansMod.log.warn("Killing wheel due to invalid type tag");
-			reallySetDead();
-			return;
-		}
-		
-		if(getVehicle() instanceof EntityDriveable)
-		{
-			vehicle = (EntityDriveable)getVehicle();
-			vehicle.registerWheel(this);
-			entityData.set(VEHICLE, vehicle.getId());
-		}
+		//The driveable may not be attached yet when the wheel loads (the
+		//passenger chain is restored after load), so resolve it lazily in tick()
+		//rather than killing the wheel here.
 	}
 	
 	@Override
 	protected void addAdditionalSaveData(net.minecraft.world.level.storage.ValueOutput output)
 	{
 		CompoundTag tags = new CompoundTag();
-		if(vehicle != null)
+		EntityDriveable saveVehicle = vehicle;
+		if(saveVehicle == null && getVehicle() instanceof EntityDriveable)
+			saveVehicle = (EntityDriveable)getVehicle();
+		if(saveVehicle != null && saveVehicle.getDriveableType() != null)
 		{
-			tags.putString("DriveableType", vehicle.getDriveableType().shortName);
+			tags.putString("DriveableType", saveVehicle.getDriveableType().shortName);
 			tags.putInt("Index", ID);
 		}
 		output.store("FlanData", net.minecraft.nbt.CompoundTag.CODEC, tags);
@@ -137,6 +129,12 @@ public class EntityWheel extends Entity
 	public void tick()
 	{
 		super.tick();
+		if(vehicle == null && getVehicle() instanceof EntityDriveable)
+		{
+			vehicle = (EntityDriveable)getVehicle();
+			vehicle.registerWheel(this);
+			entityData.set(VEHICLE, vehicle.getId());
+		}
 		if(vehicle == null || isRemoved())
 		{
 			vehicleID = entityData.get(VEHICLE);
