@@ -11,6 +11,8 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Items;
@@ -346,6 +348,14 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 	public boolean canBeCollidedWith(Entity other)
 	{
 		return !isRemoved();
+	}
+	
+	@Override
+	public InteractionResult interact(Player player, InteractionHand hand, Vec3 pos)
+	{
+		//Consume the click so the vanilla engine does not fall back to
+		//attacking the driveable. Seats handle mounting themselves.
+		return InteractionResult.SUCCESS;
 	}
 	
 	@Override

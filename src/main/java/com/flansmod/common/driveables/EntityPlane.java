@@ -662,25 +662,36 @@ public EntityPlane(Level world)
 				}
 				
 				float dLength = targetWheelLength - currentWheelLength;
-				float dAngle = Vector3f.angle(targetWheelPos, currentWheelPos);
+				float dAngle = (targetWheelPos.lengthSquared() < 1E-6F || currentWheelPos.lengthSquared() < 1E-6F)
+						? 0F : Vector3f.angle(targetWheelPos, currentWheelPos);
 				
 				{
 					//Now Lerp by wheelSpringStrength and work out the new positions		
 					float newLength = currentWheelLength + dLength * type.wheelSpringStrength;
 					Vector3f rotateAround = Vector3f.cross(targetWheelPos, currentWheelPos, null);
 					
-					rotateAround.normalise();
-					
-					Matrix4f mat = new Matrix4f();
-					mat.m00 = currentWheelPos.x;
-					mat.m10 = currentWheelPos.y;
-					mat.m20 = currentWheelPos.z;
-					mat.rotate(dAngle * type.wheelSpringStrength, rotateAround);
-					
-					axes.rotateGlobal(-dAngle * type.wheelSpringStrength, rotateAround);
-					
-					Vector3f newWheelPos = new Vector3f(mat.m00, mat.m10, mat.m20);
-					newWheelPos.normalise().scale(newLength);
+					Vector3f newWheelPos;
+					if(rotateAround.lengthSquared() > 1E-6F && newLength > 1E-6F)
+					{
+						rotateAround.normalise();
+						
+						Matrix4f mat = new Matrix4f();
+						mat.m00 = currentWheelPos.x;
+						mat.m10 = currentWheelPos.y;
+						mat.m20 = currentWheelPos.z;
+						mat.rotate(dAngle * type.wheelSpringStrength, rotateAround);
+						
+						axes.rotateGlobal(-dAngle * type.wheelSpringStrength, rotateAround);
+						
+						newWheelPos = new Vector3f(mat.m00, mat.m10, mat.m20);
+						newWheelPos.normalise().scale(newLength);
+					}
+					else
+					{
+						//Wheel is in line with its target; adjust the length only
+						newWheelPos = new Vector3f(targetWheelPos);
+						newWheelPos.normalise().scale(newLength);
+					}
 					
 					//The proportion of the spring adjustment that is applied to the wheel. 1 - this is applied to the plane
 					float wheelProportion = 0.75F;

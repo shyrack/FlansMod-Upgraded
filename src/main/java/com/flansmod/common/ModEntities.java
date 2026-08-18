@@ -77,8 +77,8 @@ public class ModEntities
 		CUSTOM_ITEM = register("custom_item", EntityType.Builder.<EntityItemCustomRender>of(EntityItemCustomRender::new, MobCategory.MISC).sized(0.25F, 0.25F).clientTrackingRange(100).updateInterval(20));
 		PLANE = register("plane", EntityType.Builder.<EntityPlane>of(EntityPlane::new, MobCategory.MISC).sized(0.6F, 1.8F).clientTrackingRange(250).updateInterval(3));
 		VEHICLE = register("vehicle", EntityType.Builder.<EntityVehicle>of(EntityVehicle::new, MobCategory.MISC).sized(0.6F, 1.8F).clientTrackingRange(250).updateInterval(10));
-		SEAT = register("seat", EntityType.Builder.<EntitySeat>of(EntitySeat::new, MobCategory.MISC).sized(1F, 1F).clientTrackingRange(250).updateInterval(3));
-		WHEEL = register("wheel", EntityType.Builder.<EntityWheel>of(EntityWheel::new, MobCategory.MISC).sized(0.5F, 0.5F).clientTrackingRange(250).updateInterval(20));
+		SEAT = register("seat", EntityType.Builder.<EntitySeat>of(EntitySeat::new, MobCategory.MISC).sized(0.6F, 1.8F).clientTrackingRange(250).updateInterval(3));
+		WHEEL = register("wheel", EntityType.Builder.<EntityWheel>of(EntityWheel::new, MobCategory.MISC).sized(0.5F, 1F).clientTrackingRange(250).updateInterval(20));
 		PARACHUTE = register("parachute", EntityType.Builder.<EntityParachute>of(EntityParachute::new, MobCategory.MISC).sized(1F, 1F).clientTrackingRange(40).updateInterval(20));
 		MECHA = register("mecha", EntityType.Builder.<EntityMecha>of(EntityMecha::new, MobCategory.MISC).sized(2F, 3F).clientTrackingRange(250).updateInterval(20));
 		BULLET = register("bullet", EntityType.Builder.<EntityBullet>of(EntityBullet::new, MobCategory.MISC).sized(0.25F, 0.25F).clientTrackingRange(100).updateInterval(50));

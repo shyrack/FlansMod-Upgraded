@@ -769,7 +769,11 @@ public EntitySeat(Level world)
 		if(isRemoved())
 			return false;
 		if(world.isClientSide())
-			return false;
+		{
+			//Consume the click client side so the vanilla engine does not
+			//fall back to attacking the seat. The server mounts the player.
+			return true;
+		}
 		if(driveable == null)
 			return false;
 		// If they are using a repair tool, don't put them in
