@@ -112,6 +112,10 @@ public class ClientProxy extends CommonProxy
 {
 	public static String modelDir = "com.flansmod.client.model.";
 
+	/** Guards against the fabric interaction callbacks re-firing when we forward the
+	 * interaction to the vanilla attack/interact methods. */
+	private static boolean forwardingInteraction = false;
+
 	/* These renderers handle rendering in hand items */
 	public static RenderGun gunRenderer;
 
@@ -157,6 +161,8 @@ public class ClientProxy extends CommonProxy
 
 	public void playerClickAttack(Player player, Entity target)
 	{
+		if(forwardingInteraction)
+			return;
 		Vec3 eye = player.getEyePosition(0F);
 		Vec3 look = player.getViewVector(1.0F);
 		double interactDistance = player.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.ENTITY_INTERACTION_RANGE).getValue();
@@ -175,13 +181,23 @@ public class ClientProxy extends CommonProxy
 				if(d2 > d.getDriveableType().hitboxRadius)
 					continue;
 				DriveablePart partHit = d.raytraceParts(new Vector3f((float)eye.x, (float)eye.y, (float)eye.z), new Vector3f((float)look.x, (float)look.y, (float)look.z));
-				Minecraft.getInstance().gameMode.attack(player, d);
+				forwardingInteraction = true;
+				try
+				{
+					Minecraft.getInstance().gameMode.attack(player, d);
+				}
+				finally
+				{
+					forwardingInteraction = false;
+				}
 			}
 		}
 	}
 
 	public void playerClickInteract(Player player, Entity target, InteractionHand hand)
 	{
+		if(forwardingInteraction)
+			return;
 		Vec3 eye = player.getEyePosition(0F);
 		Vec3 look = player.getViewVector(1.0F);
 		double interactDistance = player.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.ENTITY_INTERACTION_RANGE).getValue();
@@ -200,13 +216,23 @@ public class ClientProxy extends CommonProxy
 				if(d2 > d.getDriveableType().hitboxRadius)
 					continue;
 				DriveablePart partHit = d.raytraceParts(new Vector3f((float)eye.x, (float)eye.y, (float)eye.z), new Vector3f((float)look.x, (float)look.y, (float)look.z));
-				Minecraft.getInstance().gameMode.interact(player, d, new net.minecraft.world.phys.EntityHitResult(d), hand);
+				forwardingInteraction = true;
+				try
+				{
+					Minecraft.getInstance().gameMode.interact(player, d, new net.minecraft.world.phys.EntityHitResult(d), hand);
+				}
+				finally
+				{
+					forwardingInteraction = false;
+				}
 			}
 		}
 	}
 
 	public void playerClickBlock(Player player, BlockPos pos)
 	{
+		if(forwardingInteraction)
+			return;
 		Vec3 eye = player.getEyePosition(0F);
 		Vec3 look = player.getViewVector(1.0F);
 		double interactDistance = player.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.ENTITY_INTERACTION_RANGE).getValue();
@@ -225,13 +251,23 @@ public class ClientProxy extends CommonProxy
 				if(d2 > d.getDriveableType().hitboxRadius)
 					continue;
 				d.raytraceParts(new Vector3f((float)eye.x, (float)eye.y, (float)eye.z), new Vector3f((float)look.x, (float)look.y, (float)look.z));
-				Minecraft.getInstance().gameMode.attack(player, d);
+				forwardingInteraction = true;
+				try
+				{
+					Minecraft.getInstance().gameMode.attack(player, d);
+				}
+				finally
+				{
+					forwardingInteraction = false;
+				}
 			}
 		}
 	}
 
 	public void playerClickItem(Player player)
 	{
+		if(forwardingInteraction)
+			return;
 		Vec3 eye = player.getEyePosition(0F);
 		Vec3 look = player.getViewVector(1.0F);
 		double interactDistance = player.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.ENTITY_INTERACTION_RANGE).getValue();
@@ -250,7 +286,15 @@ public class ClientProxy extends CommonProxy
 				if(d2 > d.getDriveableType().hitboxRadius)
 					continue;
 				d.raytraceParts(new Vector3f((float)eye.x, (float)eye.y, (float)eye.z), new Vector3f((float)look.x, (float)look.y, (float)look.z));
-				Minecraft.getInstance().gameMode.interact(player, d, new net.minecraft.world.phys.EntityHitResult(d), net.minecraft.world.InteractionHand.MAIN_HAND);
+				forwardingInteraction = true;
+				try
+				{
+					Minecraft.getInstance().gameMode.interact(player, d, new net.minecraft.world.phys.EntityHitResult(d), net.minecraft.world.InteractionHand.MAIN_HAND);
+				}
+				finally
+				{
+					forwardingInteraction = false;
+				}
 			}
 		}
 	}

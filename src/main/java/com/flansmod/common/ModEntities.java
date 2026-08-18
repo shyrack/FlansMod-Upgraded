@@ -75,8 +75,8 @@ public class ModEntities
 		TEAMS_ITEM = register("teams_item", EntityType.Builder.<EntityTeamItem>of(EntityTeamItem::new, MobCategory.MISC).sized(0.25F, 0.25F).clientTrackingRange(100).updateInterval(10000));
 		GUN_ITEM = register("gun_item", EntityType.Builder.<EntityGunItem>of(EntityGunItem::new, MobCategory.MISC).sized(0.25F, 0.25F).clientTrackingRange(100).updateInterval(20));
 		CUSTOM_ITEM = register("custom_item", EntityType.Builder.<EntityItemCustomRender>of(EntityItemCustomRender::new, MobCategory.MISC).sized(0.25F, 0.25F).clientTrackingRange(100).updateInterval(20));
-		PLANE = register("plane", EntityType.Builder.<EntityPlane>of(EntityPlane::new, MobCategory.MISC).sized(4F, 2F).clientTrackingRange(250).updateInterval(3));
-		VEHICLE = register("vehicle", EntityType.Builder.<EntityVehicle>of(EntityVehicle::new, MobCategory.MISC).sized(4F, 2F).clientTrackingRange(250).updateInterval(10));
+		PLANE = register("plane", EntityType.Builder.<EntityPlane>of(EntityPlane::new, MobCategory.MISC).sized(0.6F, 1.8F).clientTrackingRange(250).updateInterval(3));
+		VEHICLE = register("vehicle", EntityType.Builder.<EntityVehicle>of(EntityVehicle::new, MobCategory.MISC).sized(0.6F, 1.8F).clientTrackingRange(250).updateInterval(10));
 		SEAT = register("seat", EntityType.Builder.<EntitySeat>of(EntitySeat::new, MobCategory.MISC).sized(1F, 1F).clientTrackingRange(250).updateInterval(3));
 		WHEEL = register("wheel", EntityType.Builder.<EntityWheel>of(EntityWheel::new, MobCategory.MISC).sized(0.5F, 0.5F).clientTrackingRange(250).updateInterval(20));
 		PARACHUTE = register("parachute", EntityType.Builder.<EntityParachute>of(EntityParachute::new, MobCategory.MISC).sized(1F, 1F).clientTrackingRange(40).updateInterval(20));
@@ -94,7 +94,7 @@ public class ModEntities
 		SKULL_BOSS = register("skull_boss", EntityType.Builder.<EntitySkullBoss>of(EntitySkullBoss::new, MobCategory.MISC).sized(4F, 4F).clientTrackingRange(250).updateInterval(5));
 		TELEPORTER = register("teleporter", EntityType.Builder.<EntityTeleporter>of(EntityTeleporter::new, MobCategory.MISC).sized(0.5F, 0.5F).clientTrackingRange(100).updateInterval(20));
 		NUKE_DROP = register("nuke_drop", EntityType.Builder.<EntityNukeDrop>of(EntityNukeDrop::new, MobCategory.MISC).sized(0.5F, 1F).clientTrackingRange(250).updateInterval(20));
-		FLY_BY_PLANE = register("fly_by_plane", EntityType.Builder.<EntityFlyByPlane>of(EntityFlyByPlane::new, MobCategory.MISC).sized(4F, 2F).clientTrackingRange(250).updateInterval(3));
+		FLY_BY_PLANE = register("fly_by_plane", EntityType.Builder.<EntityFlyByPlane>of(EntityFlyByPlane::new, MobCategory.MISC).sized(0.6F, 1.8F).clientTrackingRange(250).updateInterval(3));
 		FLANSMOD_SHOOTER = register("flansmod_shooter", EntityType.Builder.<EntityFlansModShooter>of(EntityFlansModShooter::new, MobCategory.MISC).sized(0.6F, 1.95F).clientTrackingRange(100).updateInterval(5));
 		FAKE_PLAYER = register("fake_player", EntityType.Builder.<EntityFakePlayer>of(EntityFakePlayer::new, MobCategory.MISC).sized(0.6F, 1.95F).clientTrackingRange(100).updateInterval(5));
 		CAMERA = register("camera", EntityType.Builder.<EntityCamera>of(EntityCamera::new, MobCategory.MISC).sized(0.1F, 0.1F));
