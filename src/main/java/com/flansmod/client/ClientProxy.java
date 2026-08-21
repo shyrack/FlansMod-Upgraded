@@ -45,16 +45,19 @@ import com.flansmod.client.debug.RenderDebugDot;
 import com.flansmod.client.debug.RenderDebugVector;
 import com.flansmod.client.gui.GuiArmourBox;
 import com.flansmod.client.gui.GuiDriveableCrafting;
-import com.flansmod.client.gui.GuiDriveableFuel;
-import com.flansmod.client.gui.GuiDriveableInventory;
-import com.flansmod.client.gui.GuiDriveableMenu;
 import com.flansmod.client.gui.GuiDriveableRepair;
 import com.flansmod.client.gui.GuiGunBox;
 import com.flansmod.client.gui.GuiGunModTable;
-import com.flansmod.client.gui.GuiMechaInventory;
 import com.flansmod.client.gui.GuiPaintjobTable;
 import com.flansmod.client.handlers.ClientEventHandler;
 import com.flansmod.client.handlers.FlansModResourceHandler;
+import com.flansmod.common.guns.boxes.GunBoxType;
+import com.flansmod.common.network.PacketBaseEdit;
+import com.flansmod.common.teams.ArmourBoxType;
+import com.flansmod.common.teams.PlayerClass;
+import com.flansmod.common.teams.Team;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
+import net.minecraft.sounds.SoundSource;
 import com.flansmod.client.handlers.KeyInputHandler;
 import com.flansmod.client.model.RenderAAGun;
 import com.flansmod.client.model.RenderBullet;
@@ -84,7 +87,6 @@ import com.flansmod.common.driveables.EntitySeat;
 import com.flansmod.common.driveables.EntityVehicle;
 import com.flansmod.common.driveables.EntityWheel;
 import com.flansmod.common.driveables.PlaneType;
-import com.flansmod.common.driveables.mechas.EntityMecha;
 import com.flansmod.common.guns.EntityAAGun;
 import com.flansmod.common.guns.EntityBullet;
 import com.flansmod.common.guns.EntityGrenade;
@@ -149,7 +151,7 @@ public class ClientProxy extends CommonProxy
 		});
 		UseBlockCallback.EVENT.register((player, level, hand, hitResult) ->
 		{
-			playerClickBlock(player, hitResult.getBlockPos());
+			playerClickBlock(player, hitResult.getBlockPos(), hand);
 			return InteractionResult.PASS;
 		});
 		UseItemCallback.EVENT.register((player, level, hand) ->
@@ -198,6 +200,8 @@ public class ClientProxy extends CommonProxy
 	{
 		if(forwardingInteraction)
 			return;
+		if(target instanceof EntityDriveable || target instanceof EntitySeat || target instanceof EntityWheel)
+			return;
 		Vec3 eye = player.getEyePosition(0F);
 		Vec3 look = player.getViewVector(1.0F);
 		double interactDistance = player.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.ENTITY_INTERACTION_RANGE).getValue();
@@ -229,7 +233,7 @@ public class ClientProxy extends CommonProxy
 		}
 	}
 
-	public void playerClickBlock(Player player, BlockPos pos)
+	public void playerClickBlock(Player player, BlockPos pos, InteractionHand hand)
 	{
 		if(forwardingInteraction)
 			return;
@@ -254,7 +258,7 @@ public class ClientProxy extends CommonProxy
 				forwardingInteraction = true;
 				try
 				{
-					Minecraft.getInstance().gameMode.attack(player, d);
+					Minecraft.getInstance().gameMode.interact(player, d, new net.minecraft.world.phys.EntityHitResult(d), hand);
 				}
 				finally
 				{
@@ -483,25 +487,17 @@ public class ClientProxy extends CommonProxy
 			case 1: return new GuiDriveableRepair(player);
 			case 2: return new GuiGunModTable(player.getInventory(), world);
 			case 5: return new GuiGunBox(player.getInventory(), ((BlockGunBox)world.getBlockState(new BlockPos(x, y, z)).getBlock()).type);
-			case 6: return new GuiDriveableInventory(player.getInventory(), world, ((EntitySeat)player.getVehicle()).driveable, 0);
-			case 7: return new GuiDriveableInventory(player.getInventory(), world, ((EntitySeat)player.getVehicle()).driveable, 1);
-			case 8: return new GuiDriveableFuel(player.getInventory(), world, ((EntitySeat)player.getVehicle()).driveable);
-			case 9: return new GuiDriveableInventory(player.getInventory(), world, ((EntitySeat)player.getVehicle()).driveable, 2);
-			case 10: return new GuiMechaInventory(player.getInventory(), world, (EntityMecha)((EntitySeat)player.getVehicle()).driveable);
+			//Driveable screens are now opened by fabric-menu-api's open screen packet
+			case 6: return null;
+			case 7: return null;
+			case 8: return null;
+			case 9: return null;
+			case 10: return null;
 			case 11: return new GuiArmourBox(player.getInventory(), ((BlockArmourBox)world.getBlockState(new BlockPos(x, y, z)).getBlock()).type);
-			case 12: return new GuiDriveableInventory(player.getInventory(), world, ((EntitySeat)player.getVehicle()).driveable, 3);
+			case 12: return null;
 			case 13: return new GuiPaintjobTable(player.getInventory(), world, (TileEntityPaintjobTable)world.getBlockEntity(new BlockPos(x, y, z)));
 		}
 		return null;
-	}
-
-	/**
-	 * Called when the player presses the plane inventory key. Opens menu client side
-	 */
-	@Override
-	public void openDriveableMenu(Player player, Level world, EntityDriveable driveable)
-	{
-		Minecraft.getInstance().setScreen(new GuiDriveableMenu(player.getInventory(), world, driveable));
 	}
 
 	/**
@@ -625,6 +621,131 @@ public class ClientProxy extends CommonProxy
 	public boolean isScreenOpen()
 	{
 		return Minecraft.getInstance().screen != null;
+	}
+
+	@Override
+	public boolean mouseLeftDown()
+	{
+		return Minecraft.getInstance().mouseHandler.isLeftPressed();
+	}
+
+	@Override
+	public boolean isWithinDistanceOfLocalPlayer(net.minecraft.world.entity.Entity entity, double distance)
+	{
+		net.minecraft.world.entity.player.Player player = Minecraft.getInstance().player;
+		return player != null && entity.distanceToSqr(player) < distance * distance;
+	}
+
+	@Override
+	public void playFlybySound(net.minecraft.world.entity.Entity entity, net.minecraft.util.RandomSource random)
+	{
+		Minecraft.getInstance().getSoundManager()
+				.play(new SimpleSoundInstance(FlansModResourceHandler.getSoundEvent("bulletFlyby"),
+						SoundSource.HOSTILE, 10F, 1.0F / (random.nextFloat() * 0.4F + 0.8F),
+						random, entity.getX(), entity.getY(), entity.getZ()));
+	}
+
+	@Override
+	public void resetCamera()
+	{
+		Minecraft mc = Minecraft.getInstance();
+		mc.setCameraEntity(mc.player);
+	}
+
+	@Override
+	public void toggleDriveablePerspective(com.flansmod.common.driveables.EntityDriveable driveable)
+	{
+		Minecraft mc = Minecraft.getInstance();
+		if(mc.options.getCameraType() == net.minecraft.client.CameraType.FIRST_PERSON)
+			mc.setCameraEntity((driveable.getCamera() == null ? mc.player : driveable.getCamera()));
+		else mc.setCameraEntity(mc.player);
+	}
+
+	@Override
+	public net.minecraft.world.level.Level getClientLevel()
+	{
+		return Minecraft.getInstance().level;
+	}
+
+	@Override
+	public void spawnParticle(String type, net.minecraft.world.level.Level world, double x, double y, double z)
+	{
+		FlansModClient.getParticle(type, world, x, y, z);
+	}
+
+	@Override
+	public void renderHitboxDot(net.minecraft.world.level.Level world, double x, double y, double z)
+	{
+		if(world instanceof net.minecraft.client.multiplayer.ClientLevel clientLevel)
+			clientLevel.addEntity(new com.flansmod.client.debug.EntityDebugDot(world,
+					new com.flansmod.common.vector.Vector3f((float)x, (float)y, (float)z), 1, 0F, 1F, 0F));
+	}
+
+	@Override
+	public net.minecraft.world.phys.HitResult getClientHitResult()
+	{
+		return Minecraft.getInstance().hitResult;
+	}
+
+	@Override
+	public void closeScreen()
+	{
+		Minecraft.getInstance().setScreen(null);
+	}
+
+	@Override
+	public void openWorkbenchCrafting(net.minecraft.world.entity.player.Inventory inventory)
+	{
+		Minecraft.getInstance().setScreen(new com.flansmod.client.gui.GuiDriveableCrafting(inventory));
+	}
+
+	@Override
+	public void openGunModTable(net.minecraft.world.entity.player.Inventory inventory, net.minecraft.world.level.Level world)
+	{
+		Minecraft.getInstance().setScreen(new com.flansmod.client.gui.GuiGunModTable(inventory, world));
+	}
+
+	@Override
+	public void openPaintjobTable(net.minecraft.world.entity.player.Inventory inventory, net.minecraft.world.level.Level world,
+								  com.flansmod.common.paintjob.TileEntityPaintjobTable table)
+	{
+		Minecraft.getInstance().setScreen(new com.flansmod.client.gui.GuiPaintjobTable(inventory, world, table));
+	}
+
+	@Override
+	public void openArmourBox(net.minecraft.world.entity.player.Inventory inventory, ArmourBoxType type)
+	{
+		Minecraft.getInstance().setScreen(new com.flansmod.client.gui.GuiArmourBox(inventory, type));
+	}
+
+	@Override
+	public void openGunBox(net.minecraft.world.entity.player.Inventory inventory, GunBoxType type)
+	{
+		Minecraft.getInstance().setScreen(new com.flansmod.client.gui.GuiGunBox(inventory, type));
+	}
+
+	@Override
+	public void openBaseEditor(PacketBaseEdit packet)
+	{
+		Minecraft.getInstance().setScreen(new com.flansmod.client.gui.teams.GuiBaseEditor(packet));
+	}
+
+	@Override
+	public void openTeamSelect(Team[] teams)
+	{
+		Minecraft.getInstance().setScreen(new com.flansmod.client.gui.teams.GuiTeamSelect(teams));
+	}
+
+	@Override
+	public void openTeamSelect(PlayerClass[] classes)
+	{
+		Minecraft.getInstance().setScreen(new com.flansmod.client.gui.teams.GuiTeamSelect(classes));
+	}
+
+	@Override
+	public void setTeamChoices(Team[] teams)
+	{
+		com.flansmod.client.gui.teams.GuiTeamSelect.teamChoices = teams;
 	}
 
 	/**

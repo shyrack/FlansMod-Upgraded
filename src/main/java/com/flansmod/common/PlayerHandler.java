@@ -6,7 +6,6 @@ import java.util.Map;
 
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
-import net.minecraft.client.Minecraft;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
@@ -63,16 +62,6 @@ public class PlayerHandler
 		}
 	}
 	
-	public void clientTick()
-	{
-		if(Minecraft.getInstance().level != null)
-		{
-			for(Player player : Minecraft.getInstance().level.players())
-			{
-				getPlayerData(player).tick(player);
-			}
-		}
-	}
 	
 	public static PlayerData getPlayerData(Player player)
 	{

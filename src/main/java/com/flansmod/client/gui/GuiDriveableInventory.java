@@ -1,6 +1,5 @@
 package com.flansmod.client.gui;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -28,23 +27,25 @@ public class GuiDriveableInventory extends AbstractContainerScreen<ContainerDriv
 	public int numItems;
 	public int maxScroll;
 	public EntityDriveable driveable;
-	public int screen; //0 = Guns, 1 = Bombs, 2 = Cargo
+	public int screen; //0 = Guns, 1 = Bombs, 2 = Cargo, 3 = Missiles
 	
-	public GuiDriveableInventory(Inventory inventoryplayer, Level world1, EntityDriveable entPlane, int i)
+	public GuiDriveableInventory(ContainerDriveableInventory menu, Inventory inventoryplayer, Component title)
 	{
-		super(new ContainerDriveableInventory(inventoryplayer, world1, entPlane, i), inventoryplayer, Component.literal(""), 176, 180);
-		driveable = entPlane;
-		inventory = inventoryplayer;
-		world = world1;
+		super(menu, inventoryplayer, title, 176, 180);
 		container = menu;
-		screen = i;
-		maxScroll = container.maxScroll;
-		numItems = container.numItems;
+		driveable = menu.getDriveable();
+		inventory = inventoryplayer;
+		world = menu.world;
+		screen = menu.screen;
+		maxScroll = menu.maxScroll;
+		numItems = menu.numItems;
 	}
 	
 	@Override
 	protected void extractLabels(GuiGraphicsExtractor extractor, int mouseX, int mouseY)
 	{
+		if(driveable == null)
+			return;
 		String title = " - Guns";
 		if(screen == 1) title = " - " + driveable.getBombInventoryName();
 		if(screen == 2) title = " - Cargo";
@@ -161,12 +162,9 @@ public class GuiDriveableInventory extends AbstractContainerScreen<ContainerDriv
 		if(m > 161 && m < 171 && n > 5 && n < 15)
 		{
 			if(driveable instanceof EntityMecha)
-			{
-				FlansMod.getPacketHandler().sendToServer(new PacketDriveableGUI(4));
-				Minecraft.getInstance().setScreen(new GuiMechaInventory(inventory, world, (EntityMecha)driveable));
-			}
+				FlansMod.getPacketHandler().sendToServer(new PacketDriveableGUI(PacketDriveableGUI.MECHA));
 			else
-				Minecraft.getInstance().setScreen(new GuiDriveableMenu(inventory, world, driveable));
+				FlansMod.getPacketHandler().sendToServer(new PacketDriveableGUI(PacketDriveableGUI.MENU));
 		}
 		return true;
 	}

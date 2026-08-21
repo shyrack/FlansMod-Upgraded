@@ -13,8 +13,6 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.level.Level;
 
 import com.flansmod.client.gui.teams.EnumLoadoutSlot;
-import com.flansmod.client.gui.teams.GuiChooseLoadout;
-import com.flansmod.client.teams.ClientTeamsData;
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.PlayerData;
 import com.flansmod.common.PlayerHandler;
@@ -23,6 +21,9 @@ import com.flansmod.common.network.PacketOpenRewardBox;
 import com.flansmod.common.network.PacketRoundFinished;
 import com.flansmod.common.network.PacketTeamSelect;
 import com.flansmod.common.network.PacketVoting;
+
+import net.fabricmc.api.EnvType;
+import net.fabricmc.loader.api.FabricLoader;
 
 public class TeamsManagerRanked extends TeamsManager
 {
@@ -415,13 +416,32 @@ public class TeamsManagerRanked extends TeamsManager
 		playerSelectedClass(player, playerClass);
 	}
 	
+	/**
+	 * Client-only GUI/data hooks live in com.flansmod.client.teams.
+	 * TeamsClientHook and are reached reflectively, so a dedicated server
+	 * never resolves Screen/Minecraft/ClientTeamsData from this class.
+	 */
+	private static Object clientHook(String method, Class<?>[] parameterTypes, Object... args)
+	{
+		if(FabricLoader.getInstance().getEnvironmentType() != EnvType.CLIENT)
+			return null;
+		try
+		{
+			Class<?> hook = Class.forName("com.flansmod.client.teams.TeamsClientHook");
+			return hook.getMethod(method, parameterTypes).invoke(null, args);
+		}
+		catch(ReflectiveOperationException e)
+		{
+			FlansMod.log.error("[TeamsManagerRanked] client hook '" + method + "' failed", e);
+			return null;
+		}
+	}
+
 	public static void ConfirmLoadoutChanges()
 	{
-		PacketLoadoutData packet = new PacketLoadoutData();
-		packet.myRankData = ClientTeamsData.theRankData;
-		FlansMod.getPacketHandler().sendToServer(packet);
+		clientHook("confirmLoadoutChanges", new Class[0]);
 	}
-	
+
 	public static void ChooseLoadout(int id)
 	{
 		PacketTeamSelect packet = new PacketTeamSelect();
@@ -429,27 +449,21 @@ public class TeamsManagerRanked extends TeamsManager
 		packet.info = false;
 		packet.selection = "" + id;
 		packet.selectionPacket = true;
-		
+
 		FlansMod.getPacketHandler().sendToServer(packet);
 	}
-	
+
 	@Override
 	public void SelectTeam(Team team)
 	{
 		FlansMod.getPacketHandler().sendToServer(new PacketTeamSelect(team == null ? "null" : team.shortName, false));
-		if(team == null)
-		{
-			net.minecraft.client.Minecraft.getInstance().setScreen(null);
-		}
-		else
-		{
-			net.minecraft.client.Minecraft.getInstance().setScreen(new GuiChooseLoadout());
-		}
+		clientHook("selectTeam", new Class[] {Team.class}, team);
 	}
-	
+
 	public static boolean LocalPlayerOwnsUnlock(int unlockHash)
 	{
-		return ClientTeamsData.theRankData.OwnsUnlock(unlockHash);
+		Object result = clientHook("localPlayerOwnsUnlock", new Class[] {int.class}, unlockHash);
+		return result instanceof Boolean && (Boolean)result;
 	}
 	
 	public static boolean PlayerOwnsUnlock(int hashCode, UUID uuid)

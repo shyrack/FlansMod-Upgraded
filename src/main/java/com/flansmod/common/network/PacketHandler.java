@@ -165,14 +165,10 @@ public class PacketHandler
 	}
 
 	/**
-	 * Client side registration, called from the client initialiser
+	 * Client side registration lives in com.flansmod.client.network.
+	 * ClientPacketRegistration (called from the client initialiser), so the
+	 * common handler never references client-only classes.
 	 */
-	public void registerClient()
-	{
-		net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.registerGlobalReceiver(TYPE,
-				(payload, context) -> context.client().execute(() ->
-						payload.packet.handleClientSide(context.player())));
-	}
 
 	/**
 	 * Send a packet to all players

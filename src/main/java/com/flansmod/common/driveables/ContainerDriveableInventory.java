@@ -3,6 +3,7 @@ package com.flansmod.common.driveables;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -17,50 +18,55 @@ public class ContainerDriveableInventory extends AbstractContainerMenu
 	public int maxScroll;
 	public int scroll;
 	
-	public ContainerDriveableInventory(Inventory inventoryplayer, Level worldy, EntityDriveable entPlane, int i)
+	public ContainerDriveableInventory(MenuType<?> type, int containerId, Inventory inventoryplayer, EntityDriveable entPlane, int i)
 	{
-		super(null, 0);
+		super(type, containerId);
 		inventory = inventoryplayer;
-		world = worldy;
+		world = inventoryplayer.player != null ? inventoryplayer.player.level() : null;
 		plane = entPlane;
 		screen = i;
 		//Find the number of items in the inventory
 		numItems = 0;
-		switch(i)
+		if(plane != null)
 		{
-			case 0:
+			switch(i)
 			{
-				numItems = plane.driveableData.numGuns;
-				maxScroll = (numItems > 3 ? numItems - 3 : 0);
-				break;
-			}
-			case 1:
-			{
-				numItems = plane.getDriveableType().numBombSlots;
-				maxScroll = (((numItems + 7) / 8) > 3 ? ((numItems + 7) / 8) - 3 : 0);
-				break;
-			}
-			case 2:
-			{
-				numItems = plane.getDriveableType().numCargoSlots;
-				maxScroll = (((numItems + 7) / 8) > 3 ? ((numItems + 7) / 8) - 3 : 0);
-				break;
-			}
-			case 3:
-			{
-				numItems = plane.getDriveableType().numMissileSlots;
-				maxScroll = (((numItems + 7) / 8) > 3 ? ((numItems + 7) / 8) - 3 : 0);
-				break;
+				case 0:
+				{
+					numItems = plane.driveableData.numGuns;
+					maxScroll = (numItems > 3 ? numItems - 3 : 0);
+					break;
+				}
+				case 1:
+				{
+					numItems = plane.getDriveableType().numBombSlots;
+					maxScroll = (((numItems + 7) / 8) > 3 ? ((numItems + 7) / 8) - 3 : 0);
+					break;
+				}
+				case 2:
+				{
+					numItems = plane.getDriveableType().numCargoSlots;
+					maxScroll = (((numItems + 7) / 8) > 3 ? ((numItems + 7) / 8) - 3 : 0);
+					break;
+				}
+				case 3:
+				{
+					numItems = plane.getDriveableType().numMissileSlots;
+					maxScroll = (((numItems + 7) / 8) > 3 ? ((numItems + 7) / 8) - 3 : 0);
+					break;
+				}
 			}
 		}
 		
 		//Add screen specific slots
+		if(plane != null)
+		{
 		switch(screen)
 		{
 			case 0: //Guns
 			{
 				int slotsDone = 0;
-				for(int j = 0; j < plane.driveableData.numGuns; j++)
+				for(int j = 0; j < numItems; j++)
 				{
 					int yPos = -1000;
 					if(slotsDone < 3 + scroll && slotsDone >= scroll)
@@ -93,6 +99,7 @@ public class ContainerDriveableInventory extends AbstractContainerMenu
 				break;
 			}
 		}
+		}
 		
 		//Main inventory slots
 		for(int row = 0; row < 3; row++)
@@ -110,6 +117,11 @@ public class ContainerDriveableInventory extends AbstractContainerMenu
 		}
 	}
 	
+	public EntityDriveable getDriveable()
+	{
+		return plane;
+	}
+	
 	public void updateScroll(int scrololol)
 	{
 		scroll = scrololol;
@@ -118,7 +130,10 @@ public class ContainerDriveableInventory extends AbstractContainerMenu
 	@Override
 	public boolean stillValid(Player entityplayer)
 	{
-		return true;
+		if(plane == null || plane.isRemoved())
+			return false;
+		return entityplayer.getVehicle() instanceof EntitySeat
+				&& ((EntitySeat)entityplayer.getVehicle()).driveable == plane;
 	}
 	
 	@Override

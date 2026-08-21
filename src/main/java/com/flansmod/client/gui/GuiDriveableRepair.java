@@ -207,11 +207,10 @@ public class GuiDriveableRepair extends Screen
 		if(m > 185 && m < 195 && n > 5 && n < 15)
 			if(driving instanceof EntityMecha)
 			{
-				FlansMod.getPacketHandler().sendToServer(new PacketDriveableGUI(4));
-				Minecraft.getInstance().setScreen(new GuiMechaInventory(driver.getInventory(), driver.level(), (EntityMecha)driving));
+				FlansMod.getPacketHandler().sendToServer(new PacketDriveableGUI(PacketDriveableGUI.MECHA));
 			}
 			else
-				Minecraft.getInstance().setScreen(new GuiDriveableMenu(driver.getInventory(), driver.level(), driving));
+				FlansMod.getPacketHandler().sendToServer(new PacketDriveableGUI(PacketDriveableGUI.MENU));
 		return true;
 	}
 

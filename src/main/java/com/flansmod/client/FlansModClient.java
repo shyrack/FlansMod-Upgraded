@@ -17,6 +17,7 @@ import net.fabricmc.api.ClientModInitializer;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Options;
+import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -31,6 +32,10 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.level.Level;
 
+import com.flansmod.client.gui.GuiDriveableFuel;
+import com.flansmod.client.gui.GuiDriveableInventory;
+import com.flansmod.client.gui.GuiDriveableMenu;
+import com.flansmod.client.gui.GuiMechaInventory;
 import com.flansmod.client.handlers.KeyInputHandler;
 import com.flansmod.client.handlers.MouseInputHandler;
 import com.flansmod.client.model.GunAnimations;
@@ -38,6 +43,7 @@ import com.flansmod.client.teams.ClientTeamsData;
 import com.flansmod.client.util.WorldRenderer;
 import com.flansmod.common.ContentManager.ContentPackFlanFolder;
 import com.flansmod.common.FlansMod;
+import com.flansmod.common.ModMenus;
 import com.flansmod.common.driveables.mechas.EntityMecha;
 import com.flansmod.common.guns.AttachmentType;
 import com.flansmod.common.guns.EntityBullet;
@@ -55,7 +61,11 @@ public class FlansModClient extends FlansMod implements ClientModInitializer
 	{
 		proxy.registerRenderers();
 		proxy.registerSoundEvents();
-		FlansMod.getPacketHandler().registerClient();
+		com.flansmod.client.network.ClientPacketRegistration.register();
+		MenuScreens.register(ModMenus.DRIVEABLE_MENU, GuiDriveableMenu::new);
+		MenuScreens.register(ModMenus.DRIVEABLE_FUEL, GuiDriveableFuel::new);
+		MenuScreens.register(ModMenus.DRIVEABLE_INVENTORY, GuiDriveableInventory::new);
+		MenuScreens.register(ModMenus.MECHA_INVENTORY, GuiMechaInventory::new);
 		KeyInputHandler.init();
 		MouseInputHandler.init();
 	}
@@ -265,6 +275,15 @@ public class FlansModClient extends FlansMod implements ClientModInitializer
 	{
 		if(minecraft.player == null || minecraft.level == null)
 			return;
+		
+		// Apply the per-frame mouse deltas captured by MouseHandlerMixin to
+		// the driveable/seat once per tick (frame-rate independent, matches
+		// the 20Hz physics tick)
+		{
+			Entity vehicle = minecraft.player.getVehicle();
+			MouseInputHandler.flushMouse(vehicle instanceof com.flansmod.api.IControllable
+					? (com.flansmod.api.IControllable)vehicle : null);
+		}
 		
 		if(teamInfo != null && teamInfo.timeLeft > 0)
 			teamInfo.timeLeft--;

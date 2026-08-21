@@ -66,7 +66,7 @@ public class BlockPaintjobTable extends BaseEntityBlock
 		
 		if(!world.isClientSide() && table != null)
 		{
-			net.minecraft.client.Minecraft.getInstance().setScreen(new com.flansmod.client.gui.GuiPaintjobTable(player.getInventory(), world, table));
+			FlansMod.proxy.openPaintjobTable(player.getInventory(), world, table);
 		}
 		return InteractionResult.SUCCESS;
 	}

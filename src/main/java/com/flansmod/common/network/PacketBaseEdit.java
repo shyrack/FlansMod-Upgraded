@@ -6,7 +6,6 @@ import net.minecraft.server.players.NameAndId;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.server.level.ServerPlayer;
 
-import com.flansmod.client.gui.teams.GuiBaseEditor;
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.teams.ITeamBase;
 import com.flansmod.common.teams.TeamsManager;
@@ -115,6 +114,6 @@ public class PacketBaseEdit extends PacketBase
 	@Override
 	public void handleClientSide(Player clientPlayer)
 	{
-		Minecraft.getInstance().setScreen(new GuiBaseEditor(this));
+		FlansMod.proxy.openBaseEditor(this);
 	}
 }

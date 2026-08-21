@@ -22,6 +22,20 @@ loom {
         server {
             vmArg "-Dfabric.runtimeMappingNamespace=named"
         }
+        // Headless physics measurement runs: a dedicated server (or a
+        // singleplayer client) that places a plane and records per-tick
+        // traces to physics-report.json, then exits
+        physicsTest {
+            server()
+            vmArg "-Dfabric.runtimeMappingNamespace=named"
+            vmArg "-Dflansmod.physicstest=true"
+            vmArg "-Dflansmod.physicstest.ticks=200"
+        }
+        physicsTestClient {
+            client()
+            vmArg "-Dfabric.runtimeMappingNamespace=named"
+            vmArg "-Dflansmod.physicstest=true"
+        }
     }
 }
 
@@ -32,6 +46,13 @@ dependencies {
     }
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+    // Mixin annotations for compiling mixin classes; the runtime mixin library
+    // is bundled with fabric-loader. The mixin annotation processor is
+    // intentionally not applied (loom 1.x disabled it by default): this
+    // project compiles against named (Mojang) mappings only, so the AP has
+    // no name mappings to validate against and loom generates refmaps itself.
+    compileOnly "net.fabricmc:sponge-mixin:0.17.3+mixin.0.8.7"
 
     testImplementation platform("org.junit:junit-bom:5.11.3")
     testImplementation "org.junit.jupiter:junit-jupiter"

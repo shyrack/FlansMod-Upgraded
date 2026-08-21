@@ -5,7 +5,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.server.level.ServerPlayer;
 
-import com.flansmod.client.gui.teams.GuiTeamSelect;
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.teams.PlayerClass;
 import com.flansmod.common.teams.Team;
@@ -156,12 +155,12 @@ public class PacketTeamSelect extends PacketBase
 		}
 		if(classChoicesPacket)
 		{
-			Minecraft.getInstance().setScreen(new GuiTeamSelect(playerClasses));
+			FlansMod.proxy.openTeamSelect(playerClasses);
 		}
 		else if(info)
 		{
-			GuiTeamSelect.teamChoices = teams;
+			FlansMod.proxy.setTeamChoices(teams);
 		}
-		else Minecraft.getInstance().setScreen(new GuiTeamSelect(teams));
+		else FlansMod.proxy.openTeamSelect(teams);
 	}
 }

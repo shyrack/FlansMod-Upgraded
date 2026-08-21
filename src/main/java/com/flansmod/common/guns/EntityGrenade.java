@@ -3,7 +3,6 @@ package com.flansmod.common.guns;
 import java.util.List;
 import java.util.Optional;
 
-import net.minecraft.client.particle.Particle;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -34,7 +33,6 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
-import com.flansmod.client.FlansModClient;
 import com.flansmod.client.handlers.FlansModResourceHandler;
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.ModEntities;
@@ -252,7 +250,7 @@ public EntityGrenade(Level w)
 				double dZ = (posZ - zo) / 10;
 				for(int i = 0; i < 10; i++)
 				{
-					Particle particle = FlansModClient.getParticle(type.trailParticleType, world, xo + dX * i, yo + dY * i, zo + dZ * i);
+					FlansMod.proxy.spawnParticle(type.trailParticleType, world, xo + dX * i, yo + dY * i, zo + dZ * i);
 					// TODO: [1.12] Particles
 					//if(particle != null && Minecraft.getInstance().options.fancyGraphics)
 					//	particle.renderDistanceWeight = 100D;

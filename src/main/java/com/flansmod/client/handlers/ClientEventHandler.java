@@ -19,7 +19,6 @@ import com.flansmod.client.model.RenderGun;
 public class ClientEventHandler
 {
 	private KeyInputHandler keyInputHandler = new KeyInputHandler();
-	private MouseInputHandler mouseInputHandler = new MouseInputHandler();
 	private ClientRenderHooks renderHooks = new ClientRenderHooks();
 
 	public ClientEventHandler()

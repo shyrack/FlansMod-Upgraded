@@ -10,8 +10,10 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.level.Level;
 
+import com.flansmod.common.FlansMod;
 import com.flansmod.common.driveables.ContainerDriveableMenu;
 import com.flansmod.common.driveables.EntityDriveable;
+import com.flansmod.common.network.PacketDriveableGUI;
 
 
 public class GuiDriveableFuel extends AbstractContainerScreen<ContainerDriveableMenu>
@@ -24,17 +26,19 @@ public class GuiDriveableFuel extends AbstractContainerScreen<ContainerDriveable
 	private int anim = 0;
 	private long lastTime;
 	
-	public GuiDriveableFuel(Inventory inventoryplayer, Level world1, EntityDriveable entPlane)
+	public GuiDriveableFuel(ContainerDriveableMenu menu, Inventory inventoryplayer, Component title)
 	{
-		super(new ContainerDriveableMenu(inventoryplayer, world1, true, entPlane), inventoryplayer, Component.literal(""), 176, 161);
-		plane = entPlane;
-		world = world1;
+		super(menu, inventoryplayer, title, 176, 161);
+		plane = menu.getDriveable();
+		world = menu.world;
 		inventory = inventoryplayer;
 	}
 
 	@Override
 	protected void extractLabels(GuiGraphicsExtractor extractor, int mouseX, int mouseY)
 	{
+		if(plane == null)
+			return;
 		extractor.text(font, plane.getDriveableType().name + " - Fuel", 6, 6, 0x404040);
 		extractor.text(font, "Inventory", 8, (imageHeight - 96) + 2, 0x404040);
 	}
@@ -52,6 +56,8 @@ public class GuiDriveableFuel extends AbstractContainerScreen<ContainerDriveable
 		}
 
 		extractor.blit(RenderPipelines.GUI_TEXTURED, texture, leftPos, topPos, 0F, 0F, imageWidth, imageHeight, 256, 256);
+		if(plane == null)
+			return;
 		int fuelTankSize = plane.getDriveableType().fuelTankSize;
 		float fuelInTank = plane.driveableData.fuelInTank;
 		if(plane.fuelling)
@@ -70,7 +76,7 @@ public class GuiDriveableFuel extends AbstractContainerScreen<ContainerDriveable
 		int n = (int)event.y() - topPos;
 		if(m > 161 && m < 171 && n > 5 && n < 15)
 		{
-			Minecraft.getInstance().setScreen(new GuiDriveableMenu(inventory, world, plane));
+			FlansMod.getPacketHandler().sendToServer(new PacketDriveableGUI(PacketDriveableGUI.MENU));
 		}
 		return true;
 	}

@@ -38,6 +38,7 @@ import com.flansmod.common.guns.GunType;
 import com.flansmod.common.guns.ItemShootable;
 import com.flansmod.common.guns.ShootableType;
 import com.flansmod.common.guns.ShotHandler;
+import com.flansmod.common.network.PacketDriveableGUI;
 import com.flansmod.common.network.PacketDriveableKey;
 import com.flansmod.common.network.PacketDriveableKeyHeld;
 import com.flansmod.common.network.PacketPlaySound;
@@ -98,6 +99,13 @@ public class EntitySeat extends Entity implements IControllable
 	private double prevPlayerPosX, prevPlayerPosY, prevPlayerPosZ;
 	private float prevPlayerYaw, prevPlayerPitch;
 	private boolean shooting;
+	/**
+	 * Runtime-only flag (not synced or saved) marking that playerPos* hold a
+	 * valid position. Server-side seats set this in the constructor and on
+	 * mount; client-side seats set it lazily when their passenger first
+	 * appears, so the local player is never positioned at (0,0,0).
+	 */
+	private boolean playerPosInitialised = false;
 	
 	private static final EntityDataAccessor<Integer> DRIVEABLE =
 		SynchedEntityData.defineId(EntitySeat.class, EntityDataSerializers.INT);
@@ -116,6 +124,22 @@ public class EntitySeat extends Entity implements IControllable
 		this.world = level();
 		prevLooking = new RotatedAxes();
 		looking = new RotatedAxes();
+		playerLooking = new RotatedAxes();
+		prevPlayerLooking = new RotatedAxes();
+		//26.1.2 caches the dimensions from the EntityType in the constructor,
+		//so the small seat hitbox must be applied explicitly
+		refreshDimensions();
+	}
+
+	/**
+	 * Seats are invisible helper entities, so they keep a small hitbox. The
+	 * default 0.6x1.8 entity box stuck far out of the plane model and let
+	 * players mount by right-clicking the air above the plane.
+	 */
+	@Override
+	public net.minecraft.world.entity.EntityDimensions getDimensions(net.minecraft.world.entity.Pose pose)
+	{
+		return net.minecraft.world.entity.EntityDimensions.scalable(0.6F, 0.6F);
 	}
 
 public EntitySeat(Level world)
@@ -145,6 +169,7 @@ public EntitySeat(Level world)
 		playerPosX = prevPlayerPosX = getX();
 		playerPosY = prevPlayerPosY = getY();
 		playerPosZ = prevPlayerPosZ = getZ();
+		playerPosInitialised = true;
 		looking.setAngles((seatInfo.minYaw + seatInfo.maxYaw) / 2, 0F, 0F);
 		prevLooking.setAngles((seatInfo.minYaw + seatInfo.maxYaw) / 2, 0F, 0F);
 	}
@@ -248,6 +273,9 @@ public EntitySeat(Level world)
 	
 	private void updateSeatRotation() {
 		
+		if(playerLooking == null || seatInfo == null)
+			return;
+		
 		Entity entityInThisSeat = getControllingPassenger();
 		boolean isThePlayer =
 				entityInThisSeat instanceof Player && FlansMod.proxy.isThePlayer((Player)entityInThisSeat);
@@ -257,152 +285,17 @@ public EntitySeat(Level world)
 		
 		// Move the seat accordingly
 		// Consider new Yaw and Yaw limiters
+		SeatLookMath.LookUpdate update = SeatLookMath.updateLook(
+				playerLooking.getYaw(), playerLooking.getPitch(),
+				looking.getYaw(), looking.getPitch(),
+				seatInfo.minYaw, seatInfo.maxYaw, seatInfo.minPitch, seatInfo.maxPitch,
+				seatInfo.aimingSpeed.x, seatInfo.aimingSpeed.y,
+				seatInfo.legacyAiming, seatInfo.yawBeforePitch, seatInfo.latePitch);
 		
-		float targetX = playerLooking.getYaw();
-		
-		float yawToMove = (targetX - looking.getYaw());
-		while(yawToMove > 180F)
-		{
-			yawToMove -= 360F;
-		}
-		while(yawToMove <= -180F)
-		{
-			yawToMove += 360F;
-		}
-		
-		float signDeltaX = 0;
-		if(yawToMove > (seatInfo.aimingSpeed.x / 2) && !seatInfo.legacyAiming)
-		{
-			signDeltaX = 1;
-		}
-		else if(yawToMove < -(seatInfo.aimingSpeed.x / 2) && !seatInfo.legacyAiming)
-		{
-			signDeltaX = -1;
-		}
-		else
-		{
-			signDeltaX = 0;
-		}
-		
-		
-		// Calculate new yaw and consider yaw limiters
-		float newYaw = 0f;
-		
-		if(seatInfo.legacyAiming || (signDeltaX == 0))
-		{
-			newYaw = playerLooking.getYaw();
-		}
-		else
-		{
-			newYaw = looking.getYaw() + signDeltaX * seatInfo.aimingSpeed.x;
-		}
-		// Since the yaw limiters go from -360 to 360, we need to find a pair of yaw values and check them both
-		float otherNewYaw = newYaw - 360F;
-		if(newYaw < 0)
-			otherNewYaw = newYaw + 360F;
-		if((!(newYaw >= seatInfo.minYaw) || !(newYaw <= seatInfo.maxYaw)) &&
-				(!(otherNewYaw >= seatInfo.minYaw) || !(otherNewYaw <= seatInfo.maxYaw)))
-		{
-			float newYawDistFromRange =
-					Math.min(Math.abs(newYaw - seatInfo.minYaw), Math.abs(newYaw - seatInfo.maxYaw));
-			float otherNewYawDistFromRange =
-					Math.min(Math.abs(otherNewYaw - seatInfo.minYaw), Math.abs(otherNewYaw - seatInfo.maxYaw));
-			// If the newYaw is closer to the range than the otherNewYaw, move newYaw into the range
-			if(newYawDistFromRange <= otherNewYawDistFromRange)
-			{
-				if(newYaw > seatInfo.maxYaw)
-					newYaw = seatInfo.maxYaw;
-				if(newYaw < seatInfo.minYaw)
-					newYaw = seatInfo.minYaw;
-			}
-			// Else, the otherNewYaw is closer, so move it in
-			else
-			{
-				if(otherNewYaw > seatInfo.maxYaw)
-					otherNewYaw = seatInfo.maxYaw;
-				if(otherNewYaw < seatInfo.minYaw)
-					otherNewYaw = seatInfo.minYaw;
-				// Then match up the newYaw with the otherNewYaw
-				if(newYaw < 0)
-					newYaw = otherNewYaw - 360F;
-				else newYaw = otherNewYaw + 360F;
-			}
-		}
-		
-		// Calculate the new pitch and consider pitch limiters
-		float targetY = playerLooking.getPitch();
-		
-		float pitchToMove = (targetY - looking.getPitch());
-		while(pitchToMove > 180F)
-		{
-			pitchToMove -= 360F;
-		}
-		while(pitchToMove <= -180F)
-		{
-			pitchToMove += 360F;
-		}
-		
-		float signDeltaY = 0;
-		if(pitchToMove > (seatInfo.aimingSpeed.y / 2) && !seatInfo.legacyAiming)
-		{
-			signDeltaY = 1;
-		}
-		else if(pitchToMove < -(seatInfo.aimingSpeed.y / 2) && !seatInfo.legacyAiming)
-		{
-			signDeltaY = -1;
-		}
-		else
-		{
-			signDeltaY = 0;
-		}
-		
-		float newPitch = 0f;
-		
-		
-		// Pitches the gun at the last possible moment in order to reach target pitch at the same time as target yaw.
-		float minYawToMove = 0f;
-		
-		float currentYawToMove = 0f;
-		
-		if(seatInfo.latePitch)
-		{
-			minYawToMove = ((float)Math
-					.sqrt((pitchToMove / seatInfo.aimingSpeed.y) * (pitchToMove / seatInfo.aimingSpeed.y))) *
-					seatInfo.aimingSpeed.x;
-		}
-		else
-		{
-			minYawToMove = 360f;
-		}
-		
-		currentYawToMove = (float)Math.sqrt((yawToMove) * (yawToMove));
-		
-		if(seatInfo.legacyAiming || (signDeltaY == 0))
-		{
-			newPitch = playerLooking.getPitch();
-		}
-		else if(!seatInfo.yawBeforePitch && currentYawToMove < minYawToMove)
-		{
-			newPitch = looking.getPitch() + signDeltaY * seatInfo.aimingSpeed.y;
-		}
-		else if(seatInfo.yawBeforePitch && signDeltaX == 0)
-		{
-			newPitch = looking.getPitch() + signDeltaY * seatInfo.aimingSpeed.y;
-		}
-		else if(seatInfo.yawBeforePitch)
-		{
-			newPitch = looking.getPitch();
-		}
-		else
-		{
-			newPitch = looking.getPitch();
-		}
-		
-		if(newPitch > -seatInfo.minPitch)
-			newPitch = -seatInfo.minPitch;
-		if(newPitch < -seatInfo.maxPitch)
-			newPitch = -seatInfo.maxPitch;
-		
+		float newYaw = update.newYaw;
+		float newPitch = update.newPitch;
+		int signDeltaX = update.signDeltaX;
+		int signDeltaY = update.signDeltaY;
 		
 		if(looking.getYaw() != newYaw || looking.getPitch() != newPitch)
 		{
@@ -414,7 +307,7 @@ public EntitySeat(Level world)
 		
 		playYawSound = signDeltaX != 0 && seatInfo.traverseSounds;
 		
-		if(signDeltaY != 0 && !seatInfo.yawBeforePitch && currentYawToMove < minYawToMove)
+		if(signDeltaY != 0 && !seatInfo.yawBeforePitch && update.currentYawToMove < update.minYawToMove)
 		{
 			playPitchSound = true;
 		}
@@ -493,7 +386,21 @@ public EntitySeat(Level world)
 			double y = getY() + yOffset.y;
 			double z = getZ() + yOffset.z;
 			
-			if((Math.abs(prevPlayerPosX - x) > 100d
+			if(!playerPosInitialised)
+			{
+				// Client-side lazy init: playerPos* default to 0, so snap the
+				// player straight to the seat instead of teleporting them to
+				// the world origin for one frame
+				playerPosX = prevPlayerPosX = x;
+				playerPosY = prevPlayerPosY = y;
+				playerPosZ = prevPlayerPosZ = z;
+				entityInThisSeat.setPos(x, y, z);
+				entityInThisSeat.xOld = entityInThisSeat.xo = prevPlayerPosX;
+				entityInThisSeat.yOld = entityInThisSeat.yo = prevPlayerPosY;
+				entityInThisSeat.zOld = entityInThisSeat.zo = prevPlayerPosZ;
+				playerPosInitialised = true;
+			}
+			else if((Math.abs(prevPlayerPosX - x) > 100d
 			|| Math.abs(prevPlayerPosY - y) > 100d
 			|| Math.abs(prevPlayerPosZ - z) > 100d)
 			&& prevPlayerPosY > 0.00001d)
@@ -515,30 +422,33 @@ public EntitySeat(Level world)
 			}
 			
 			// Calculate the local look axes globally
-			RotatedAxes globalLookAxes = driveable.axes.findLocalAxesGlobally(playerLooking);
-			// Set the player's rotation based on this
-			playerYaw = -90F + globalLookAxes.getYaw();
-			playerPitch = globalLookAxes.getPitch();
-			
-			double dYaw = playerYaw - prevPlayerYaw;
-			if(dYaw > 180)
-				prevPlayerYaw += 360F;
-			if(dYaw < -180)
-				prevPlayerYaw -= 360F;
-			
-			if(entityInThisSeat instanceof Player)
+			if(playerLooking != null)
 			{
-				entityInThisSeat.yRotO = prevPlayerYaw;
-				entityInThisSeat.xRotO = prevPlayerPitch;
+				RotatedAxes globalLookAxes = driveable.axes.findLocalAxesGlobally(playerLooking);
+				// Set the player's rotation based on this
+				playerYaw = -90F + globalLookAxes.getYaw();
+				playerPitch = globalLookAxes.getPitch();
 				
-				entityInThisSeat.setYRot(playerYaw);
-				entityInThisSeat.setXRot(playerPitch);
-			}
-			
-			// If the entity is a player, roll its view accordingly
-			if(world.isClientSide())
-			{
-				playerRoll = -globalLookAxes.getRoll();
+				double dYaw = playerYaw - prevPlayerYaw;
+				if(dYaw > 180)
+					prevPlayerYaw += 360F;
+				if(dYaw < -180)
+					prevPlayerYaw -= 360F;
+				
+				if(entityInThisSeat instanceof Player)
+				{
+					entityInThisSeat.yRotO = prevPlayerYaw;
+					entityInThisSeat.xRotO = prevPlayerPitch;
+					
+					entityInThisSeat.setYRot(playerYaw);
+					entityInThisSeat.setXRot(playerPitch);
+				}
+				
+				// If the entity is a player, roll its view accordingly
+				if(world.isClientSide())
+				{
+					playerRoll = -globalLookAxes.getRoll();
+				}
 			}
 		}
 	}
@@ -575,11 +485,14 @@ public EntitySeat(Level world)
 	}
 	
 	@Override
-	public void onMouseMoved(int deltaX, int deltaY)
+	public void onMouseMoved(double deltaX, double deltaY)
 	{
 		Minecraft mc = Minecraft.getInstance();
 		
 		if(driveable == null)
+			return;
+		
+		if(playerLooking == null || prevPlayerLooking == null)
 			return;
 		
 		prevLooking = looking.clone();
@@ -597,50 +510,14 @@ public EntitySeat(Level world)
 			
 			// Angle stuff for the player
 			// Calculate the new pitch yaw while considering limiters
-			float newPlayerYaw = playerLooking.getYaw() + deltaX / lookSpeed * (float)(double)mc.options.sensitivity().get();
-			float newPlayerPitch = playerLooking.getPitch() - deltaY / lookSpeed * (float)(double)mc.options.sensitivity().get();
+			float newPlayerYaw = (float)(playerLooking.getYaw() + deltaX / lookSpeed * (float)(double)mc.options.sensitivity().get());
+			float newPlayerPitch = (float)(playerLooking.getPitch() - deltaY / lookSpeed * (float)(double)mc.options.sensitivity().get());
 			
-			if(newPlayerPitch > -seatInfo.minPitch)
-				newPlayerPitch = -seatInfo.minPitch;
-			if(newPlayerPitch < -seatInfo.maxPitch)
-				newPlayerPitch = -seatInfo.maxPitch;
-
+			newPlayerPitch = SeatLookMath.clampPitchToLimits(newPlayerPitch, seatInfo.minPitch, seatInfo.maxPitch);
+			
 			// Since the yaw limiters go from -360 to 360, we need to find a pair of yaw values and check them both
-			float otherNewPlayerYaw = newPlayerYaw - 360F;
-			if(newPlayerYaw < 0)
-				otherNewPlayerYaw = newPlayerYaw + 360F;
-			if((newPlayerYaw >= seatInfo.minYaw && newPlayerYaw <= seatInfo.maxYaw) ||
-					(otherNewPlayerYaw >= seatInfo.minYaw && otherNewPlayerYaw <= seatInfo.maxYaw))
-			{
-				//All is well
-			}
-			else
-			{
-				float newPlayerYawDistFromRange =
-						Math.min(Math.abs(newPlayerYaw - seatInfo.minYaw), Math.abs(newPlayerYaw - seatInfo.maxYaw));
-				float otherPlayerNewYawDistFromRange = Math.min(Math.abs(otherNewPlayerYaw - seatInfo.minYaw),
-						Math.abs(otherNewPlayerYaw - seatInfo.maxYaw));
-				// If the newYaw is closer to the range than the otherNewYaw, move newYaw into the range
-				if(newPlayerYawDistFromRange <= otherPlayerNewYawDistFromRange)
-				{
-					if(newPlayerYaw > seatInfo.maxYaw)
-						newPlayerYaw = seatInfo.maxYaw;
-					if(newPlayerYaw < seatInfo.minYaw)
-						newPlayerYaw = seatInfo.minYaw;
-				}
-				// Else, the otherNewYaw is closer, so move it in
-				else
-				{
-					if(otherNewPlayerYaw > seatInfo.maxYaw)
-						otherNewPlayerYaw = seatInfo.maxYaw;
-					if(otherNewPlayerYaw < seatInfo.minYaw)
-						otherNewPlayerYaw = seatInfo.minYaw;
-					//Then match up the newYaw with the otherNewYaw
-					if(newPlayerYaw < 0)
-						newPlayerYaw = otherNewPlayerYaw - 360F;
-					else newPlayerYaw = otherNewPlayerYaw + 360F;
-				}
-			}
+			newPlayerYaw = SeatLookMath.clampYawToLimits(newPlayerYaw, seatInfo.minYaw, seatInfo.maxYaw);
+			
 			// Now set the new angles
 			playerLooking.setAngles(newPlayerYaw, newPlayerPitch, 0F);
 			
@@ -676,7 +553,7 @@ public EntitySeat(Level world)
 		
 		if(world.isClientSide() && key == 7 && driveable != null)
 		{
-			FlansMod.proxy.openDriveableMenu(player, world, driveable);
+			FlansMod.getPacketHandler().sendToServer(new PacketDriveableGUI(PacketDriveableGUI.MENU));
 		}
 		
 		if(world.isClientSide())
@@ -824,6 +701,7 @@ public EntitySeat(Level world)
 				playerPosX = prevPlayerPosX = entityplayer.getX();
 				playerPosY = prevPlayerPosY = entityplayer.getY();
 				playerPosZ = prevPlayerPosZ = entityplayer.getZ();
+				playerPosInitialised = true;
 			}
 			else
 			{
@@ -871,6 +749,14 @@ public EntitySeat(Level world)
 	{
 		if(driveable != null || getVehicle() != null)
 			tick();
+	}
+	
+	@Override
+	protected void positionRider(Entity passenger, MoveFunction moveFunction)
+	{
+		// Seat and passenger positions are managed manually by updatePosition()
+		// in the driveable tick; the vanilla passenger attachment point would
+		// place the player 1.8 blocks above the seat every tick.
 	}
 	
 	@Override

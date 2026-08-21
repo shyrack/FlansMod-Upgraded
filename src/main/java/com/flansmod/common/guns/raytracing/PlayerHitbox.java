@@ -8,7 +8,6 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
-import com.flansmod.client.debug.EntityDebugDot;
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.RotatedAxes;
 import com.flansmod.common.guns.BulletType;
@@ -68,7 +67,7 @@ public class PlayerHitbox
 					Vector3f point = new Vector3f(o.x + d.x * i / 2, o.y + d.y * j / 2, o.z + d.z * k / 2);
 					point = axes.findLocalVectorGlobally(point);
 					if(FlansMod.DEBUG && world.isClientSide())
-						((net.minecraft.client.multiplayer.ClientLevel)world).addEntity(new EntityDebugDot(world, new Vector3f(pos.x + rP.x + point.x, pos.y + rP.y + point.y, pos.z + rP.z + point.z), 1, 0F, 1F, 0F));
+						FlansMod.proxy.renderHitboxDot(world, pos.x + rP.x + point.x, pos.y + rP.y + point.y, pos.z + rP.z + point.z);
 				}
 		
 	}

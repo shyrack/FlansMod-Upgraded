@@ -36,6 +36,7 @@ import net.minecraft.world.level.storage.loot.providers.number.UniformGenerator;
 import com.flansmod.common.driveables.EntityPlane;
 import com.flansmod.common.driveables.EntitySeat;
 import com.flansmod.common.driveables.EntityVehicle;
+import com.flansmod.common.driveables.PhysicsTestHarness;
 import com.flansmod.common.driveables.EntityWheel;
 import com.flansmod.common.driveables.ItemPlane;
 import com.flansmod.common.driveables.ItemVehicle;
@@ -125,6 +126,7 @@ public class FlansMod implements ModInitializer
 	public static boolean shootOnRightClick = false;
 	public static boolean forceUpdateJSONs = false;
 	public static boolean enchantmentModuleEnabled = true;
+	public static boolean logDriveablePhysics = false;
 
 	public static float armourSpawnRate = 0.25F;
 
@@ -144,6 +146,10 @@ public class FlansMod implements ModInitializer
 	public static final ContentManager contentManager = new ContentManager();
 	public static final EnchantmentModule enchantmentModule = new EnchantmentModule();
 	public static HashMap<String, String> modelDirectories = new HashMap<>();
+
+	//Physics telemetry sink. Pluggable so tests can install a recording tracer.
+	public static com.flansmod.common.driveables.IPhysicsTracer physicsTracer =
+			new com.flansmod.common.driveables.LoggingPhysicsTracer();
 
 	//Items and creative tabs
 	public static BlockFlansWorkbench workbench;
@@ -186,6 +192,11 @@ public class FlansMod implements ModInitializer
 
 		gameDirectory = FabricLoader.getInstance().getGameDir().toFile();
 		configFile = new Configuration(new File(gameDirectory, "config/flansmod.cfg"));
+
+		if(Boolean.getBoolean("flansmod.physicstest"))
+		{
+			PhysicsTestHarness.init();
+		}
 		syncConfig();
 
 		//Set up directories
@@ -204,6 +215,7 @@ public class FlansMod implements ModInitializer
 		//Set up mod blocks and items
 		ModBlockEntities.register();
 		ModEntities.init();
+		ModMenus.init();
 		ModItems.register();
 
 		//Populate the creative tabs with the static items
@@ -382,6 +394,7 @@ public class FlansMod implements ModInitializer
 		addAllPaintjobsToCreative = configFile.getBoolean("Add All Paintjobs to Creative", Configuration.CATEGORY_GENERAL, addAllPaintjobsToCreative);
 		forceUpdateJSONs = configFile.getBoolean("ForceUpdateJSONs", Configuration.CATEGORY_GENERAL, forceUpdateJSONs);
 		enchantmentModuleEnabled = configFile.getBoolean("EnchantmentModuleEnabled", Configuration.CATEGORY_GENERAL, enchantmentModuleEnabled);
+		logDriveablePhysics = configFile.getBoolean("LogDriveablePhysics", Configuration.CATEGORY_GENERAL, logDriveablePhysics);
 
 		if(configFile.hasChanged())
 			configFile.save();

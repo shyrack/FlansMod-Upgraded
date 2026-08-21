@@ -24,11 +24,11 @@ public class GuiDriveableMenu extends AbstractContainerScreen<ContainerDriveable
 	public Inventory inventory;
 	public EntityDriveable entity;
 	
-	public GuiDriveableMenu(Inventory inventoryplayer, Level world1, EntityDriveable entPlane)
+	public GuiDriveableMenu(ContainerDriveableMenu menu, Inventory inventoryplayer, Component title)
 	{
-		super(new ContainerDriveableMenu(inventoryplayer, world1), inventoryplayer, Component.literal(""), 176, 180);
-		entity = entPlane;
-		world = world1;
+		super(menu, inventoryplayer, title, 176, 180);
+		entity = menu.getDriveable();
+		world = menu.world;
 		inventory = inventoryplayer;
 	}
 	
@@ -36,6 +36,8 @@ public class GuiDriveableMenu extends AbstractContainerScreen<ContainerDriveable
 	public void init()
 	{
 		super.init();
+		if(entity == null)
+			return;
 		DriveableType type = entity.getDriveableType();
 		//Cargo button
 		Button cargoButton = Button.builder(Component.literal("Cargo"), b -> actionPerformed(0)).bounds(width / 2 - 60, height / 2 - 71, 58, 20).build();
@@ -71,19 +73,19 @@ public class GuiDriveableMenu extends AbstractContainerScreen<ContainerDriveable
 		//Replace with a packet requesting the GUI from the server
 		if(id == 0) //Cargo
 		{
-			FlansMod.getPacketHandler().sendToServer(new PacketDriveableGUI(3));
+			FlansMod.getPacketHandler().sendToServer(new PacketDriveableGUI(PacketDriveableGUI.CARGO));
 		}
 		if(id == 1) //Guns
 		{
-			FlansMod.getPacketHandler().sendToServer(new PacketDriveableGUI(0));
+			FlansMod.getPacketHandler().sendToServer(new PacketDriveableGUI(PacketDriveableGUI.GUNS));
 		}
 		if(id == 2) //Fuel
 		{
-			FlansMod.getPacketHandler().sendToServer(new PacketDriveableGUI(2));
+			FlansMod.getPacketHandler().sendToServer(new PacketDriveableGUI(PacketDriveableGUI.FUEL));
 		}
 		if(id == 3) //Missiles
 		{
-			FlansMod.getPacketHandler().sendToServer(new PacketDriveableGUI(5));
+			FlansMod.getPacketHandler().sendToServer(new PacketDriveableGUI(PacketDriveableGUI.MISSILES));
 		}
 		if(id == 4) //Repair
 		{
@@ -92,13 +94,15 @@ public class GuiDriveableMenu extends AbstractContainerScreen<ContainerDriveable
 		}
 		if(id == 5) //Bombs
 		{
-			FlansMod.getPacketHandler().sendToServer(new PacketDriveableGUI(1));
+			FlansMod.getPacketHandler().sendToServer(new PacketDriveableGUI(PacketDriveableGUI.BOMBS));
 		}
 	}
 
 	@Override
 	protected void extractLabels(GuiGraphicsExtractor extractor, int mouseX, int mouseY)
 	{
+		if(entity == null)
+			return;
 		extractor.text(font, Component.literal(entity.getDriveableType().name), 6, 6, 0x404040);
 		extractor.text(font, Component.literal("Inventory"), 8, (imageHeight - 96) + 2, 0x404040);
 	}

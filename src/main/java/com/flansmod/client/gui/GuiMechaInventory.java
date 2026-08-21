@@ -11,8 +11,10 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.level.Level;
 
+import com.flansmod.common.FlansMod;
 import com.flansmod.common.driveables.mechas.ContainerMechaInventory;
 import com.flansmod.common.driveables.mechas.EntityMecha;
+import com.flansmod.common.network.PacketDriveableGUI;
 
 public class GuiMechaInventory extends AbstractContainerScreen<ContainerMechaInventory>
 {
@@ -28,20 +30,22 @@ public class GuiMechaInventory extends AbstractContainerScreen<ContainerMechaInv
 	private int anim = 0;
 	private long lastTime;
 	
-	public GuiMechaInventory(Inventory inventoryplayer, Level world1, EntityMecha entMecha)
+	public GuiMechaInventory(ContainerMechaInventory menu, Inventory inventoryplayer, Component title)
 	{
-		super(new ContainerMechaInventory(inventoryplayer, world1, entMecha), inventoryplayer, Component.literal(""), 350, 180);
-		mecha = entMecha;
-		inventory = inventoryplayer;
-		world = world1;
+		super(menu, inventoryplayer, title, 350, 180);
 		container = menu;
-		maxScroll = container.maxScroll;
-		numItems = container.numItems;
+		mecha = menu.getMecha();
+		inventory = inventoryplayer;
+		world = menu.world;
+		maxScroll = menu.maxScroll;
+		numItems = menu.numItems;
 	}
 	
 	@Override
 	protected void extractLabels(GuiGraphicsExtractor extractor, int mouseX, int mouseY)
 	{
+		if(mecha == null)
+			return;
 		extractor.text(font, mecha.getMechaType().name, 9, 9, 0x404040);
 		extractor.text(font, "Inventory", 181, (imageHeight - 96) + 2, 0x404040);
 	}
@@ -68,6 +72,8 @@ public class GuiMechaInventory extends AbstractContainerScreen<ContainerMechaInv
 			if(newTime % 5 == 0)
 				anim++;
 		}
+		if(mecha == null)
+			return;
 		int fuelTankSize = mecha.getMechaType().fuelTankSize;
 		float fuelInTank = mecha.driveableData.fuelInTank;
 		if(fuelInTank < fuelTankSize / 8 && (anim % 4) > 1)
@@ -82,7 +88,7 @@ public class GuiMechaInventory extends AbstractContainerScreen<ContainerMechaInv
 		super.init();
 		addRenderableWidget(Button.builder(Component.literal("Passenger Guns"), b ->
 		{
-			Minecraft.getInstance().setScreen(new GuiDriveableInventory(inventory, world, mecha, 0));
+			FlansMod.getPacketHandler().sendToServer(new PacketDriveableGUI(PacketDriveableGUI.GUNS));
 		}).bounds(width / 2 - 166, height / 2 + 63, 93, 20).build());
 		addRenderableWidget(Button.builder(Component.literal("Repair"), b ->
 		{

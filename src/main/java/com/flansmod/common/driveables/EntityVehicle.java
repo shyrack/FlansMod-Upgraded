@@ -20,6 +20,7 @@ import com.flansmod.client.model.AnimTrackLink;
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.ModEntities;
 import com.flansmod.common.RotatedAxes;
+import com.flansmod.common.network.PacketDriveableGUI;
 import com.flansmod.common.network.PacketPlaySound;
 import com.flansmod.common.network.PacketVehicleControl;
 import com.flansmod.common.teams.TeamsManager;
@@ -96,6 +97,10 @@ public EntityVehicle(Level world)
 		setPos(x, y, z);
 		rotateYaw(placer.getYRot() + 90F);
 		initType(type, true, false);
+		//The spawned orientation is also the "previous" orientation, so the
+		//first-tick checkForCollisions sweep does not raytrace from identity
+		//through the ground
+		prevAxes = axes.clone();
 	}
 	
 	public void setupTracks(DriveableType type)
@@ -159,7 +164,7 @@ public EntityVehicle(Level world)
 	 * @param deltaX
 	 */
 	@Override
-	public void onMouseMoved(int deltaX, int deltaY)
+	public void onMouseMoved(double deltaX, double deltaY)
 	{
 	}
 	
@@ -248,7 +253,7 @@ public EntityVehicle(Level world)
 			{
 				if(world.isClientSide())
 				{
-					FlansMod.proxy.openDriveableMenu((Player)getSeat(0).getControllingPassenger(), world, this);
+					FlansMod.getPacketHandler().sendToServer(new PacketDriveableGUI(PacketDriveableGUI.MENU));
 				}
 				return true;
 			}
@@ -385,77 +390,25 @@ public EntityVehicle(Level world)
 			double motY = wheel.getDeltaMovement().y;
 			double motZ = wheel.getDeltaMovement().z;
 			
-			motX *= 0.9F;
-			motY *= 0.9F;
-			motZ *= 0.9F;
-			
-			//Apply gravity
-			motY -= 0.98F / 20F;
-			
 			//Apply velocity
 			Player driver = getDriver();
-			if(canThrust(data, driver))
-			{
-				if (!driverIsCreative())
-				{
-					data.fuelInTank -= data.engine.fuelConsumption * throttle;
-				}
-
-				if(getVehicleType().tank)
-				{
-					boolean left = wheel.getExpectedWheelID() == 0 || wheel.getExpectedWheelID() == 3;
-					
-					float turningDrag = 0.02F;
-					motX *= 1F - (Math.abs(wheelsYaw) * turningDrag);
-					motZ *= 1F - (Math.abs(wheelsYaw) * turningDrag);
-					
-					float velocityScale = 0.04F * (throttle > 0 ? type.maxThrottle : type.maxNegativeThrottle) *
-						data.engine.engineSpeed;
-					float steeringScale = 0.1F * (wheelsYaw > 0 ? type.turnLeftModifier : type.turnRightModifier);
-					float effectiveWheelSpeed =
-						(throttle + (wheelsYaw * (left ? 1 : -1) * steeringScale)) * velocityScale;
-					motX += effectiveWheelSpeed * Math.cos(wheel.getYRot() * 3.14159265F / 180F);
-					motZ += effectiveWheelSpeed * Math.sin(wheel.getYRot() * 3.14159265F / 180F);
-					
-					
-				}
-				else
-				{
-					//if(getVehicleType().fourWheelDrive || wheel.ID == 0 || wheel.ID == 1)
-					{
-						float velocityScale =
-							0.1F * throttle * (throttle > 0 ? type.maxThrottle : type.maxNegativeThrottle) *
-								data.engine.engineSpeed;
-						motX += Math.cos(wheel.getYRot() * 3.14159265F / 180F) * velocityScale;
-						motZ += Math.sin(wheel.getYRot() * 3.14159265F / 180F) * velocityScale;
-					}
-					
-					//Apply steering
-					if(wheel.getExpectedWheelID() == 2 || wheel.getExpectedWheelID() == 3)
-					{
-						float velocityScale = 0.01F * (wheelsYaw > 0 ? type.turnLeftModifier : type.turnRightModifier) *
-							(throttle > 0 ? 1 : -1);
-						
-						motX -=
-							wheel.getSpeedXZ() * Math.sin(wheel.getYRot() * 3.14159265F / 180F) * velocityScale *
-								wheelsYaw;
-						motZ +=
-							wheel.getSpeedXZ() * Math.cos(wheel.getYRot() * 3.14159265F / 180F) * velocityScale *
-								wheelsYaw;
-					}
-					else
-					{
-						motX *= 0.9F;
-						motZ *= 0.9F;
-					}
-				}
-			}
+			DriveableMotion.Result motionResult = DriveableMotion.applyWheelMotion(
+					motX, motY, motZ,
+					throttle, wheelsYaw, wheel.getExpectedWheelID(),
+					wheel.getYRot(), wheel.getSpeedXZ(),
+					type.tank, type.maxThrottle, type.maxNegativeThrottle,
+					type.turnLeftModifier, type.turnRightModifier,
+					data.engine == null ? 0 : data.engine.engineSpeed,
+					data.engine == null ? 0F : data.engine.fuelConsumption,
+					canThrust(data, driver), driverIsCreative(),
+					type.floatOnWater && world.containsAnyLiquid(wheel.getBoundingBox()),
+					type.buoyancy);
+			motX = motionResult.motX;
+			motY = motionResult.motY;
+			motZ = motionResult.motZ;
+			data.fuelInTank -= motionResult.fuelDrain;
 			
-			if(type.floatOnWater && world.containsAnyLiquid(wheel.getBoundingBox()))
-			{
-				motY += type.buoyancy;
-			}
-			
+			wheel.setDeltaMovement(motX, motY, motZ);
 			wheel.move(MoverType.PLAYER, new Vec3(motX, motY, motZ));
 			
 			//Pull wheels towards car
@@ -610,6 +563,8 @@ public EntityVehicle(Level world)
 		}
 		
 		PostUpdate();
+		
+		logPhysicsTick("Vehicle", throttle, onGround());
 	}
 
 	private boolean canThrust(DriveableData data, Player driver) {

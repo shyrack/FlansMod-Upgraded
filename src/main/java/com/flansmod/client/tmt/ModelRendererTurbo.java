@@ -2233,8 +2233,8 @@ public class ModelRendererTurbo extends ModelRenderer
 	private TexturedPolygon faces[];
 	private int textureOffsetX;
 	private int textureOffsetY;
-	public int textureWidth;
-	public int textureHeight;
+	public float textureWidth;
+	public float textureHeight;
 	private boolean compiled;
 	private Map<String, TransformGroup> transformGroup;
 	private Map<String, TextureGroup> textureGroup;

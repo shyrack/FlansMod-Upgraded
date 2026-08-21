@@ -5,7 +5,6 @@ import java.util.UUID;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
-import net.minecraft.client.particle.Particle;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
@@ -24,7 +23,6 @@ import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
 
-import com.flansmod.client.FlansModClient;
 import com.flansmod.client.debug.EntityDebugVector;
 import com.flansmod.client.handlers.FlansModResourceHandler;
 import com.flansmod.common.FlansMod;
@@ -383,12 +381,10 @@ public EntityBullet(Level world)
 			spawnParticles();
 		}
 		
-		if(distanceToSqr(Minecraft.getInstance().player) < 5 && !playedFlybySound)
+		if(!playedFlybySound && FlansMod.proxy.isWithinDistanceOfLocalPlayer(this, 5.0D))
 		{
 			playedFlybySound = true;
-			Minecraft.getInstance().getSoundManager()
-					.play(new SimpleSoundInstance(FlansModResourceHandler.getSoundEvent("bulletFlyby"), SoundSource.HOSTILE, 10F,
-							1.0F / (random.nextFloat() * 0.4F + 0.8F), random, getX(), getY(), getZ()));
+			FlansMod.proxy.playFlybySound(this, random);
 		}
 	}
 	
@@ -401,7 +397,7 @@ public EntityBullet(Level world)
 		float spread = 0.1F;
 		for(int i = 0; i < 10; i++)
 		{
-			Particle particle = FlansModClient.getParticle(shot.getBulletType().trailParticleType, world,
+			FlansMod.proxy.spawnParticle(shot.getBulletType().trailParticleType, world,
 					xo + dX * i + random.nextGaussian() * spread, yo + dY * i + random.nextGaussian() * spread,
 					zo + dZ * i + random.nextGaussian() * spread);
 			// TODO: [1.12] once again, render distance

@@ -3,6 +3,7 @@ package com.flansmod.common.driveables;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -10,21 +11,16 @@ import net.minecraft.world.level.Level;
 public class ContainerDriveableMenu extends AbstractContainerMenu
 {
 	//Fuel AbstractContainerMenu is combined with this because they are so similar
-	public ContainerDriveableMenu(Inventory inventoryplayer, Level worldy)
+	public ContainerDriveableMenu(MenuType<?> type, int containerId, Inventory inventoryplayer, EntityDriveable planey, boolean fuel)
 	{
-		this(inventoryplayer, worldy, false, null);
-	}
-	
-	public ContainerDriveableMenu(Inventory inventoryplayer, Level worldy, boolean fuel, EntityDriveable planey)
-	{
-		super(null, 0);
+		super(type, containerId);
 		inventory = inventoryplayer;
-		world = worldy;
+		world = inventoryplayer.player != null ? inventoryplayer.player.level() : null;
 		plane = planey;
 		isFuel = fuel;
 		
 		//Fuel slot
-		if(isFuel)
+		if(isFuel && plane != null)
 		{
 			addSlot(new Slot(plane.driveableData, plane.driveableData.getFuelSlot(), 35, 44));
 		}
@@ -43,6 +39,11 @@ public class ContainerDriveableMenu extends AbstractContainerMenu
 		{
 			addSlot(new Slot(inventoryplayer, col, 8 + col * 18, 137 + (isFuel ? 0 : 19)));
 		}
+	}
+	
+	public EntityDriveable getDriveable()
+	{
+		return plane;
 	}
 	
 	@Override
@@ -94,7 +95,10 @@ public class ContainerDriveableMenu extends AbstractContainerMenu
 	@Override
 	public boolean stillValid(Player entityplayer)
 	{
-		return true;
+		if(plane == null || plane.isRemoved())
+			return false;
+		return entityplayer.getVehicle() instanceof EntitySeat
+				&& ((EntitySeat)entityplayer.getVehicle()).driveable == plane;
 	}
 	
 	public EntityDriveable plane;

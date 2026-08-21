@@ -183,7 +183,7 @@ public EntityMecha(Level world)
 	}
 	
 	@Override
-	public void onMouseMoved(int deltaX, int deltaY)
+	public void onMouseMoved(double deltaX, double deltaY)
 	{
 	}
 	
@@ -240,8 +240,7 @@ public EntityMecha(Level world)
 			{
 				if(world.isClientSide())
 				{
-					FlansMod.getPacketHandler().sendToServer(new PacketDriveableGUI(4));
-					FlansMod.proxy.openDriveableMenu((Player)getSeat(0).getControllingPassenger(), world, this);
+					FlansMod.getPacketHandler().sendToServer(new PacketDriveableGUI(PacketDriveableGUI.MECHA));
 				}
 				return true;
 			}
@@ -676,6 +675,8 @@ public EntityMecha(Level world)
 			legSwing = legSwing / type.legSwingLimit;
 		
 		PostUpdate();
+		
+		logPhysicsTick("Mecha", throttle, onGround());
 	}
 	
 	private void mineBlock(Entity driver, Player playerDriver, boolean isCreative, MechaType type,

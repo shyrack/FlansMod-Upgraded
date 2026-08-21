@@ -14,7 +14,7 @@ public interface IControllable
 	 * @param deltaX change in X of the mouse.
 	 * @param deltaY change in Y of the mouse.
 	 */
-	void onMouseMoved(int deltaX, int deltaY);
+	void onMouseMoved(double deltaX, double deltaY);
 	
 	/**
 	 * @param key the keycode of the key. see @link:KeyInputHandler

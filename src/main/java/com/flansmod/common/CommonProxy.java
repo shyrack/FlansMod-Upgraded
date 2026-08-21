@@ -8,7 +8,16 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.HitResult;
+
+import com.flansmod.common.guns.boxes.GunBoxType;
+import com.flansmod.common.network.PacketBaseEdit;
+import com.flansmod.common.teams.ArmourBoxType;
+import com.flansmod.common.teams.PlayerClass;
+import com.flansmod.common.teams.Team;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
@@ -16,15 +25,10 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
 
-import com.flansmod.common.driveables.ContainerDriveableInventory;
-import com.flansmod.common.driveables.ContainerDriveableMenu;
 import com.flansmod.common.driveables.DriveablePart;
 import com.flansmod.common.driveables.DriveableType;
 import com.flansmod.common.driveables.EntityDriveable;
-import com.flansmod.common.driveables.EntitySeat;
 import com.flansmod.common.driveables.EnumDriveablePart;
-import com.flansmod.common.driveables.mechas.ContainerMechaInventory;
-import com.flansmod.common.driveables.mechas.EntityMecha;
 import com.flansmod.common.guns.ContainerGunModTable;
 import com.flansmod.common.guns.boxes.ContainerGunBox;
 import com.flansmod.common.guns.boxes.GunBoxType;
@@ -90,10 +94,6 @@ public class CommonProxy
 		return false;
 	}
 	
-	public void openDriveableMenu(Player player, Level world, EntityDriveable driveable)
-	{
-	}
-	
 	public <T> T loadModel(String s, String shortName, Class<T> typeClass)
 	{
 		return null;
@@ -130,17 +130,17 @@ public class CommonProxy
 			case 0: return null; //Driveable crafting. No server side
 			case 1: return null; //Driveable repair. No server side
 			case 2: return new ContainerGunModTable(player.getInventory(), world);
-			case 3: return new ContainerDriveableMenu(player.getInventory(), world);
-			case 4: return new ContainerDriveableMenu(player.getInventory(), world, true, ((EntitySeat)player.getVehicle()).driveable);
+			case 3: return null; //Driveable menu. Opened server side by PacketDriveableGUI
+			case 4: return null; //Driveable fuel. Opened server side by PacketDriveableGUI
 			case 5: return new ContainerGunBox(player.getInventory());
-			//Plane inventory screens
-			case 6: return new ContainerDriveableInventory(player.getInventory(), world, ((EntitySeat)player.getVehicle()).driveable, 0);
-			case 7: return new ContainerDriveableInventory(player.getInventory(), world, ((EntitySeat)player.getVehicle()).driveable, 1);
-			case 8: return new ContainerDriveableMenu(player.getInventory(), world, true, ((EntitySeat)player.getVehicle()).driveable);
-			case 9: return new ContainerDriveableInventory(player.getInventory(), world, ((EntitySeat)player.getVehicle()).driveable, 2);
-			case 10: return new ContainerMechaInventory(player.getInventory(), world, (EntityMecha)((EntitySeat)player.getVehicle()).driveable);
+			//Plane inventory screens. Opened server side by PacketDriveableGUI
+			case 6: return null;
+			case 7: return null;
+			case 8: return null;
+			case 9: return null;
+			case 10: return null;
 			case 11: return null; //Armour box. No server side
-			case 12: return new ContainerDriveableInventory(player.getInventory(), world, ((EntitySeat)player.getVehicle()).driveable, 3);
+			case 12: return null;
 			case 13: return new ContainerPaintjobTable(player.getInventory(), world, (TileEntityPaintjobTable)world.getBlockEntity(new BlockPos(x, y, z)));
 		}
 		return null;
@@ -373,6 +373,98 @@ public class CommonProxy
 	public boolean isScreenOpen()
 	{
 		return false;
+	}
+
+	/** Client-side mouse button state; false on the server. */
+	public boolean mouseLeftDown()
+	{
+		return false;
+	}
+
+	/** Whether the local player is within the given distance of the entity; false on the server. */
+	public boolean isWithinDistanceOfLocalPlayer(Entity entity, double distance)
+	{
+		return false;
+	}
+
+	/** Plays the bullet flyby sound near the local player; no-op on the server. */
+	public void playFlybySound(Entity entity, net.minecraft.util.RandomSource random)
+	{
+	}
+
+	/** Resets the camera to the local player; no-op on the server. */
+	public void resetCamera()
+	{
+	}
+
+	/** Toggles the driveable camera perspective; no-op on the server. */
+	public void toggleDriveablePerspective(EntityDriveable driveable)
+	{
+	}
+
+	/** Spawns a client particle by name; no-op on the server. */
+	public void spawnParticle(String type, net.minecraft.world.level.Level world, double x, double y, double z)
+	{
+	}
+
+	/** Debug hitbox dot rendering; no-op on the server. */
+	public void renderHitboxDot(net.minecraft.world.level.Level world, double x, double y, double z)
+	{
+	}
+
+	/** The client level; null on the server. */
+	public net.minecraft.world.level.Level getClientLevel()
+	{
+		return null;
+	}
+
+	/** The client's crosshair raytrace hit; null on the server. */
+	public HitResult getClientHitResult()
+	{
+		return null;
+	}
+
+	/** Closes the current screen; no-op on the server. */
+	public void closeScreen()
+	{
+	}
+
+	/** GUI openers; all no-ops on the server. */
+	public void openWorkbenchCrafting(Inventory inventory)
+	{
+	}
+
+	public void openGunModTable(Inventory inventory, net.minecraft.world.level.Level world)
+	{
+	}
+
+	public void openPaintjobTable(Inventory inventory, net.minecraft.world.level.Level world,
+								   com.flansmod.common.paintjob.TileEntityPaintjobTable table)
+	{
+	}
+
+	public void openArmourBox(Inventory inventory, ArmourBoxType type)
+	{
+	}
+
+	public void openGunBox(Inventory inventory, GunBoxType type)
+	{
+	}
+
+	public void openBaseEditor(PacketBaseEdit packet)
+	{
+	}
+
+	public void openTeamSelect(Team[] teams)
+	{
+	}
+
+	public void openTeamSelect(PlayerClass[] classes)
+	{
+	}
+
+	public void setTeamChoices(Team[] teams)
+	{
 	}
 	
 	public boolean isKeyDown(int key)

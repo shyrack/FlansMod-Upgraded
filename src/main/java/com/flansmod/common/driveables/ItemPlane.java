@@ -95,7 +95,18 @@ public class ItemPlane extends Item implements IPaintableItem
 				{
 					DriveableData data = getPlaneData(itemstack, world);
 					if(data != null)
-						world.addFreshEntity(new EntityPlane(world, (double)pos.getX() + 0.5F, (double)pos.getY() + 2.5F, (double)pos.getZ() + 0.5F, entityplayer, type, data));
+					{
+						//Placed at the resting height: the lowest wheel exactly at the
+						//ground-contact line (terrain top + 0.125 clamp offset), so the
+						//plane settles onto its gear with no visible drop or hop
+						double wheelClearance = 0D;
+						for(DriveablePosition wheel : type.wheelPositions)
+							wheelClearance = Math.max(wheelClearance, -wheel.position.y);
+						if(wheelClearance <= 0D)
+							wheelClearance = 0.9D; // skid-only planes rest on their own box
+						double spawnY = pos.getY() + 1.0D + 0.125D + wheelClearance;
+						world.addFreshEntity(new EntityPlane(world, (double)pos.getX() + 0.5F, spawnY, (double)pos.getZ() + 0.5F, entityplayer, type, data));
+					}
 				}
 				if(!entityplayer.getAbilities().instabuild)
 				{

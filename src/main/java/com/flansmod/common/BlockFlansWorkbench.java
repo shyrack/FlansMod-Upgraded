@@ -15,7 +15,6 @@ import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.phys.BlockHitResult;
 
-import com.flansmod.client.gui.GuiDriveableCrafting;
 import com.flansmod.common.guns.ContainerGunModTable;
 
 public class BlockFlansWorkbench extends Block
@@ -40,11 +39,11 @@ public class BlockFlansWorkbench extends Block
 		{
 			case 0:
 				if(world.isClientSide())
-					Minecraft.getInstance().setScreen(new GuiDriveableCrafting(player.getInventory()));
+					FlansMod.proxy.openWorkbenchCrafting(player.getInventory());
 				break;
 			case 1:
 				if(!world.isClientSide())
-					net.minecraft.client.Minecraft.getInstance().setScreen(new com.flansmod.client.gui.GuiGunModTable(player.getInventory(), world));
+					FlansMod.proxy.openGunModTable(player.getInventory(), world);
 				break;
 		}
 		return InteractionResult.SUCCESS;

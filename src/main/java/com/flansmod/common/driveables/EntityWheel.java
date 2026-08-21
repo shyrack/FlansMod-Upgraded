@@ -43,6 +43,9 @@ public class EntityWheel extends Entity
 	{
 		super(type, world);
 		this.world = level();
+		//26.1.2 caches the dimensions from the EntityType in the constructor,
+		//so the 0.5x0.5 override must be applied explicitly
+		refreshDimensions();
 	}
 
 	public EntityWheel(Level world)
@@ -61,6 +64,17 @@ public class EntityWheel extends Entity
 		entityData.set(WHEEL, ID);
 		
 		initPosition();
+	}
+	
+	/**
+	 * Wheels are 0.5x0.5 cubes like in 1.12.2 (the default 0.6x1.8 entity box
+	 * made the resting plane sit ~0.9 blocks too low: model wheels buried in
+	 * the ground and the tail-dragger stance collapsed).
+	 */
+	@Override
+	public net.minecraft.world.entity.EntityDimensions getDimensions(net.minecraft.world.entity.Pose pose)
+	{
+		return net.minecraft.world.entity.EntityDimensions.scalable(0.5F, 0.5F);
 	}
 	
 	public void initPosition()
@@ -150,6 +164,18 @@ public class EntityWheel extends Entity
 		}
 		
 		ID = entityData.get(WHEEL);
+	}
+	
+	@Override
+	public void rideTick()
+	{
+		// Wheels are positioned manually by the driveable's spring physics
+		// (EntityPlane.tick / EntityVehicle.tick). Vanilla rideTick would
+		// additionally call getVehicle().positionRider(this), teleporting the
+		// wheel to the driveable's passenger attachment point (0, 1.8, 0)
+		// every tick and destroying ground contact. See EntitySeat.rideTick().
+		if(vehicle != null || getVehicle() != null)
+			tick();
 	}
 	
 	@Override

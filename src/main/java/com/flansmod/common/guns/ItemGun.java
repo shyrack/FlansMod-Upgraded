@@ -315,7 +315,6 @@ public class ItemGun extends Item implements IPaintableItem
 		}
 		
 		// Get useful objects
-		Minecraft mc = Minecraft.getInstance();
 		Player player = (Player) entity;
 		PlayerData data = PlayerHandler.getPlayerData(player);
 		//Slow down minigun
@@ -324,7 +323,8 @@ public class ItemGun extends Item implements IPaintableItem
 		Boolean held = GetLastMouseHeld(hand);
 		
 		// Do not shoot ammo bags, flags or dropped gun items
-		if(mc.hitResult != null && mc.hitResult instanceof EntityHitResult entityHitResult && (entityHitResult.getEntity() instanceof EntityFlagpole || entityHitResult.getEntity() instanceof EntityFlag || entityHitResult.getEntity() instanceof EntityGunItem || (entityHitResult.getEntity() instanceof EntityGrenade && ((EntityGrenade)entityHitResult.getEntity()).type.isDeployableBag)))
+		net.minecraft.world.phys.HitResult hitResult = FlansMod.proxy.getClientHitResult();
+		if(hitResult != null && hitResult instanceof EntityHitResult entityHitResult && (entityHitResult.getEntity() instanceof EntityFlagpole || entityHitResult.getEntity() instanceof EntityFlag || entityHitResult.getEntity() instanceof EntityGunItem || (entityHitResult.getEntity() instanceof EntityGrenade && ((EntityGrenade)entityHitResult.getEntity()).type.isDeployableBag)))
 			hold = false;
 		
 		//TODO idle sound should be done on the server side

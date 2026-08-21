@@ -283,7 +283,7 @@ public EntityAAGun(Level world)
 		motionZ *= 0.5;
 		move(MoverType.SELF, new Vec3(motionX, motionY, motionZ));
 		
-		if(world.isClientSide() && getControllingPassenger() != null && getControllingPassenger() == Minecraft.getInstance().player)
+		if(world.isClientSide() && getControllingPassenger() instanceof Player && FlansMod.proxy.isThePlayer((Player)getControllingPassenger()))
 		{
 			checkForShooting();
 		}
@@ -434,12 +434,12 @@ public EntityAAGun(Level world)
 	private void checkForShooting()
 	{
 		//Send a packet!
-		if(Minecraft.getInstance().mouseHandler.isLeftPressed() && !wasShooting && !FlansMod.proxy.isScreenOpen())
+		if(FlansMod.proxy.mouseLeftDown() && !wasShooting && !FlansMod.proxy.isScreenOpen())
 		{
 			FlansMod.getPacketHandler().sendToServer(new PacketMGFire(true));
 			wasShooting = true;
 		}
-		else if(!Minecraft.getInstance().mouseHandler.isLeftPressed() && wasShooting)
+		else if(!FlansMod.proxy.mouseLeftDown() && wasShooting)
 		{
 			FlansMod.getPacketHandler().sendToServer(new PacketMGFire(false));
 			wasShooting = false;

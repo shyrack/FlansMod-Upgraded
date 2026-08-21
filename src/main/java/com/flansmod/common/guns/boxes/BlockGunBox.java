@@ -17,6 +17,7 @@ import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.material.PushReaction;
 import net.minecraft.world.phys.BlockHitResult;
 
+import com.flansmod.common.FlansMod;
 import com.flansmod.common.guns.GunType;
 import com.flansmod.common.guns.GunUtil;
 import com.flansmod.common.util.FlansModUtil;
@@ -112,7 +113,7 @@ public class BlockGunBox extends Block
 		if(player.isCrouching())
 			return InteractionResult.PASS;
 		if(world.isClientSide())
-			net.minecraft.client.Minecraft.getInstance().setScreen(new com.flansmod.client.gui.GuiGunBox(player.getInventory(), type));
+			FlansMod.proxy.openGunBox(player.getInventory(), type);
 		return InteractionResult.SUCCESS;
 	}
 }

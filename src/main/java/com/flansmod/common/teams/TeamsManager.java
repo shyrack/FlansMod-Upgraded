@@ -1455,6 +1455,6 @@ public class TeamsManager
 	public void SelectTeam(Team team)
 	{
 		FlansMod.getPacketHandler().sendToServer(new PacketTeamSelect(team == null ? "null" : team.shortName, false));
-		Minecraft.getInstance().setScreen(null);
+		FlansMod.proxy.closeScreen();
 	}
 }

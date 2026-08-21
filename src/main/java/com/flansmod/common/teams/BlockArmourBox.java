@@ -17,7 +17,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.material.PushReaction;
 import net.minecraft.world.phys.BlockHitResult;
 
-import com.flansmod.client.gui.GuiArmourBox;
 import com.flansmod.common.FlansMod;
 import com.flansmod.common.teams.ArmourBoxType.ArmourBoxEntry;
 
@@ -94,7 +93,7 @@ public class BlockArmourBox extends Block
 		if(player.isCrouching())
 			return InteractionResult.PASS;
 		if(world.isClientSide())
-			Minecraft.getInstance().setScreen(new GuiArmourBox(player.getInventory(), type));
+			FlansMod.proxy.openArmourBox(player.getInventory(), type);
 		return InteractionResult.SUCCESS;
 	}
 }

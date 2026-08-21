@@ -4,7 +4,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 
-import com.flansmod.client.gui.GuiGunBox;
 import com.flansmod.common.guns.boxes.GunBoxType;
 
 public class CommonGuiHandler
@@ -23,6 +22,6 @@ public class CommonGuiHandler
 	{
 		if(!FlansMod.isClient())
 			return;
-		Minecraft.getInstance().setScreen(new GuiGunBox(player.getInventory(), type));
+		FlansMod.proxy.openGunBox(player.getInventory(), type);
 	}
 }

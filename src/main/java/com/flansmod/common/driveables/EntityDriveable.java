@@ -156,6 +156,12 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 	
 	/** The level this entity is in, mirrors the 1.12.2 world field */
 	protected Level world;
+
+	/** Previous-tick physics telemetry, updated every tick (cheap) and used
+	 *  only when FlansMod.logDriveablePhysics is enabled */
+	protected transient double physPrevX, physPrevY, physPrevZ;
+	protected transient double physPrevVelX, physPrevVelY, physPrevVelZ;
+	protected transient boolean physPrevValid = false;
 	
 	private static final EntityDataAccessor<String> TYPE =
 		SynchedEntityData.defineId(EntityDriveable.class, EntityDataSerializers.STRING);
@@ -273,6 +279,10 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 		xRotO = tag.getFloatOr("RotationPitch", 0F);
 		prevRotationRoll = tag.getFloatOr("RotationRoll", 0F);
 		axes = new RotatedAxes(yRotO, xRotO, prevRotationRoll);
+		//The loaded orientation is also the "previous" orientation, so the
+		//first-tick checkForCollisions sweep does not raytrace from identity
+		//through the ground
+		prevAxes = axes.clone();
 	}
 	
 	/**
@@ -283,7 +293,7 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 	 * @return if mouse movement was handled.
 	 */
 	@Override
-	public abstract void onMouseMoved(int deltaX, int deltaY);
+	public abstract void onMouseMoved(double deltaX, double deltaY);
 	
 	public net.minecraft.world.entity.Entity getCamera()
 	{
@@ -425,8 +435,7 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 		{
 			case 6: //Exit
 			{
-				Minecraft mc = Minecraft.getInstance();
-				mc.setCameraEntity(mc.player);
+				FlansMod.proxy.resetCamera();
 				FlansMod.getPacketHandler().sendToServer(new PacketDriveableKey(key));
 				return true;
 			}
@@ -1178,6 +1187,96 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 		}
 	}
 	
+	/**
+	 * Called at the end of EntityPlane/EntityVehicle/EntityMecha.tick.
+	 * Always updates the previous-tick telemetry fields (cheap); when
+	 * FlansMod.logDriveablePhysics is enabled, builds a PhysicsTickTrace with
+	 * the seat-0 offset (always) and the player offset (only when seat 0 has
+	 * a passenger) and hands it to FlansMod.physicsTracer.
+	 */
+	protected void logPhysicsTick(String typeName, float throttle, boolean onGround)
+	{
+		double x = getX();
+		double y = getY();
+		double z = getZ();
+		double velX = getDeltaMovement().x;
+		double velY = getDeltaMovement().y;
+		double velZ = getDeltaMovement().z;
+		
+		if(FlansMod.logDriveablePhysics)
+		{
+			String side = world.isClientSide() ? "C" : "S";
+			
+			double accX = 0D;
+			double accY = 0D;
+			double accZ = 0D;
+			if(physPrevValid)
+			{
+				accX = (velX - physPrevVelX) * 20;
+				accY = (velY - physPrevVelY) * 20;
+				accZ = (velZ - physPrevVelZ) * 20;
+			}
+			
+			EntitySeat seat0 = getSeat(0);
+			double seatOffsetX = 0D;
+			double seatOffsetY = 0D;
+			double seatOffsetZ = 0D;
+			Double playerOffsetX = null;
+			Double playerOffsetY = null;
+			Double playerOffsetZ = null;
+			if(seat0 != null)
+			{
+				seatOffsetX = seat0.getX() - x;
+				seatOffsetY = seat0.getY() - y;
+				seatOffsetZ = seat0.getZ() - z;
+				LivingEntity passenger = seat0.getControllingPassenger();
+				if(passenger != null)
+				{
+					playerOffsetX = passenger.getX() - seat0.getX();
+					playerOffsetY = passenger.getY() - seat0.getY();
+					playerOffsetZ = passenger.getZ() - seat0.getZ();
+				}
+			}
+			
+			PhysicsTickTrace trace = PhysicsTickTrace.snapshot(
+					tickCount, side, typeName, getId(),
+					x, y, z, velX, velY, velZ,
+					axes.getYaw(), axes.getPitch(), axes.getRoll(),
+					throttle, onGround,
+					seatOffsetX, seatOffsetY, seatOffsetZ,
+					playerOffsetX, playerOffsetY, playerOffsetZ)
+					.withAcceleration(accX, accY, accZ);
+			
+			PhysicsTickTrace prev = null;
+			if(physPrevValid)
+			{
+				prev = PhysicsTickTrace.snapshot(
+						tickCount - 1, side, typeName, getId(),
+						physPrevX, physPrevY, physPrevZ,
+						physPrevVelX, physPrevVelY, physPrevVelZ,
+						axes.getYaw(), axes.getPitch(), axes.getRoll(),
+						throttle, onGround,
+						seatOffsetX, seatOffsetY, seatOffsetZ,
+						playerOffsetX, playerOffsetY, playerOffsetZ);
+			}
+			List<String> anomalies = PhysicsDiagnostics.analyze(prev, trace);
+			if(!anomalies.isEmpty())
+			{
+				trace = trace.withAnomalies(anomalies);
+			}
+			
+			FlansMod.physicsTracer.onTick(trace);
+		}
+		
+		physPrevX = x;
+		physPrevY = y;
+		physPrevZ = z;
+		physPrevVelX = velX;
+		physPrevVelY = velY;
+		physPrevVelZ = velZ;
+		physPrevValid = true;
+	}
+	
 	private void loadClientData()
 	{
 		driveableType = entityData.get(TYPE);
@@ -1284,6 +1383,16 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 	
 	public void checkForCollisions()
 	{
+		//Collision damage, block destruction and explosions are
+		//server-authoritative. The client simulates the same physics
+		//independently and is never position-corrected for un-driven
+		//driveables, so client-side wall damage/explosions accumulate slightly
+		//different part deaths and launch or despawn the client plane while
+		//the server keeps a healthy one parked - the "plane all over the
+		//place" desync. Real explosions still knock the client plane through
+		//the synced server explosion.
+		if(world.isClientSide())
+			return;
 		boolean crashInWater = false;
 		double speed = getSpeedXYZ();
 		for(DriveablePosition p : getDriveableType().collisionPoints)
@@ -1322,6 +1431,16 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 					damage *= blockHardness * blockHardness;
 				}
 
+				// Only respond to meaningful impacts. Resting or gently
+				// settling driveables sweep their collision points along the
+				// ground every tick; without this guard they would dig blocks
+				// and accumulate wall damage while parked (and, combined with
+				// the old phantom velocity, explode shortly after placement).
+				if(damage <= 0.1F)
+				{
+					continue;
+				}
+
 				// Attack the part
 				if(!attackPart(p.part, level().damageSources().inWall(), damage) 
 					&& TeamsManager.driveablesBreakBlocks)
@@ -1335,8 +1454,16 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 				}
 				else
 				{
-					// The part died!
-					world.explode(this, currentPos.x, currentPos.y, currentPos.z, 1F, false, Level.ExplosionInteraction.BLOCK);
+					// The part died! The explosion is server-authoritative: the
+					// client simulates the same collision independently, and a
+					// client-only explosion knocks the client plane away from
+					// where the server knows it is - the classic "plane jumps
+					// around" desync. The client still breaks the part visually
+					// through its own attackPart/checkParts.
+					if(!world.isClientSide())
+					{
+						world.explode(this, currentPos.x, currentPos.y, currentPos.z, 1F, false, Level.ExplosionInteraction.BLOCK);
+					}
 				}
 			}
 			
@@ -1520,6 +1647,8 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 	public boolean hasEnoughFuel()
 	{
 		if(getDriver() == null)
+			return false;
+		if(driveableData.engine == null)
 			return false;
 		return driverIsCreative() || driveableData.fuelInTank > driveableData.engine.fuelConsumption * throttle;
 		
@@ -1956,9 +2085,6 @@ public abstract class EntityDriveable extends Entity implements IControllable, I
 	
 	public void togglePerspective()
 	{
-		Minecraft mc = Minecraft.getInstance();
-		if(mc.options.getCameraType() == net.minecraft.client.CameraType.FIRST_PERSON)
-			mc.setCameraEntity((getCamera() == null ? mc.player : getCamera()));
-		else mc.setCameraEntity(mc.player);
+		FlansMod.proxy.toggleDriveablePerspective(this);
 	}
 }

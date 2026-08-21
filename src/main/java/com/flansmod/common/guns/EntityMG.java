@@ -219,7 +219,7 @@ public EntityMG(Level world)
 				PacketPlaySound.sendSoundPacket(getX(), getY(), getZ(), FlansMod.soundRange, GunUtil.getDimensionId(world), type.reloadSound, false);
 			}
 		}
-		if(world.isClientSide() && gunner != null && gunner == Minecraft.getInstance().player && type.mode == EnumFireMode.FULLAUTO)
+		if(world.isClientSide() && gunner != null && gunner instanceof Player && FlansMod.proxy.isThePlayer((Player)gunner) && type.mode == EnumFireMode.FULLAUTO)
 		{
 			//Send a packet!
 			checkForShooting();
@@ -234,12 +234,12 @@ public EntityMG(Level world)
 	
 	private void checkForShooting()
 	{
-		if(Minecraft.getInstance().mouseHandler.isLeftPressed() && !wasShooting && !FlansMod.proxy.isScreenOpen())
+		if(FlansMod.proxy.mouseLeftDown() && !wasShooting && !FlansMod.proxy.isScreenOpen())
 		{
 			FlansMod.getPacketHandler().sendToServer(new PacketMGFire(true));
 			wasShooting = true;
 		}
-		else if(!Minecraft.getInstance().mouseHandler.isLeftPressed() && wasShooting)
+		else if(!FlansMod.proxy.mouseLeftDown() && wasShooting)
 		{
 			FlansMod.getPacketHandler().sendToServer(new PacketMGFire(false));
 			wasShooting = false;
